@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     langsmith_project: str = "baguio-public-sentiment"
 
     ingestion_interval_seconds: int = 120
+    ingestion_region_keywords: list[str] = [
+        "baguio",
+        "baguio city",
+        "cordillera",
+        "session road",
+        "burnham park",
+    ]
 
 
 @lru_cache
