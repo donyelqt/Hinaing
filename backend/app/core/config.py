@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # Service metadata
     app_name: str = "Public Sentiment Agent Backend"
     environment: str = "development"
+    frontend_origin: str = "http://localhost:3000"
 
     # External services
     supabase_url: str
@@ -28,9 +29,12 @@ class Settings(BaseSettings):
     reddit_client_secret: str
     reddit_user_agent: str = "baguio-public-sentiment/0.1"
 
-    langsmith_api_key: str | None = None
-    langsmith_project: str = "baguio-public-sentiment"
+    # LangSearch
+    langsearch_api_key: str | None = None
+    langsearch_base_url: str = "https://api.langsearch.com/v1/web-search"
 
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "pr-scholarly-mesenchyme-11"
     ingestion_interval_seconds: int = 120
     ingestion_region_keywords: list[str] = [
         "baguio",

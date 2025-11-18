@@ -3,6 +3,7 @@ import type { ToggleOption, PresetOption, GeneratorStep } from '../types';
 export const PLATFORM_OPTIONS: ToggleOption[] = [
   { value: "facebook", label: "Facebook", hint: "Pages & public groups" },
   { value: "reddit", label: "Reddit", hint: "Local subreddits" },
+  { value: "web", label: "Web search", hint: "Search across the open web" },
 ];
 
 export const TIME_WINDOW_OPTIONS: ToggleOption[] = [
