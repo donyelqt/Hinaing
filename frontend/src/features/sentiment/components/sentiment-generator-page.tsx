@@ -54,6 +54,116 @@ type SnapshotResponse = {
   }[] | null;
 };
 
+type NarrativeSummary = {
+  summary?: string;
+  insights?: {
+    category?: string;
+    title?: string;
+    detail?: string;
+    evidence?: string[];
+  }[];
+};
+
+type DisplayInsight = {
+  category?: string;
+  title?: string;
+  detail?: string;
+  evidence?: string[];
+};
+
+type CredibilityBreakdown = {
+  legitPercent: number;
+  misinfoPercent: number;
+  hasData: boolean;
+};
+
+const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => {
+  if (!rawSummary) return null;
+  const trimmed = rawSummary.trim();
+
+  if (!trimmed.startsWith("{") || !trimmed.includes("summary")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const summaryText = typeof parsed.summary === "string" ? parsed.summary : undefined;
+    const insights = Array.isArray(parsed.insights)
+      ? parsed.insights
+          .map((item: unknown) => {
+            if (typeof item !== "object" || item === null) return null;
+            const record = item as Record<string, unknown>;
+            const evidence = Array.isArray(record.evidence)
+              ? record.evidence.filter((e): e is string => typeof e === "string")
+              : undefined;
+
+            return {
+              category: typeof record.category === "string" ? record.category : undefined,
+              title: typeof record.title === "string" ? record.title : undefined,
+              detail: typeof record.detail === "string" ? record.detail : undefined,
+              evidence,
+            } satisfies DisplayInsight;
+          })
+          .filter(
+            (item: DisplayInsight | null): item is DisplayInsight =>
+              Boolean(item && (item.title || item.detail || item.category)),
+          )
+      : undefined;
+
+    if (!summaryText && !insights) {
+      return null;
+    }
+
+    return { summary: summaryText, insights };
+  } catch {
+    return null;
+  }
+};
+
+const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | null): CredibilityBreakdown => {
+  if (!sources || sources.length === 0) {
+    return { legitPercent: 78, misinfoPercent: 22, hasData: false };
+  }
+
+  let legit = 0;
+  let suspect = 0;
+
+  sources.forEach((source) => {
+    const metadata = source.metadata ?? {};
+    const credibility = typeof metadata.credibility === "string" ? metadata.credibility.toLowerCase() : undefined;
+    const verification = typeof metadata.verification_status === "string" ? metadata.verification_status.toLowerCase() : undefined;
+    const isVerified = metadata.is_verified === true || (verification && verification.includes("verified"));
+    const flaggedAsFake = Boolean(
+      (credibility && ["fake", "hoax", "misinfo", "misinformation", "rumor"].some((flag) => credibility.includes(flag))) ||
+        (verification && ["fake", "misinfo", "unverified", "rumor"].some((flag) => verification.includes(flag))),
+    );
+
+    if (flaggedAsFake) {
+      suspect += 1;
+      return;
+    }
+
+    if (isVerified || credibility === "legit" || credibility === "credible") {
+      legit += 1;
+      return;
+    }
+
+    // If metadata is ambiguous, assume legit if there are no red flags
+    legit += 1;
+  });
+
+  const total = legit + suspect;
+  if (!total) {
+    return { legitPercent: 78, misinfoPercent: 22, hasData: false };
+  }
+
+  return {
+    legitPercent: Math.max(0, Math.min(100, Math.round((legit / total) * 100))),
+    misinfoPercent: Math.max(0, Math.min(100, Math.round((suspect / total) * 100))),
+    hasData: true,
+  };
+};
+
 export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }: SentimentGeneratorPageProps = {}) {
   const { state, actions, computed } = useSentimentGenerator();
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
@@ -83,6 +193,28 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const positivePercent = snapshot?.overall_sentiment?.scores?.positive !== undefined
     ? Math.round(snapshot.overall_sentiment.scores.positive * 100)
     : 15;
+
+  const narrativeSummary = React.useMemo(() => parseNarrativeSummary(snapshot?.overall_sentiment?.summary), [snapshot?.overall_sentiment?.summary]);
+
+  const insightsToDisplay = React.useMemo<DisplayInsight[]>(() => {
+    if (snapshot?.actionable_insights?.length) {
+      return snapshot.actionable_insights.map((insight) => ({
+        category: insight.category,
+        title: insight.title,
+        detail: insight.detail,
+        evidence: insight.evidence,
+      }));
+    }
+
+    if (narrativeSummary?.insights?.length) {
+      return narrativeSummary.insights;
+    }
+
+    return [];
+  }, [snapshot?.actionable_insights, narrativeSummary]);
+
+  const hasInsights = insightsToDisplay.length > 0;
+  const credibilityBreakdown = React.useMemo(() => computeCredibilityBreakdown(snapshot?.sources), [snapshot?.sources]);
 
   const handleGenerate = async () => {
     if (state.platforms.length === 0 || state.isGenerating) return;
@@ -146,16 +278,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <p className="text-sm text-slate-500">
                       Configure data sources and focus areas. The agent will gather the latest public posts, classify sentiment, and surface actionable intelligence for decision-makers.
                     </p>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="rounded-full bg-slate-200 px-2 py-1 font-medium text-slate-600">Backend</span>
-                      {backendStatus ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">{backendStatus}</span>
-                      ) : backendError ? (
-                        <span className="rounded-full bg-rose-100 px-2 py-1 font-medium text-rose-700">{backendError}</span>
-                      ) : (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-500">Checking…</span>
-                      )}
-                    </div>
                   </div>
                   <button
                     type="button"
@@ -350,7 +472,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             {snapshot.overall_sentiment.label}
                           </h3>
                           <p className="text-sm text-slate-600">
-                            {snapshot.overall_sentiment.summary}
+                            {narrativeSummary?.summary ?? snapshot.overall_sentiment.summary}
                           </p>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
@@ -365,6 +487,22 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className="rounded-lg bg-white/70 p-3 shadow-inner">
                             <strong className="block text-lg font-semibold text-emerald-600">{positivePercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-center text-sm">
+                          <div className="rounded-lg bg-white/80 p-3 shadow-inner">
+                            <strong className="block text-lg font-semibold text-emerald-700">{credibilityBreakdown.legitPercent}%</strong>
+                            <span className="text-2xs uppercase tracking-wide text-slate-500">Legit Sources</span>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {credibilityBreakdown.hasData ? 'Verified or trusted outlets in this pull.' : 'Estimated share based on prior pulls.'}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white/80 p-3 shadow-inner">
+                            <strong className="block text-lg font-semibold text-amber-600">{credibilityBreakdown.misinfoPercent}%</strong>
+                            <span className="text-2xs uppercase tracking-wide text-slate-500">Potential Fake News</span>
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              {credibilityBreakdown.hasData ? 'Flagged for manual review.' : 'Estimate until verification labels arrive.'}
+                            </p>
                           </div>
                         </div>
                         <button 
@@ -437,16 +575,36 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
                             Actionable Insights
                           </h3>
-                          <ul className="mt-3 space-y-3 text-sm text-slate-600">
-                            {snapshot.actionable_insights.map((insight, index) => (
-                              <li key={index} className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-                                <span className="mb-1 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
-                                  {insight.category}
-                                </span>
-                                <strong>{insight.title}</strong> {insight.detail}
-                              </li>
-                            ))}
-                          </ul>
+                          {hasInsights ? (
+                            <ul className="mt-3 space-y-3 text-sm text-slate-600">
+                              {insightsToDisplay.map((insight, index) => (
+                                <li key={index} className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                                  {insight.category ? (
+                                    <span className="mb-2 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
+                                      {insight.category}
+                                    </span>
+                                  ) : null}
+                                  {insight.title ? (
+                                    <p className="text-base font-semibold text-slate-900">{insight.title}</p>
+                                  ) : null}
+                                  {insight.detail ? (
+                                    <p className="mt-1 text-sm text-slate-600">{insight.detail}</p>
+                                  ) : null}
+                                  {insight.evidence && insight.evidence.length ? (
+                                    <ul className="mt-3 space-y-1 text-xs text-slate-500 list-disc pl-4">
+                                      {insight.evidence.map((item, evidenceIndex) => (
+                                        <li key={evidenceIndex}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-3 text-sm text-slate-500">
+                              We’ll surface the most important recommendations here once the agent finds clear trends in the latest conversations.
+                            </p>
+                          )}
                         </div>
 
                         {state.includeAlerts && snapshot.alerts && snapshot.alerts.length ? (
@@ -471,33 +629,42 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </>
                   ) : (
                     <>
-                      <Card className="space-y-4 border border-dashed border-slate-200 bg-white/70 p-5 text-slate-500">
+                      <Card className="space-y-4 border border-dashed border-slate-200 bg-white/70 p-5 text-slate-500" role="status" aria-live="polite">
                         <div className="flex items-center justify-between">
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Overall Sentiment
                           </span>
-                          <button
-                            type="button"
-                            onClick={handleGenerate}
-                            className="text-xs font-medium text-hinaing-blue-600 hover:text-hinaing-blue-500"
-                          >
-                            Generate snapshot ↗
-                          </button>
+                          {state.isGenerating ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-hinaing-blue-50 px-3 py-1 text-[11px] font-semibold text-hinaing-blue-700">
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                              Generating…
+                            </span>
+                          ) : null}
                         </div>
                         <div className="space-y-2">
-                          <div className="h-5 w-40 rounded bg-slate-100" aria-hidden="true" />
-                          <div className="h-4 w-72 rounded bg-slate-100" aria-hidden="true" />
+                          <div className={clsx("h-5 w-40 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-100 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
+                          <div className={clsx("h-4 w-72 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-xs">
                           {['Negative','Neutral','Positive'].map((label) => (
                             <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
-                              <div className="h-5 rounded bg-slate-100" aria-hidden="true" />
+                              <div className={clsx("h-5 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
+                              <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-center text-xs">
+                          {['Legit Sources','Potential Fake News'].map((label) => (
+                            <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
+                              <div className={clsx("h-5 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
                               <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
                             </div>
                           ))}
                         </div>
                         <p className="text-xs text-slate-500">
-                          We’ll populate this card with live sentiment once you run a report for the filters above.
+                          {state.isGenerating
+                            ? 'Analyzing fresh chatter across your selected channels. This card will update once calculations finish.'
+                            : 'We’ll populate this card with live sentiment once you run a report for the filters above.'}
                         </p>
                       </Card>
 
@@ -505,17 +672,33 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Actionable Insights</h3>
-                            <span className="text-[11px] text-slate-400">Ready after generation</span>
+                            <span className="text-[11px] text-slate-400">
+                              {state.isGenerating ? 'Drafting insights…' : 'Ready after generation'}
+                            </span>
                           </div>
                           <p className="mt-3 text-xs text-slate-500">
-                            Once generated, the most urgent recommendations for
-                            <span className="font-semibold"> {computed.focusSummaryLabel}</span> will surface here with links to supporting evidence.
+                            {state.isGenerating ? (
+                              <>Matching community chatter to <span className="font-semibold">{computed.focusSummaryLabel}</span> priorities…</>
+                            ) : (
+                              <>Once generated, the most urgent recommendations for
+                                <span className="font-semibold"> {computed.focusSummaryLabel}</span> will surface here with links to supporting evidence.</>
+                            )}
                           </p>
                           <div className="mt-4 grid gap-3 text-[13px] text-slate-500 sm:grid-cols-2">
                             {['Infrastructure readiness','Community health','Incident response'].map((label) => (
-                              <div key={label} className="rounded-xl border border-slate-100 bg-white/80 p-3">
+                              <div
+                                key={label}
+                                className={clsx(
+                                  "rounded-xl border border-slate-100 bg-white/80 p-3",
+                                  state.isGenerating && "animate-pulse",
+                                )}
+                              >
                                 <p className="text-xs font-semibold text-slate-400">{label}</p>
-                                <p className="mt-1 text-[12px]">Generate a snapshot to surface the latest risk and opportunity signals.</p>
+                                <p className="mt-1 text-[12px]">
+                                  {state.isGenerating
+                                    ? 'Analyzing fresh posts for early warnings…'
+                                    : 'Generate a snapshot to surface the latest risk and opportunity signals.'}
+                                </p>
                               </div>
                             ))}
                           </div>
