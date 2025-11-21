@@ -11,7 +11,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={clsx(
-          "glass-panel rounded-3xl",
+          "glass-panel rounded-2xl",
           padded && "p-6",
           className,
         )}

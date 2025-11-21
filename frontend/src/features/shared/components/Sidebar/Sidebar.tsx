@@ -12,7 +12,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
   
   return (
     <aside 
-      className="order-2 flex flex-col rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200/50 p-6 shadow-sm lg:order-1 lg:w-[20rem]" 
+      className="order-2 flex flex-col rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200/50 p-6 shadow-sm lg:order-1 lg:w-[20rem] lg:flex-shrink-0 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:sticky lg:top-8" 
       role="complementary" 
       aria-label="Navigation sidebar"
     >

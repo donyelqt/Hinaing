@@ -29,7 +29,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
           onNavigate={onNavigate}
         />
 
-        <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:gap-8">
+        <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-8">
           {/* Header */}
           <div className="space-y-4">
             <div>

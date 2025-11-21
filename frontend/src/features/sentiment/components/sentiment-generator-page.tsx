@@ -252,7 +252,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
           />
 
           {/* Main Content */}
-          <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:gap-10 xl:gap-12">
+          <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-10 xl:gap-12">
             <section className="space-y-4">
               <HeroSection
                 selectedWindowLabel={computed.selectedWindowLabel}
@@ -270,8 +270,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
               />
             </section>
 
-            <section className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-8" role="main" aria-label="Sentiment analysis configuration">
-              <Card className="space-y-6 p-5 md:p-6 lg:p-8" role="form" aria-labelledby="config-heading">
+            <section className="grid gap-y-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-x-8" role="main" aria-label="Sentiment analysis configuration">
+              <Card className="space-y-6 border border-slate-200 shadow-md p-5 md:p-6 lg:p-8" role="form" aria-labelledby="config-heading">
                 <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
                     <h2 id="config-heading" className="text-xl font-semibold text-slate-900 md:text-2xl">Generate Public Sentiment Snapshot</h2>
@@ -299,26 +299,26 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 </header>
 
                 {/* Step 1 Coverage Card */}
-                <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-5" role="region" aria-labelledby="coverage-heading">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-hinaing-blue-600">Step 1 · Review coverage</p>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5" role="region" aria-labelledby="coverage-heading">
+                  <p className="text-[11px] font-semibold text-hinaing-blue-600">Step 1 · Review coverage</p>
                   <h3 id="coverage-heading" className="mt-1 text-lg font-semibold text-slate-900">Barangay & keyword context</h3>
                   <p className="text-sm font-medium text-slate-700">Baguio City, Philippines</p>
                   <p className="text-sm text-slate-500">Adjust geographic filters in settings to include nearby municipalities when needed.</p>
 
                   <dl className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
                       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Population</dt>
                       <dd className="mt-2 text-lg font-semibold text-slate-900">~366k residents</dd>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
                       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Priority Barangays</dt>
                       <dd className="mt-2 text-sm text-slate-700">Session Road, Aurora Hill, Irisan</dd>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
                       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Languages</dt>
                       <dd className="mt-2 text-sm text-slate-700">Ilocano, Ibaloi, Filipino, English</dd>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
                       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monitoring Tags</dt>
                       <dd className="mt-2 text-sm text-slate-700">#traffic, #water, #safety, #tourism</dd>
                     </div>
@@ -330,7 +330,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   {/* Quick Start Presets */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-hinaing-blue-600">Quick start</span>
+                      <span className="text-[11px] font-semibold text-hinaing-blue-600">Quick start</span>
                       <span className="text-xs text-slate-400">Choose a preset to auto-fill filters</span>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -345,7 +345,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             type="button"
                             onClick={() => actions.applyPreset(preset.id)}
                             className={clsx(
-                              "group flex flex-col rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2",
+                              "group flex flex-col rounded-xl border p-4 text-left transition-transform duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 hover:-translate-y-0.5",
                               isActive
                                 ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
                                 : "border-slate-200 bg-white text-slate-600 hover:border-hinaing-blue-300",
@@ -421,7 +421,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition hover:border-hinaing-blue-500 hover:text-hinaing-blue-600 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition duration-150 ease-out hover:-translate-y-0.5 hover:border-hinaing-blue-500 hover:text-hinaing-blue-600 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
                     aria-label="Save current configuration as preset"
                   >
                     <Save className="h-4 w-4" aria-hidden="true" />
@@ -431,7 +431,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     type="button"
                     onClick={handleGenerate}
                     disabled={state.isGenerating || state.platforms.length === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition hover:bg-hinaing-blue-500 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:bg-hinaing-blue-500 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
                     aria-label="Generate new sentiment report with current settings"
                   >
                     {state.isGenerating ? (
@@ -445,7 +445,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
               </Card>
 
               {/* Live Preview */}
-              <Card className="order-first space-y-6 p-5 md:order-none md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
+              <Card className="order-first space-y-6 border border-slate-200 shadow-md p-5 md:order-none md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-sm text-slate-500">
@@ -517,14 +517,14 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       </Card>
 
                       {showSources && snapshot.sources && snapshot.sources.length > 0 && (
-                        <Card className="border-hinaing-blue-200 bg-gradient-to-br from-slate-50 to-white p-6">
+                        <Card className="border border-slate-200 bg-white shadow-md p-6">
                           <div className="space-y-4">
                             <h3 className="text-lg font-semibold text-slate-900">
                               Supporting Conversations ({snapshot.sources.length})
                             </h3>
                             <div className="space-y-4 max-h-96 overflow-y-auto">
                               {snapshot.sources.map((source, index) => (
-                                <div key={index} className="border border-slate-200 rounded-lg bg-white p-4 shadow-sm">
+                                <div key={index} className="border border-slate-100 rounded-lg bg-white p-4 shadow-sm">
                                   <div className="space-y-2">
                                     <h4 className="font-medium text-slate-900 leading-tight">
                                       {source.title}
@@ -578,7 +578,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           {hasInsights ? (
                             <ul className="mt-3 space-y-3 text-sm text-slate-600">
                               {insightsToDisplay.map((insight, index) => (
-                                <li key={index} className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                                <li key={index} className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
                                   {insight.category ? (
                                     <span className="mb-2 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
                                       {insight.category}
@@ -629,7 +629,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </>
                   ) : (
                     <>
-                      <Card className="space-y-4 border border-dashed border-slate-200 bg-white/70 p-5 text-slate-500" role="status" aria-live="polite">
+                      <Card className="space-y-4 border border-dashed border-slate-200 bg-white p-5 text-slate-500" role="status" aria-live="polite">
                         <div className="flex items-center justify-between">
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Overall Sentiment
@@ -642,13 +642,13 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           ) : null}
                         </div>
                         <div className="space-y-2">
-                          <div className={clsx("h-5 w-40 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-100 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
-                          <div className={clsx("h-4 w-72 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
+                          <div className={clsx("h-5 w-40 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
+                          <div className={clsx("h-4 w-72 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-xs">
                           {['Negative','Neutral','Positive'].map((label) => (
                             <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
-                              <div className={clsx("h-5 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
+                              <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                               <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
                             </div>
                           ))}
@@ -656,7 +656,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         <div className="grid grid-cols-2 gap-3 text-center text-xs">
                           {['Legit Sources','Potential Fake News'].map((label) => (
                             <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
-                              <div className={clsx("h-5 rounded", state.isGenerating ? "bg-gradient-to-r from-slate-200 via-hinaing-blue-50 to-slate-200 animate-pulse" : "bg-slate-100")} aria-hidden="true" />
+                              <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                               <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
                             </div>
                           ))}

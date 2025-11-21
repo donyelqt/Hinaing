@@ -86,7 +86,7 @@ const SAMPLE_REPORTS = [
 
 export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedReportsPageProps = {}) {
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-10 lg:py-12 xl:px-16">
         
         <Sidebar 
@@ -95,7 +95,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
           onNavigate={onNavigate}
         />
 
-        <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:gap-8">
+        <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-8">
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>

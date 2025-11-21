@@ -14,7 +14,7 @@ export function HeroSection({
   focusSummaryLabel,
 }: HeroSectionProps) {
   return (
-    <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-indigo-500 p-6 text-white shadow-lg md:p-10" role="banner">
+    <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-indigo-500 border border-slate-200 p-6 text-white shadow-md md:p-10" role="banner">
       <div className="grid gap-8 xl:grid-cols-[minmax(0,2.6fr)_minmax(0,1.4fr)] xl:items-center">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Public Sentiment Generator</p>
