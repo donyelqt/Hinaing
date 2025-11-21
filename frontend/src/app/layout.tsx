@@ -17,7 +17,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hinaing.ai – Public Sentiment Monitor",
+  title: "Hinaing – Public Sentiment Monitor",
   description: "Generate actionable public sentiment insights for Baguio City in real-time.",
 };
 

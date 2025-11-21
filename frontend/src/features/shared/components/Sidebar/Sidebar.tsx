@@ -1,4 +1,4 @@
-import { BarChart3, Settings, Save, PieChart } from "lucide-react";
+import { BarChart3, Settings, Save, PieChart, LogOut } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 
 type SidebarProps = {
@@ -7,8 +7,19 @@ type SidebarProps = {
   onNavigate?: (page: ActivePage) => void;
 };
 
-export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavigate }: SidebarProps) {
+export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavigate, onLogout }: SidebarProps & { onLogout?: () => void }) {
   console.log('🔍 Sidebar Debug - activePage:', activePage, 'onNavigate:', !!onNavigate);
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/landing";
+    }
+  };
   
   return (
     <aside 
@@ -19,7 +30,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
       <div className="flex items-center justify-between lg:block">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Hinaing.ai
+            Hinaing
           </span>
           <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
             Public Sentiment Suite
@@ -99,11 +110,26 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
         </button>
       </nav>
 
-      <div 
-        className="mt-6 rounded-xl bg-hinaing-blue-500/10 p-4 text-xs text-hinaing-blue-700 sm:text-sm lg:mt-auto" 
-        role="note"
-      >
-        Keep track of emerging concerns from Facebook and Reddit to support rapid response planning for Baguio communities.
+      <div className="mt-6 space-y-3 lg:mt-auto">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+          aria-label="Log out"
+        >
+          <span className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            <span>Log out</span>
+          </span>
+          <span className="text-[11px] text-slate-400">End session</span>
+        </button>
+
+        <div 
+          className="rounded-xl bg-hinaing-blue-500/10 p-4 text-xs text-hinaing-blue-700 sm:text-sm" 
+          role="note"
+        >
+          Keep track of emerging concerns from Facebook and Reddit to support rapid response planning for Baguio communities.
+        </div>
       </div>
     </aside>
   );
