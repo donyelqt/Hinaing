@@ -13,7 +13,7 @@ export function FinalCTASection() {
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/"
+            href="/app"
             className="inline-flex items-center justify-center rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:bg-hinaing-blue-500 hover:shadow-subtle"
           >
             Open console

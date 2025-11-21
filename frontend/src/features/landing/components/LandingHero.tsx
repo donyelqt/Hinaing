@@ -24,7 +24,7 @@ export function LandingHero() {
 
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <Link
-              href="/"
+              href="/app"
               className="inline-flex items-center justify-center rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:bg-hinaing-blue-500 hover:shadow-subtle"
             >
               Open console

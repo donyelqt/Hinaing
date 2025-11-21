@@ -17,7 +17,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
     }
 
     if (typeof window !== "undefined") {
-      window.location.href = "/landing";
+      window.location.href = "/";
     }
   };
   

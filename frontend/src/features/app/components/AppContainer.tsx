@@ -25,7 +25,8 @@ export function AppContainer() {
     setActivePage(page);
     
     // Update browser URL
-    const newUrl = page === 'sentiment' ? '/' : `/${page}`;
+    const basePath = '/app';
+    const newUrl = page === 'sentiment' ? basePath : `${basePath}/${page}`;
     window.history.pushState({}, '', newUrl);
   };
 

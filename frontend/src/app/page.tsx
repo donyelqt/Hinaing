@@ -1,5 +1,5 @@
-import { AppContainer } from "@/features/app/components/AppContainer";
+import { LandingPage } from "@/features/landing";
 
 export default function Home() {
-  return <AppContainer />;
+  return <LandingPage />;
 }
