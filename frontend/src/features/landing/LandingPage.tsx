@@ -1,4 +1,6 @@
+import { LandingHeader } from "./components/LandingHeader";
 import { LandingHero } from "./components/LandingHero";
+import { PartnerBadges } from "./components/PartnerBadges";
 import { TrustBar } from "./components/TrustBar";
 import { ValuePropsSection } from "./components/ValuePropsSection";
 import { LivePreviewSection } from "./components/LivePreviewSection";
@@ -6,19 +8,40 @@ import { HowItWorksSection } from "./components/HowItWorksSection";
 import { UseCasesSection } from "./components/UseCasesSection";
 import { FAQSection } from "./components/FAQSection";
 import { FinalCTASection } from "./components/FinalCTASection";
+import { ScrollReveal } from "./components/ScrollReveal";
 
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-100">
       <main className="flex flex-col">
-        <LandingHero />
-        <TrustBar />
-        <ValuePropsSection />
-        <LivePreviewSection />
-        <HowItWorksSection />
-        <UseCasesSection />
-        <FAQSection />
-        <FinalCTASection />
+        <LandingHeader />
+        <ScrollReveal>
+          <LandingHero />
+        </ScrollReveal>
+        <ScrollReveal delay={80}>
+          <PartnerBadges />
+        </ScrollReveal>
+        <ScrollReveal delay={120}>
+          <TrustBar />
+        </ScrollReveal>
+        <ScrollReveal delay={160}>
+          <ValuePropsSection />
+        </ScrollReveal>
+        <ScrollReveal delay={200}>
+          <LivePreviewSection />
+        </ScrollReveal>
+        <ScrollReveal delay={240}>
+          <HowItWorksSection />
+        </ScrollReveal>
+        <ScrollReveal delay={280}>
+          <UseCasesSection />
+        </ScrollReveal>
+        <ScrollReveal delay={320}>
+          <FAQSection />
+        </ScrollReveal>
+        <ScrollReveal delay={360}>
+          <FinalCTASection />
+        </ScrollReveal>
       </main>
     </div>
   );

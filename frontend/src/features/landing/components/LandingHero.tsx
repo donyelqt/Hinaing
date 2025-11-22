@@ -11,7 +11,7 @@ export function LandingHero() {
             <span>Built for Baguio City teams</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               Monitor public sentiment
               <span className="block text-hinaing-blue-700">before it becomes a crisis.</span>
@@ -20,6 +20,24 @@ export function LandingHero() {
               Hinaing turns noisy Facebook and Reddit conversations into clear, actionable briefings so Baguio City
               decision-makers can respond faster and plan better.
             </p>
+
+            <div className="grid gap-3 text-xs text-slate-600 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 shadow-subtle">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Conversations</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">4.3k+</p>
+                <p className="text-[11px] text-slate-500">tracked this month</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 shadow-subtle">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Coverage</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">40+</p>
+                <p className="text-[11px] text-slate-500">barangays monitored</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 shadow-subtle">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Channels</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">3</p>
+                <p className="text-[11px] text-slate-500">including Facebook & Reddit</p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -42,8 +60,16 @@ export function LandingHero() {
           </p>
         </div>
 
-        <div className="lg:flex-1">
-          <Card className="relative mx-auto max-w-md rounded-3xl border border-hinaing-blue-100 bg-gradient-to-br from-white/90 to-hinaing-blue-50/70 p-6 shadow-card">
+        <div className="relative lg:flex-1">
+          <div
+            className="pointer-events-none absolute -right-24 -top-20 hidden h-56 w-56 rounded-full bg-hinaing-blue-200/40 blur-3xl lg:block"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -right-10 top-16 hidden h-40 w-40 rounded-full border border-hinaing-blue-200/60 lg:block"
+            aria-hidden="true"
+          />
+          <Card className="relative mx-auto max-w-md rounded-3xl border border-hinaing-blue-100 bg-gradient-to-br from-white/90 to-hinaing-blue-50/70 p-6 shadow-card transition-transform duration-200 ease-out hover:-translate-y-1 hover:shadow-card">
             <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
               <span className="inline-flex items-center gap-1 rounded-full bg-hinaing-blue-600/10 px-3 py-1 font-medium text-hinaing-blue-700">
                 Live sentiment snapshot
