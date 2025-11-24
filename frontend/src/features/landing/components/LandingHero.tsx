@@ -5,35 +5,34 @@ import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
 
 function BaguioTeamsPill() {
-  const [hasInteracted, setHasInteracted] = useState(false);
   const [isAutoPulse, setIsAutoPulse] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!hasInteracted) return;
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    intervalRef.current = setInterval(() => {
+    const startPulse = () => {
       setIsAutoPulse(true);
-      setTimeout(() => setIsAutoPulse(false), 3000);
-    }, 3000);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => setIsAutoPulse(false), 3000);
+    };
+
+    startPulse();
+    intervalRef.current = setInterval(startPulse, 6000);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  }, [hasInteracted]);
-
-  const handleMouseEnter = () => {
-    setHasInteracted(true);
-  };
+  }, []);
 
   return (
-    <div className="group relative inline-flex cursor-default" onMouseEnter={handleMouseEnter}>
+    <div className="group relative inline-flex cursor-default">
       <div
         className={`pointer-events-none absolute -inset-4 rounded-full bg-gradient-to-r from-hinaing-blue-500/85 via-hinaing-blue-400/65 to-violet-500/85 blur-2xl opacity-80 transition-all duration-300 group-hover:scale-110 group-hover:opacity-100 ${
           isAutoPulse ? "scale-110 opacity-100" : ""
