@@ -14,17 +14,17 @@ export function HowItWorksSection() {
 
         <div className="relative mt-8">
           <div
-            className="pointer-events-none absolute inset-x-8 top-9 hidden h-px bg-slate-200 md:block"
+            className="pointer-events-none absolute inset-x-8 top-9 hidden h-px bg-gradient-to-r from-hinaing-blue-100 via-hinaing-blue-50 to-violet-100 md:block"
             aria-hidden="true"
           />
           <div className="grid gap-6 md:grid-cols-3">
             {HOW_IT_WORKS_STEPS.map((step) => (
               <div
                 key={step.title}
-                className="relative rounded-2xl border border-slate-100 bg-slate-50/80 p-5 text-sm text-slate-700 shadow-subtle"
+                className="relative rounded-2xl border border-slate-100 bg-gradient-to-br from-hinaing-blue-50/80 to-violet-50/80 p-5 text-sm text-slate-700 shadow-subtle"
               >
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-hinaing-blue-600 text-[11px] font-semibold text-white shadow-subtle">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-[11px] font-semibold text-white shadow-subtle">
                     {step.label.replace("Step ", "")}
                   </div>
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">

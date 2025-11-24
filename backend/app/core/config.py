@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # LangSearch
     langsearch_api_key: str | None = None
     langsearch_base_url: str = "https://api.langsearch.com/v1/web-search"
+    langsearch_rerank_url: str = "https://api.langsearch.com/v1/rerank"
 
     langsmith_api_key: str | None = None
     langsmith_project: str = "pr-scholarly-mesenchyme-11"

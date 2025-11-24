@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
+_RERANK_MODEL = "langsearch-reranker-v1"
 
 
 class LangSearchClient:
@@ -23,6 +24,7 @@ class LangSearchClient:
         settings = get_settings()
         self._api_key = settings.langsearch_api_key
         self._base_url = settings.langsearch_base_url.rstrip("/")
+        self._rerank_url = settings.langsearch_rerank_url.rstrip("/")
         self._timeout = timeout
 
     async def search(
@@ -57,26 +59,38 @@ class LangSearchClient:
             response.raise_for_status()
             data = response.json()
 
-        documents: list[WebDocument] = []
-        for item in self._extract_web_results(data):
-            try:
-                documents.append(
-                    WebDocument(
-                        title=item.get("name") or item.get("title") or "Untitled result",
-                        snippet=item.get("snippet") or item.get("summary") or "",
-                        url=item.get("url"),
-                        published_at=self._parse_datetime(item.get("datePublished")),
-                        sentiment=item.get("sentiment") or None,
-                        metadata={
-                            "source": item.get("displayUrl") or item.get("source"),
-                            "id": item.get("id"),
-                        },
+            documents: list[WebDocument] = []
+            for item in self._extract_web_results(data):
+                try:
+                    documents.append(
+                        WebDocument(
+                            title=item.get("name") or item.get("title") or "Untitled result",
+                            snippet=item.get("snippet") or item.get("summary") or "",
+                            url=item.get("url"),
+                            published_at=self._parse_datetime(item.get("datePublished")),
+                            sentiment=item.get("sentiment") or None,
+                            metadata={
+                                "source": item.get("displayUrl") or item.get("source"),
+                                "id": item.get("id"),
+                            },
+                        )
                     )
+                except ValidationError as exc:  # pragma: no cover - defensive for messy APIs
+                    logger.debug("Skipping LangSearch result due to validation error: %s", exc)
+                    continue
+
+            if not documents:
+                return documents
+
+            try:
+                return await self._rerank_documents(
+                    client=client,
+                    query=payload["query"],
+                    documents=documents,
                 )
-            except ValidationError as exc:  # pragma: no cover - defensive for messy APIs
-                logger.debug("Skipping LangSearch result due to validation error: %s", exc)
-                continue
-        return documents
+            except Exception as exc:  # pragma: no cover - rerank must not break primary search
+                logger.exception("LangSearch semantic rerank failed; returning original ranking: %s", exc)
+                return documents
 
     @staticmethod
     def _enrich_query(query: str, focus_areas: list[str] | None) -> str:
@@ -127,3 +141,52 @@ class LangSearchClient:
         except ValueError:
             logger.debug("Unable to parse datetime '%s' from LangSearch; ignoring", value)
             return None
+
+    async def _rerank_documents(
+        self,
+        *,
+        client: httpx.AsyncClient,
+        query: str,
+        documents: list[WebDocument],
+    ) -> list[WebDocument]:
+        if not self._rerank_url or not documents:
+            return documents
+
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        docs_payload = [f"{doc.title}\n\n{doc.snippet}" for doc in documents]
+        payload: dict[str, Any] = {
+            "model": _RERANK_MODEL,
+            "query": query,
+            "documents": docs_payload,
+            "top_n": len(docs_payload),
+            "return_documents": False,
+        }
+
+        response = await client.post(self._rerank_url, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        results = data.get("results")
+        if not isinstance(results, list):
+            return documents
+
+        ranked: list[WebDocument] = []
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            index = item.get("index")
+            score = item.get("relevance_score")
+            if not isinstance(index, int) or not (0 <= index < len(documents)):
+                continue
+            doc = documents[index]
+            metadata = dict(doc.metadata)
+            if isinstance(score, (int, float)):
+                metadata["semantic_relevance_score"] = float(score)
+            ranked.append(doc.model_copy(update={"metadata": metadata}))
+
+        return ranked or documents
