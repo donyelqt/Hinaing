@@ -15,6 +15,7 @@ This document tracks what has been delivered so far and the remaining work neede
 ### Backend
 - LangGraph-based agentic workflow already generates snapshots consumed by the UI.
 - Authored `backend/README.md` with detailed plans for sentiment/credibility classifier upgrades, observability, and governance.
+ - Integrated LangSearch Semantic Rerank API into the web search pipeline so snapshot generation uses semantically reranked web documents by default.
 
 ### Documentation
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
