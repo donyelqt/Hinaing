@@ -27,4 +27,42 @@
   .divider {
     @apply h-px w-full bg-slate-100;
   }
+
+  .hero-glow-pulse {
+    animation: hero-glow-pulse 3s ease-in-out infinite;
+    background-size: 190% 190%;
+  }
+
+  .hero-glow-ping {
+    animation: hero-glow-ping 2.8s ease-out infinite;
+  }
+}
+
+@keyframes hero-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.95);
+    background-position: 0% 50%;
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes hero-glow-ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
 }

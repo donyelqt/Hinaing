@@ -1,15 +1,63 @@
+"use client";
+
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
+
+function BaguioTeamsPill() {
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [isAutoPulse, setIsAutoPulse] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!hasInteracted) return;
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    intervalRef.current = setInterval(() => {
+      setIsAutoPulse(true);
+      setTimeout(() => setIsAutoPulse(false), 3000);
+    }, 3000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [hasInteracted]);
+
+  const handleMouseEnter = () => {
+    setHasInteracted(true);
+  };
+
+  return (
+    <div className="group relative inline-flex cursor-default" onMouseEnter={handleMouseEnter}>
+      <div
+        className={`pointer-events-none absolute -inset-4 rounded-full bg-gradient-to-r from-hinaing-blue-500/85 via-hinaing-blue-400/65 to-violet-500/85 blur-2xl opacity-80 transition-all duration-300 group-hover:scale-110 group-hover:opacity-100 ${
+          isAutoPulse ? "scale-110 opacity-100" : ""
+        }`}
+        aria-hidden="true"
+      />
+      <div
+        className={`relative z-10 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-3 py-1 text-xs font-medium text-white shadow-sm transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-subtle group-hover:brightness-110 ${
+          isAutoPulse ? "-translate-y-0.5 shadow-subtle brightness-110" : ""
+        }`}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-hinaing-gold" />
+        <span>Built for Baguio City teams</span>
+      </div>
+    </div>
+  );
+}
 
 export function LandingHero() {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-hinaing-blue-50/70 via-violet-50/70 to-slate-50">
       <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:gap-16 lg:py-20 xl:px-8">
         <div className="space-y-6 lg:max-w-xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-3 py-1 text-xs font-medium text-white shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-hinaing-gold" />
-            <span>Built for Baguio City teams</span>
-          </div>
+          <BaguioTeamsPill />
 
           <div className="space-y-4">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
