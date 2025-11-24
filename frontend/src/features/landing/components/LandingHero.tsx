@@ -3,10 +3,10 @@ import { Card } from "@/components/ui/card";
 
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-hinaing-blue-50/70 to-slate-50">
+    <section className="relative overflow-hidden bg-gradient-to-b from-hinaing-blue-50/70 via-violet-50/70 to-slate-50">
       <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 py-16 sm:px-6 lg:flex-row lg:items-center lg:gap-16 lg:py-20 xl:px-8">
         <div className="space-y-6 lg:max-w-xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-hinaing-blue-100 bg-white/80 px-3 py-1 text-xs font-medium text-hinaing-blue-700 shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-3 py-1 text-xs font-medium text-white shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-hinaing-gold" />
             <span>Built for Baguio City teams</span>
           </div>
@@ -14,7 +14,9 @@ export function LandingHero() {
           <div className="space-y-4">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               Monitor public sentiment
-              <span className="block text-hinaing-blue-700">before it becomes a crisis.</span>
+              <span className="block bg-gradient-to-r from-hinaing-blue-700 to-violet-500 bg-clip-text text-transparent">
+                before it becomes a crisis.
+              </span>
             </h1>
             <p className="max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
               Hinaing turns noisy Facebook and Reddit conversations into clear, actionable briefings so Baguio City
@@ -43,13 +45,13 @@ export function LandingHero() {
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <Link
               href="/app"
-              className="inline-flex items-center justify-center rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:bg-hinaing-blue-500 hover:shadow-subtle"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:brightness-110 hover:shadow-subtle"
             >
               Open console
             </Link>
             <Link
               href="#live-preview"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/70 px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-hinaing-blue-200 hover:text-hinaing-blue-700"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/70 px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:text-slate-900"
             >
               View sample briefing
             </Link>
@@ -62,16 +64,16 @@ export function LandingHero() {
 
         <div className="relative lg:flex-1">
           <div
-            className="pointer-events-none absolute -right-24 -top-20 hidden h-56 w-56 rounded-full bg-hinaing-blue-200/40 blur-3xl lg:block"
+            className="pointer-events-none absolute -right-24 -top-20 hidden h-56 w-56 rounded-full bg-gradient-to-br from-hinaing-blue-300/40 to-violet-400/40 blur-3xl lg:block"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute -right-10 top-16 hidden h-40 w-40 rounded-full border border-hinaing-blue-200/60 lg:block"
+            className="pointer-events-none absolute -right-10 top-16 hidden h-40 w-40 rounded-full border border-violet-300/60 lg:block"
             aria-hidden="true"
           />
-          <Card className="relative mx-auto max-w-md rounded-3xl border border-hinaing-blue-100 bg-gradient-to-br from-white/90 to-hinaing-blue-50/70 p-6 shadow-card transition-transform duration-200 ease-out hover:-translate-y-1 hover:shadow-card">
+          <Card className="relative mx-auto max-w-md rounded-3xl border border-slate-200 bg-gradient-to-br from-white/90 via-hinaing-blue-50/70 to-violet-50/80 p-6 shadow-card transition-transform duration-200 ease-out hover:-translate-y-1 hover:shadow-card">
             <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1 rounded-full bg-hinaing-blue-600/10 px-3 py-1 font-medium text-hinaing-blue-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-hinaing-blue-600/15 via-hinaing-blue-500/15 to-violet-500/15 px-3 py-1 font-medium text-hinaing-blue-800">
                 Live sentiment snapshot
               </span>
               <span>Baguio City · Last 24 hours</span>

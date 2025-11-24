@@ -23,10 +23,10 @@ export function TimeWindowSelector({ timeWindow, setTimeWindow }: TimeWindowSele
               onClick={() => setTimeWindow(option.value)}
               aria-pressed={isActive}
               className={clsx(
-                "rounded-xl border px-4 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2",
+                "rounded-xl border px-4 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
                 isActive
-                  ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-hinaing-blue-300",
+                  ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
               )}
               aria-label={`Set time window to ${option.label}`}
             >

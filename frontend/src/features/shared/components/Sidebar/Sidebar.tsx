@@ -39,10 +39,10 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
         <button
           type="button"
           onClick={onOpenMobileFilters}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:border-hinaing-blue-500 hover:text-hinaing-blue-600 lg:hidden"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:border-violet-300 hover:text-slate-900 lg:hidden"
           aria-label="Open filters"
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-4 w-4" aria-hidden="true" />
           Filters
         </button>
       </div>
@@ -57,7 +57,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
           onClick={() => onNavigate?.('sentiment')}
           className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${
             activePage === 'sentiment'
-              ? 'bg-hinaing-blue-600 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
           }`}
           aria-current={activePage === 'sentiment' ? 'page' : undefined}
@@ -76,7 +76,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
           onClick={() => onNavigate?.('dashboard')}
           className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${
             activePage === 'dashboard'
-              ? 'bg-hinaing-blue-600 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
           }`}
           aria-current={activePage === 'dashboard' ? 'page' : undefined}
@@ -95,7 +95,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
           onClick={() => onNavigate?.('reports')}
           className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${
             activePage === 'reports'
-              ? 'bg-hinaing-blue-600 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
           }`}
           aria-current={activePage === 'reports' ? 'page' : undefined}
@@ -125,7 +125,7 @@ export function Sidebar({ onOpenMobileFilters, activePage = 'sentiment', onNavig
         </button>
 
         <div 
-          className="rounded-xl bg-hinaing-blue-500/10 p-4 text-xs text-hinaing-blue-700 sm:text-sm" 
+          className="rounded-xl bg-gradient-to-r from-hinaing-blue-500/10 via-hinaing-blue-400/10 to-violet-500/10 p-4 text-xs text-hinaing-blue-800 sm:text-sm" 
           role="note"
         >
           Keep track of emerging concerns from Facebook and Reddit to support rapid response planning for Baguio communities.

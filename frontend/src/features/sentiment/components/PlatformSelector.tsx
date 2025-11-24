@@ -24,15 +24,24 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms }: Platform
               onClick={() => onToggle(option.value, setPlatforms)}
               aria-pressed={isActive}
               className={clsx(
-                "flex flex-col rounded-xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2",
+                "flex flex-col rounded-xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
                 isActive
-                  ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-hinaing-blue-300",
+                  ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
               )}
               aria-label={`${isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
             >
               <span className="font-medium">{option.label}</span>
-              {option.hint ? <small className="text-xs text-slate-500">{option.hint}</small> : null}
+              {option.hint ? (
+                <small
+                  className={clsx(
+                    "text-xs",
+                    isActive ? "text-white/80" : "text-slate-500",
+                  )}
+                >
+                  {option.hint}
+                </small>
+              ) : null}
             </button>
           );
         })}

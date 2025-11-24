@@ -345,10 +345,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             type="button"
                             onClick={() => actions.applyPreset(preset.id)}
                             className={clsx(
-                              "group flex flex-col rounded-xl border p-4 text-left transition-transform duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 hover:-translate-y-0.5",
+                              "group flex flex-col rounded-xl border p-4 text-left transition-transform duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 hover:-translate-y-0.5",
                               isActive
-                                ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-hinaing-blue-300",
+                                ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
                             )}
                             aria-pressed={isActive}
                             aria-describedby={`preset-${preset.id}-desc`}
@@ -358,13 +358,21 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               <span
                                 className={clsx(
                                   "rounded-full border px-2 py-0.5 text-xs",
-                                  isActive ? "border-hinaing-blue-500 text-hinaing-blue-600" : "border-slate-200 text-slate-400",
+                                  isActive ? "border-white/70 text-white" : "border-slate-200 text-slate-400",
                                 )}
                               >
                                 Apply
                               </span>
                             </span>
-                            <p id={`preset-${preset.id}-desc`} className="mt-2 text-xs text-slate-500 group-hover:text-slate-400">{preset.description}</p>
+                            <p
+                              id={`preset-${preset.id}-desc`}
+                              className={clsx(
+                                "mt-2 text-xs",
+                                isActive ? "text-white/80" : "text-slate-500 group-hover:text-slate-400",
+                              )}
+                            >
+                              {preset.description}
+                            </p>
                           </button>
                         );
                       })}
@@ -431,7 +439,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     type="button"
                     onClick={handleGenerate}
                     disabled={state.isGenerating || state.platforms.length === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:bg-hinaing-blue-500 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
                     aria-label="Generate new sentiment report with current settings"
                   >
                     {state.isGenerating ? (
@@ -460,9 +468,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <div className="space-y-5">
                   {snapshot ? (
                     <>
-                      <Card className="space-y-4 border border-hinaing-blue-200 bg-gradient-to-br from-hinaing-blue-50 to-white p-5">
+                      <Card className="space-y-4 border border-hinaing-blue-200 bg-gradient-to-br from-hinaing-blue-50 to-violet-50 p-5">
                         <div className="flex items-center justify-between">
-                          <span className="rounded-full bg-hinaing-blue-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-hinaing-blue-700">
+                          <span className="rounded-full bg-gradient-to-r from-hinaing-blue-500/15 via-hinaing-blue-400/15 to-violet-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-hinaing-blue-800">
                             Overall Sentiment
                           </span>
                           <span className="text-xs font-medium text-hinaing-blue-600">Updated moments ago</span>
@@ -605,6 +613,18 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               We’ll surface the most important recommendations here once the agent finds clear trends in the latest conversations.
                             </p>
                           )}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => onNavigate?.('reports')}
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-subtle transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                            aria-label="View saved reports"
+                          >
+                            <Save className="h-4 w-4" aria-hidden="true" />
+                            View saved reports
+                          </button>
                         </div>
 
                         {state.includeAlerts && snapshot.alerts && snapshot.alerts.length ? (

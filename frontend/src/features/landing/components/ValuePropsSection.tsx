@@ -24,7 +24,7 @@ export function ValuePropsSection() {
                 key={item.title}
                 className="h-full rounded-2xl bg-white/90 p-5 shadow-subtle transition-transform duration-150 ease-out hover:-translate-y-1 hover:shadow-card"
               >
-                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-hinaing-blue-50 text-hinaing-blue-700">
+                <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-hinaing-blue-50 to-violet-50 text-hinaing-blue-800">
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <h3 className="text-sm font-semibold text-slate-900 sm:text-base">{item.title}</h3>

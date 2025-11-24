@@ -14,13 +14,13 @@ export function FinalCTASection() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/app"
-            className="inline-flex items-center justify-center rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:bg-hinaing-blue-500 hover:shadow-subtle"
+            className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-card shadow-hinaing-blue-600/30 transition hover:brightness-110 hover:shadow-subtle"
           >
             Open console
           </Link>
           <Link
             href="mailto:hello@hinaing.ai"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-hinaing-blue-200 hover:text-hinaing-blue-700"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:text-slate-900"
           >
             Talk to us
           </Link>

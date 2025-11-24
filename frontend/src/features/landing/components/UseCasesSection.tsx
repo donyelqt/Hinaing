@@ -19,7 +19,7 @@ export function UseCasesSection() {
               key={useCase.title}
               className={clsx(
                 "rounded-2xl border border-slate-100 bg-white/90 p-5 text-sm text-slate-700 shadow-subtle transition-transform duration-150 ease-out hover:-translate-y-1 hover:shadow-card",
-                index === 0 && "bg-hinaing-blue-50/80 border-hinaing-blue-100"
+                index === 0 && "bg-gradient-to-br from-hinaing-blue-50/80 to-violet-50/80 border-transparent"
               )}
             >
               <h3 className="text-base font-semibold text-slate-900">{useCase.title}</h3>

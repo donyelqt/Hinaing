@@ -61,8 +61,8 @@ export function MobileFilters({
                     className={clsx(
                       "flex flex-col rounded-xl border px-4 py-3 text-left transition",
                       isActive
-                        ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
-                        : "border-slate-200 bg-white text-slate-600",
+                        ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
                     )}
                   >
                     <span className="font-medium">{option.label}</span>
@@ -87,8 +87,8 @@ export function MobileFilters({
                     className={clsx(
                       "rounded-xl border px-4 py-3 text-sm font-medium transition",
                       isActive
-                        ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-700"
-                        : "border-slate-200 bg-white text-slate-600",
+                        ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
                     )}
                   >
                     {option.label}
@@ -112,8 +112,8 @@ export function MobileFilters({
                     className={clsx(
                       "rounded-xl border px-3 py-2 text-sm font-medium transition",
                       isActive
-                        ? "border-hinaing-blue-500 bg-hinaing-blue-500/10 text-hinaing-blue-600"
-                        : "border-slate-200 bg-white text-slate-500",
+                        ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-violet-300",
                     )}
                   >
                     {option.label}
@@ -129,7 +129,7 @@ export function MobileFilters({
             <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-hinaing-blue-500"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-violet-500"
                 checked={includeAlerts}
                 onChange={(event) => setIncludeAlerts(event.target.checked)}
               />
@@ -144,7 +144,7 @@ export function MobileFilters({
             <button
               type="button"
               onClick={() => setShowMobileFilters(false)}
-              className="w-full rounded-xl bg-hinaing-blue-600 px-6 py-3 text-sm font-semibold text-white"
+              className="w-full rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white"
             >
               Apply Filters
             </button>

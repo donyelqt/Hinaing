@@ -119,8 +119,8 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="p-6">
               <div className="flex items-center gap-4">
-                <div className="rounded-full bg-blue-500/10 p-3">
-                  <FileText className="h-6 w-6 text-blue-600" />
+                <div className="rounded-full bg-hinaing-blue-500/10 p-3">
+                  <FileText className="h-6 w-6 text-hinaing-blue-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-600">Total Reports</p>
@@ -177,7 +177,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
                   className="w-full rounded-lg border border-slate-200 pl-10 pr-4 py-2 text-sm focus:border-hinaing-blue-500 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500/20"
                 />
               </div>
-              <button className="inline-flex items-center gap-2 rounded-lg bg-hinaing-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-hinaing-blue-500">
+              <button className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white hover:brightness-110">
                 <FileText className="h-4 w-4" />
                 Generate New Report
               </button>
