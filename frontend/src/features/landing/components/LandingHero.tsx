@@ -93,7 +93,7 @@ export function LandingHero() {
                   <p className="text-lg font-semibold text-rose-600">52%</p>
                   <p className="text-[11px] uppercase tracking-wide text-rose-700">Negative</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 px-2 py-3">
+                <div className="rounded-xl bg-slate-100 px-2 py-3">
                   <p className="text-lg font-semibold text-slate-700">31%</p>
                   <p className="text-[11px] uppercase tracking-wide text-slate-600">Neutral</p>
                 </div>
