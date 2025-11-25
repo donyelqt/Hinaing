@@ -51,10 +51,98 @@ def _build_query(request: SnapshotRequest) -> str:
         "residents complain", "citizens report", "community issues",
         "mallification public market", "SM Baguio public market"
     ]
-    
+    # Map Step 3 themes (focus_areas) to richer domain-specific keyword sets
+    focus_keywords: dict[str, list[str]] = {
+        "infrastructure": [
+            "infrastructure",
+            "roads",
+            "traffic",
+            "congestion",
+            "potholes",
+            "public transport",
+            "jeepney",
+            "terminal",
+            "water supply",
+            "water interruption",
+            "power outage",
+            "brownout",
+            "garbage collection",
+        ],
+        "health": [
+            "health",
+            "wellness",
+            "hospital",
+            "clinic",
+            "health center",
+            "public health",
+            "gastroenteritis",
+            "diarrhea",
+            "food poisoning",
+            "sanitation",
+        ],
+        "safety": [
+            "public safety",
+            "crime",
+            "police",
+            "fire",
+            "flood",
+            "landslide",
+            "evacuation",
+            "911 hotline",
+            "emergency response",
+            "disaster risk",
+        ],
+        "tourism": [
+            "tourism",
+            "tourists",
+            "visitors",
+            "hotel occupancy",
+            "Panagbenga",
+            "Burnham Park",
+            "Session Road",
+            "tourist complaints",
+            "tourist experience",
+        ],
+        "economy": [
+            "business",
+            "economy",
+            "vendors",
+            "market",
+            "public market",
+            "SM Baguio",
+            "employment",
+            "livelihood",
+            "investment",
+        ],
+        "environment": [
+            "environment",
+            "air quality",
+            "pollution",
+            "waste",
+            "garbage",
+            "solid waste",
+            "forest",
+            "parks",
+            "climate",
+            "flooding",
+        ],
+    }
+
     if request.focus_areas:
-        # Combine focus areas with emerging concerns context
-        focus_terms = " OR ".join(request.focus_areas)
+        # Expand each selected theme into a richer set of keywords
+        expanded_terms: list[str] = []
+        for area in request.focus_areas:
+            expanded_terms.extend(focus_keywords.get(area, [area]))
+
+        # De-duplicate while keeping order reasonably stable
+        seen: set[str] = set()
+        unique_terms: list[str] = []
+        for term in expanded_terms:
+            if term not in seen:
+                seen.add(term)
+                unique_terms.append(term)
+
+        focus_terms = " OR ".join(unique_terms)
         concern_terms = " OR ".join(concern_keywords)
         query = f"({focus_terms}) AND ({concern_terms}) AND ({base_location} OR Baguio OR Cordillera)"
     else:
