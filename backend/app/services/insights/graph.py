@@ -6,6 +6,7 @@ import logging
 import os
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict
 
 from langchain_core.runnables import RunnableLambda
@@ -64,6 +65,40 @@ def _build_query(request: SnapshotRequest) -> str:
     return query
 
 
+def _get_window_timedelta(time_window: str | None) -> timedelta | None:
+    """Map a configured time_window string to a concrete timedelta."""
+    if not time_window:
+        return None
+    mapping: dict[str, timedelta] = {
+        "6h": timedelta(hours=6),
+        "24h": timedelta(hours=24),
+        "3d": timedelta(days=3),
+        "7d": timedelta(days=7),
+    }
+    return mapping.get(time_window)
+
+
+def _filter_by_time_window(documents: list[WebDocument], time_window: str | None) -> list[WebDocument]:
+    """Apply a strict client-side cutoff based on published_at timestamps.
+
+    This reinforces the LangSearch freshness hint so that UIs like "Past 6 hours"
+    behave more intuitively even if the upstream search provider returns older,
+    highly-ranked documents.
+    """
+
+    delta = _get_window_timedelta(time_window)
+    if not delta:
+        return documents
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - delta
+    filtered = [doc for doc in documents if doc.published_at and doc.published_at >= cutoff]
+
+    # If everything was filtered out (e.g. no truly recent docs), fall back to
+    # the original set so the user still sees some signal rather than "no data".
+    return filtered or documents
+
+
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     documents: list[WebDocument] = []
@@ -87,14 +122,15 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
                 time_window=request.time_window,
                 limit=15,
             )
+            documents = _filter_by_time_window(documents, request.time_window)
         except Exception as exc:  # pragma: no cover - network/api failures
             logger.exception("LangSearch fetch failed; continuing with empty result set")
             documents = []
         else:
             logger.info(
-                "[snapshot] LangSearch returned %d documents",
+                "[snapshot] LangSearch returned %d documents after filtering",
                 len(documents),
-                extra={"platforms": request.platforms},
+                extra={"platforms": request.platforms, "time_window": request.time_window},
             )
 
     state["documents"] = documents

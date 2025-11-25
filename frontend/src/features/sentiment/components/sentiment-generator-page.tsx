@@ -164,6 +164,78 @@ const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | nul
   };
 };
 
+function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; index: number }) {
+  const [animatedDetail, setAnimatedDetail] = React.useState("");
+  const [isTyping, setIsTyping] = React.useState(false);
+
+  React.useEffect(() => {
+    const full = insight.detail ?? "";
+    if (!full) {
+      setAnimatedDetail("");
+      setIsTyping(false);
+      return;
+    }
+
+    const words = full.split(" ");
+    if (words.length === 0) {
+      setAnimatedDetail("");
+      setIsTyping(false);
+      return;
+    }
+
+    setAnimatedDetail("");
+    setIsTyping(true);
+
+    let i = 0;
+    const intervalId = setInterval(() => {
+      i += 1;
+      if (i >= words.length) {
+        setAnimatedDetail(full);
+        setIsTyping(false);
+        clearInterval(intervalId);
+        return;
+      }
+      setAnimatedDetail(words.slice(0, i).join(" "));
+    }, 55);
+
+    return () => {
+      clearInterval(intervalId);
+      setIsTyping(false);
+    };
+  }, [insight.detail]);
+
+  return (
+    <li
+      className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm animate-fade-up-soft"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      {insight.category ? (
+        <span className="mb-2 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
+          {insight.category}
+        </span>
+      ) : null}
+      {insight.title ? (
+        <p className="text-base font-semibold text-slate-900">{insight.title}</p>
+      ) : null}
+      {insight.detail ? (
+        <p className="mt-1 text-sm text-slate-600">
+          {animatedDetail || insight.detail}
+          {isTyping && animatedDetail && animatedDetail !== insight.detail && (
+            <span className="inline-block w-[0.5ch] animate-pulse align-baseline">▌</span>
+          )}
+        </p>
+      ) : null}
+      {insight.evidence && insight.evidence.length ? (
+        <ul className="mt-3 space-y-1 list-disc pl-4 text-xs text-slate-500">
+          {insight.evidence.map((item, evidenceIndex) => (
+            <li key={evidenceIndex}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
 export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }: SentimentGeneratorPageProps = {}) {
   const { state, actions, computed } = useSentimentGenerator();
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
@@ -172,6 +244,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [snapshotError, setSnapshotError] = React.useState<string | null>(null);
   const [showSources, setShowSources] = React.useState(false);
   const [animatedSummary, setAnimatedSummary] = React.useState("");
+  const [isTypingSummary, setIsTypingSummary] = React.useState(false);
 
   React.useEffect(() => {
     apiGet<{ status: string }>("/health")
@@ -202,23 +275,36 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   React.useEffect(() => {
     if (!fullSummaryText) {
       setAnimatedSummary("");
+      setIsTypingSummary(false);
+      return;
+    }
+
+    const words = fullSummaryText.split(" ");
+    if (words.length === 0) {
+      setAnimatedSummary("");
+      setIsTypingSummary(false);
       return;
     }
 
     setAnimatedSummary("");
+    setIsTypingSummary(true);
+
     let index = 0;
-    const step = Math.max(1, Math.round(fullSummaryText.length / 80));
     const intervalId = setInterval(() => {
-      index += step;
-      if (index >= fullSummaryText.length) {
+      index += 1;
+      if (index >= words.length) {
         setAnimatedSummary(fullSummaryText);
+        setIsTypingSummary(false);
         clearInterval(intervalId);
         return;
       }
-      setAnimatedSummary(fullSummaryText.slice(0, index));
-    }, 30);
+      setAnimatedSummary(words.slice(0, index).join(" "));
+    }, 55);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      setIsTypingSummary(false);
+    };
   }, [fullSummaryText]);
 
   const insightsToDisplay = React.useMemo<DisplayInsight[]>(() => {
@@ -489,6 +575,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </h3>
                           <p className="text-sm text-slate-600">
                             {animatedSummary || fullSummaryText}
+                            {isTypingSummary && (
+                              <span className="inline-block w-[0.5ch] animate-pulse align-baseline">▌</span>
+                            )}
                           </p>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
@@ -594,30 +683,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           {hasInsights ? (
                             <ul className="mt-3 space-y-3 text-sm text-slate-600">
                               {insightsToDisplay.map((insight, index) => (
-                                <li
-                                  key={index}
-                                  className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm animate-fade-up-soft"
-                                  style={{ animationDelay: `${index * 80}ms` }}
-                                >
-                                  {insight.category ? (
-                                    <span className="mb-2 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
-                                      {insight.category}
-                                    </span>
-                                  ) : null}
-                                  {insight.title ? (
-                                    <p className="text-base font-semibold text-slate-900">{insight.title}</p>
-                                  ) : null}
-                                  {insight.detail ? (
-                                    <p className="mt-1 text-sm text-slate-600">{insight.detail}</p>
-                                  ) : null}
-                                  {insight.evidence && insight.evidence.length ? (
-                                    <ul className="mt-3 space-y-1 text-xs text-slate-500 list-disc pl-4">
-                                      {insight.evidence.map((item, evidenceIndex) => (
-                                        <li key={evidenceIndex}>{item}</li>
-                                      ))}
-                                    </ul>
-                                  ) : null}
-                                </li>
+                                <ActionableInsightItem key={index} insight={insight} index={index} />
                               ))}
                             </ul>
                           ) : (
