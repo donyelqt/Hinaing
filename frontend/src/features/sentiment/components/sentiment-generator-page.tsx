@@ -298,9 +298,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   </button>
                 </header>
 
-                {/* Step 1 Coverage Card */}
+                {/* Coverage context card (no explicit step number to avoid confusion with main steps) */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-5" role="region" aria-labelledby="coverage-heading">
-                  <p className="text-[11px] font-semibold text-hinaing-blue-600">Step 1 · Review coverage</p>
+                  <p className="text-[11px] font-semibold text-hinaing-blue-600">Review coverage</p>
                   <h3 id="coverage-heading" className="mt-1 text-lg font-semibold text-slate-900">Barangay & keyword context</h3>
                   <p className="text-sm font-medium text-slate-700">Baguio City, Philippines</p>
                   <p className="text-sm text-slate-500">Adjust geographic filters in settings to include nearby municipalities when needed.</p>

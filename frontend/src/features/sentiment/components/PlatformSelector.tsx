@@ -11,7 +11,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms }: Platform
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 2 · Select channels</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 1 · Select channels</span>
         <span className="text-[11px] text-slate-400">Choose where the agent listens</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
