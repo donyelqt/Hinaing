@@ -171,6 +171,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [snapshot, setSnapshot] = React.useState<SnapshotResponse | null>(null);
   const [snapshotError, setSnapshotError] = React.useState<string | null>(null);
   const [showSources, setShowSources] = React.useState(false);
+  const [animatedSummary, setAnimatedSummary] = React.useState("");
 
   React.useEffect(() => {
     apiGet<{ status: string }>("/health")
@@ -195,6 +196,30 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
     : 15;
 
   const narrativeSummary = React.useMemo(() => parseNarrativeSummary(snapshot?.overall_sentiment?.summary), [snapshot?.overall_sentiment?.summary]);
+
+  const fullSummaryText = narrativeSummary?.summary ?? snapshot?.overall_sentiment?.summary ?? "";
+
+  React.useEffect(() => {
+    if (!fullSummaryText) {
+      setAnimatedSummary("");
+      return;
+    }
+
+    setAnimatedSummary("");
+    let index = 0;
+    const step = Math.max(1, Math.round(fullSummaryText.length / 80));
+    const intervalId = setInterval(() => {
+      index += step;
+      if (index >= fullSummaryText.length) {
+        setAnimatedSummary(fullSummaryText);
+        clearInterval(intervalId);
+        return;
+      }
+      setAnimatedSummary(fullSummaryText.slice(0, index));
+    }, 30);
+
+    return () => clearInterval(intervalId);
+  }, [fullSummaryText]);
 
   const insightsToDisplay = React.useMemo<DisplayInsight[]>(() => {
     if (snapshot?.actionable_insights?.length) {
@@ -279,23 +304,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       Configure data sources and focus areas. The agent will gather the latest public posts, classify sentiment, and surface actionable intelligence for decision-makers.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      actions.setIsRefreshing(true);
-                      setTimeout(() => actions.setIsRefreshing(false), 2000);
-                    }}
-                    disabled={state.isRefreshing}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-hinaing-blue-500 hover:text-hinaing-blue-600 disabled:opacity-50"
-                    aria-label="Refresh current data"
-                  >
-                    {state.isRefreshing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    {state.isRefreshing ? 'Refreshing...' : 'Quick Refresh'}
-                  </button>
                 </header>
 
                 {/* Coverage context card (no explicit step number to avoid confusion with main steps) */}
@@ -480,7 +488,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             {snapshot.overall_sentiment.label}
                           </h3>
                           <p className="text-sm text-slate-600">
-                            {narrativeSummary?.summary ?? snapshot.overall_sentiment.summary}
+                            {animatedSummary || fullSummaryText}
                           </p>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
@@ -586,7 +594,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           {hasInsights ? (
                             <ul className="mt-3 space-y-3 text-sm text-slate-600">
                               {insightsToDisplay.map((insight, index) => (
-                                <li key={index} className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
+                                <li
+                                  key={index}
+                                  className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm animate-fade-up-soft"
+                                  style={{ animationDelay: `${index * 80}ms` }}
+                                >
                                   {insight.category ? (
                                     <span className="mb-2 inline-block rounded-xl bg-hinaing-blue-500/10 px-3 py-1 text-xs font-semibold text-hinaing-blue-600">
                                       {insight.category}
