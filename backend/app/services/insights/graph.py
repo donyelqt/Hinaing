@@ -21,6 +21,8 @@ from ...schemas.snapshot import (
     SnapshotResponse,
     WebDocument,
 )
+from ..ingestion.facebook import ApifyRunError, fetch_public_posts
+from ...schemas.social import RawSocialPost
 from ..langsearch import LangSearchClient
 from ..nlp.gemini import gemini_client
 
@@ -41,114 +43,85 @@ class SnapshotState(TypedDict, total=False):
 
 
 def _build_query(request: SnapshotRequest) -> str:
-    # Always include Baguio City context for local relevance
-    base_location = "Baguio City Philippines"
+    # Concern/problem keywords - strict focus on issues only
+    concern_modifiers = ["problem", "issue", "concern", "complaint", "crisis"]
     
-    # Focus on emerging concerns, issues, and current problems
-    concern_keywords = [
-        "concerns", "issues", "problems", "complaints", 
-        "challenges", "crisis", "emergency", "urgent",
-        "residents complain", "citizens report", "community issues",
-        "mallification public market", "SM Baguio public market"
-    ]
-    # Map Step 3 themes (focus_areas) to richer domain-specific keyword sets
-    focus_keywords: dict[str, list[str]] = {
+    # Map focus areas to Baguio-specific concern terms
+    # Each theme has problem-focused search terms
+    focus_concern_keywords: dict[str, list[str]] = {
         "infrastructure": [
-            "infrastructure",
-            "roads",
-            "traffic",
-            "congestion",
-            "potholes",
-            "public transport",
-            "jeepney",
-            "terminal",
-            "water supply",
-            "water interruption",
-            "power outage",
-            "brownout",
-            "garbage collection",
+            "Baguio road problem",
+            "Baguio traffic issue",
+            "Baguio water problem",
+            "Baguio power outage",
+            "Baguio pothole complaint",
+            "Kennon Road problem",
+            "Baguio jeepney concern",
+            "Baguio garbage issue",
+            "Session Road traffic",
         ],
         "health": [
-            "health",
-            "wellness",
-            "hospital",
-            "clinic",
-            "health center",
-            "public health",
-            "gastroenteritis",
-            "diarrhea",
-            "food poisoning",
-            "sanitation",
+            "Baguio hospital problem",
+            "Baguio health concern",
+            "Baguio disease issue",
+            "Baguio sanitation problem",
+            "Baguio medical complaint",
         ],
         "safety": [
-            "public safety",
-            "crime",
-            "police",
-            "fire",
-            "flood",
-            "landslide",
-            "evacuation",
-            "911 hotline",
-            "emergency response",
-            "disaster risk",
+            "Baguio crime problem",
+            "Baguio flood concern",
+            "Baguio landslide issue",
+            "Baguio fire problem",
+            "Baguio accident concern",
+            "Baguio safety issue",
         ],
         "tourism": [
-            "tourism",
-            "tourists",
-            "visitors",
-            "hotel occupancy",
-            "Panagbenga",
-            "Burnham Park",
-            "Session Road",
-            "tourist complaints",
-            "tourist experience",
+            "Baguio tourist complaint",
+            "Baguio overcrowding problem",
+            "Burnham Park issue",
+            "Baguio hotel complaint",
+            "Baguio tourism concern",
         ],
         "economy": [
-            "business",
-            "economy",
-            "vendors",
-            "market",
-            "public market",
-            "SM Baguio",
-            "employment",
-            "livelihood",
-            "investment",
+            "Baguio vendor problem",
+            "Baguio market issue",
+            "Baguio business concern",
+            "Baguio livelihood problem",
+            "Baguio employment issue",
         ],
         "environment": [
-            "environment",
-            "air quality",
-            "pollution",
-            "waste",
-            "garbage",
-            "solid waste",
-            "forest",
-            "parks",
-            "climate",
-            "flooding",
+            "Baguio pollution problem",
+            "Baguio air quality concern",
+            "Baguio waste issue",
+            "Baguio flooding problem",
+            "Baguio environmental concern",
         ],
     }
 
-    if request.focus_areas:
-        # Expand each selected theme into a richer set of keywords
-        expanded_terms: list[str] = []
+    # Build query - supports multiple selected themes
+    if request.focus_areas and len(request.focus_areas) > 0:
+        # Collect terms from ALL selected themes
+        all_terms: list[str] = []
         for area in request.focus_areas:
-            expanded_terms.extend(focus_keywords.get(area, [area]))
+            area_lower = area.lower()
+            terms = focus_concern_keywords.get(area_lower)
+            if terms:
+                all_terms.extend(terms)
+            else:
+                # Fallback for unknown themes
+                all_terms.append(f"Baguio {area} problem")
+                all_terms.append(f"Baguio {area} concern")
 
-        # De-duplicate while keeping order reasonably stable
-        seen: set[str] = set()
-        unique_terms: list[str] = []
-        for term in expanded_terms:
-            if term not in seen:
-                seen.add(term)
-                unique_terms.append(term)
-
-        focus_terms = " OR ".join(unique_terms)
-        concern_terms = " OR ".join(concern_keywords)
-        query = f"({focus_terms}) AND ({concern_terms}) AND ({base_location} OR Baguio OR Cordillera)"
+        # De-duplicate while preserving order
+        unique_terms = list(dict.fromkeys(all_terms))
+        
+        # Build OR query for all concern terms
+        terms_query = " OR ".join(f'"{term}"' for term in unique_terms)
+        query = f'({terms_query})'
     else:
-        # Default to emerging concerns and public sentiment in Baguio
-        concern_terms = " OR ".join(concern_keywords)
-        query = f"({concern_terms}) AND (public sentiment OR community) AND {base_location}"
+        # Default: general Baguio concerns and problems
+        concern_terms = " OR ".join(concern_modifiers)
+        query = f'"Baguio City" AND ({concern_terms})'
     
     return query
 
@@ -187,10 +160,111 @@ def _filter_by_time_window(documents: list[WebDocument], time_window: str | None
     return filtered or documents
 
 
+# Baguio/Benguet/Cordillera location identifiers for strict filtering
+_BAGUIO_LOCATION_TERMS = {
+    "baguio",
+    "benguet",
+    "cordillera",
+    "session road",
+    "burnham park",
+    "kennon road",
+    "marcos highway",
+    "la trinidad",
+    "panagbenga",
+    "camp john hay",
+    "mines view",
+    "wright park",
+    "baguio general hospital",
+    "bgh",
+    "summer capital",
+    "city of pines",
+    "governor pack",
+    "abanao",
+    "porta vaga",
+}
+
+
+def _filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
+    """Filter documents to only include those mentioning Baguio/Benguet/Cordillera.
+    
+    This is a strict post-fetch filter to exclude results from other regions
+    (e.g., Metro Manila, Batangas) that may have matched generic keywords.
+    """
+    filtered: list[WebDocument] = []
+    
+    for doc in documents:
+        # Combine title, snippet, and URL for location matching
+        url_str = str(doc.url) if doc.url else ""
+        searchable = f"{doc.title} {doc.snippet} {url_str}".lower()
+        
+        # Check if any Baguio location term appears in the document
+        if any(term in searchable for term in _BAGUIO_LOCATION_TERMS):
+            filtered.append(doc)
+        else:
+            logger.debug(
+                "Filtered out non-Baguio document: %s",
+                doc.title[:50] if doc.title else "Untitled",
+            )
+    
+    # If all documents were filtered out, return empty list
+    # (better to show "no data" than irrelevant data)
+    return filtered
+
+
+# Excluded domains - reference sites, not news/concerns sources
+_EXCLUDED_DOMAINS = {
+    "wikipedia.org",
+    "wikimedia.org",
+    "wikidata.org",
+    "britannica.com",
+    "dictionary.com",
+    "quora.com",
+    "tripadvisor.com",
+    "booking.com",
+    "agoda.com",
+    "expedia.com",
+    "airbnb.com",
+    "pinterest.com",
+}
+
+
+def _filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
+    """Filter out non-news sources like Wikipedia, travel sites, etc."""
+    filtered: list[WebDocument] = []
+    for doc in documents:
+        url = str(doc.url).lower() if doc.url else ""
+        is_excluded = any(domain in url for domain in _EXCLUDED_DOMAINS)
+        if not is_excluded:
+            filtered.append(doc)
+        else:
+            logger.debug("Filtered out excluded source: %s", doc.url)
+    return filtered
+
+
+def _facebook_post_to_webdoc(post: RawSocialPost) -> WebDocument:
+    """Convert a RawSocialPost from Facebook to WebDocument format."""
+    return WebDocument(
+        title=f"Facebook: {post.author}",
+        snippet=post.content[:500] if post.content else "",
+        url=post.url,
+        published_at=post.created_at,
+        sentiment=None,
+        metadata={
+            "source": "facebook",
+            "post_id": post.post_id,
+            "author": post.author,
+            "likes": post.metadata.get("likes", 0),
+            "comments_count": post.metadata.get("comments_count", 0),
+            "group_name": post.metadata.get("group_name", ""),
+        },
+    )
+
+
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     documents: list[WebDocument] = []
 
+    # Fetch from LangSearch (web)
     if "web" in request.platforms:
         client = LangSearchClient()
         query = _build_query(request)
@@ -204,22 +278,59 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
             },
         )
         try:
-            documents = await client.search(
+            web_docs = await client.search(
                 query=query,
                 focus_areas=request.focus_areas,
                 time_window=request.time_window,
-                limit=15,
+                limit=25,
             )
-            documents = _filter_by_time_window(documents, request.time_window)
-        except Exception as exc:  # pragma: no cover - network/api failures
-            logger.exception("LangSearch fetch failed; continuing with empty result set")
-            documents = []
-        else:
+            web_docs = _filter_excluded_sources(web_docs)
+            web_docs = _filter_by_location(web_docs)
+            web_docs = _filter_by_time_window(web_docs, request.time_window)
+            documents.extend(web_docs)
             logger.info(
-                "[snapshot] LangSearch returned %d documents after filtering",
-                len(documents),
-                extra={"platforms": request.platforms, "time_window": request.time_window},
+                "[snapshot] LangSearch returned %d relevant documents",
+                len(web_docs),
             )
+        except Exception as exc:
+            logger.exception("LangSearch fetch failed; continuing")
+
+    # Fetch from Facebook Groups via Apify
+    if "facebook" in request.platforms:
+        logger.info("[snapshot] Fetching Facebook group posts via Apify")
+        try:
+            fb_posts = await fetch_public_posts(region_keywords=request.focus_areas)
+            fb_docs = [_facebook_post_to_webdoc(post) for post in fb_posts]
+            # Apply Baguio location filter to Facebook posts too
+            fb_docs = _filter_by_location(fb_docs)
+            fb_docs = _filter_by_time_window(fb_docs, request.time_window)
+            documents.extend(fb_docs)
+            logger.info(
+                "[snapshot] Facebook returned %d relevant posts",
+                len(fb_docs),
+            )
+        except ApifyRunError as exc:
+            logger.error("Apify Facebook scraper failed: %s", exc)
+        except Exception as exc:
+            logger.exception("Facebook fetch failed; continuing")
+
+    # Apply semantic reranking when:
+    # - Facebook only: rerank FB posts
+    # - Both web + facebook: rerank combined set (web already reranked internally, but need to merge rankings)
+    # - Web only: skip (already reranked inside LangSearchClient.search())
+    needs_rerank = (
+        "facebook" in request.platforms and len(documents) > 1
+    )
+    
+    if needs_rerank:
+        query = _build_query(request)
+        logger.info("[snapshot] Applying semantic rerank to %d documents", len(documents))
+        try:
+            reranker = LangSearchClient()
+            documents = await reranker.rerank(query=query, documents=documents)
+            logger.info("[snapshot] Semantic rerank completed")
+        except Exception as exc:
+            logger.warning("Semantic rerank failed, using original order: %s", exc)
 
     state["documents"] = documents
     return state

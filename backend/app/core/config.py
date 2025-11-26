@@ -45,6 +45,12 @@ class Settings(BaseSettings):
         "burnham park",
     ]
 
+    # Apify Facebook Groups Scraper
+    apify_api_token: str | None = None
+    apify_facebook_groups_actor_id: str = "apify~facebook-groups-scraper"
+    apify_facebook_group_urls: str = "[]"  # JSON array string
+    apify_facebook_results_limit: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

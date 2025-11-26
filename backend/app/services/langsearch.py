@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -15,6 +16,8 @@ from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
 _RERANK_MODEL = "langsearch-reranker-v1"
+_RERANK_MAX_RETRIES = 3
+_RERANK_RETRY_DELAY = 1.0  # seconds, will be multiplied by attempt number
 
 
 class LangSearchClient:
@@ -167,9 +170,30 @@ class LangSearchClient:
             "return_documents": False,
         }
 
-        response = await client.post(self._rerank_url, json=payload, headers=headers)
-        response.raise_for_status()
-        data = response.json()
+        # Retry with exponential backoff for rate limits (429)
+        data = None
+        for attempt in range(1, _RERANK_MAX_RETRIES + 1):
+            response = await client.post(self._rerank_url, json=payload, headers=headers)
+            
+            if response.status_code == 429:
+                if attempt < _RERANK_MAX_RETRIES:
+                    delay = _RERANK_RETRY_DELAY * attempt
+                    logger.warning(
+                        "Rerank rate limited (429), retrying in %.1fs (attempt %d/%d)",
+                        delay, attempt, _RERANK_MAX_RETRIES
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    logger.warning("Rerank rate limited, max retries exceeded, skipping rerank")
+                    return documents
+            
+            response.raise_for_status()
+            data = response.json()
+            break
+        
+        if data is None:
+            return documents
 
         results = data.get("results")
         if not isinstance(results, list):
@@ -190,3 +214,27 @@ class LangSearchClient:
             ranked.append(doc.model_copy(update={"metadata": metadata}))
 
         return ranked or documents
+
+    async def rerank(self, *, query: str, documents: list[WebDocument]) -> list[WebDocument]:
+        """Public method to rerank documents using semantic relevance.
+        
+        Args:
+            query: The search query to rank documents against.
+            documents: List of WebDocument objects to rerank.
+            
+        Returns:
+            Reranked list of WebDocument objects with semantic_relevance_score in metadata.
+        """
+        if not documents:
+            return documents
+            
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            try:
+                return await self._rerank_documents(
+                    client=client,
+                    query=query,
+                    documents=documents,
+                )
+            except Exception as exc:
+                logger.exception("Semantic rerank failed; returning original order: %s", exc)
+                return documents
