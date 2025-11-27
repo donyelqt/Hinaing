@@ -88,6 +88,13 @@ def _build_query(request: SnapshotRequest) -> str:
             "Baguio business concern",
             "Baguio livelihood problem",
             "Baguio employment issue",
+            "Baguio market mallification",
+            "Baguio public market mallification",
+            "Baguio mallification protest",
+            "Baguio public market redevelopment",
+            "Baguio PPP market redevelopment",
+            "SM Prime Baguio market",
+            "Baguio vendor displacement",
         ],
         "environment": [
             "Baguio pollution problem",
