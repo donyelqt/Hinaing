@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.git/
+.gitignore
+.DS_Store
+*.swp
+.tests/
+.pytest_cache/
+coverage/
+docs/
+frontend/
+.env
+*.env
