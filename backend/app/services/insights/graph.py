@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,7 @@ from typing import Any, TypedDict
 
 from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
+import asyncio
 from pydantic import ValidationError
 
 from ...core.config import get_settings
@@ -126,6 +128,7 @@ def _get_window_timedelta(time_window: str | None) -> timedelta | None:
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
+    start_time = time.perf_counter()
     try:
         documents = await retrieval_agent.run(request)
     except Exception:
@@ -140,24 +143,42 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
         except Exception as exc:
             logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
 
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info("[snapshot] Retrieval agent completed in %.1f ms with %d docs", duration_ms, len(documents))
     state["documents"] = documents
     return state
 
 
 def label_sentiment(state: SnapshotState) -> SnapshotState:
-    state["enriched"] = sentiment_agent.run(state.get("documents", []))
+    start_time = time.perf_counter()
+    docs = state.get("documents", [])
+    state["enriched"] = sentiment_agent.run(docs)
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info("[snapshot] Sentiment agent labeled %d docs in %.1f ms", len(docs), duration_ms)
     return state
 
 
-def credibility_agent(state: SnapshotState) -> SnapshotState:
-    docs = state.get("enriched") or state.get("documents") or []
-    state["credibility_notes"] = credibility_agent_node.run(docs)
-    return state
-
-
-def theme_router(state: SnapshotState) -> SnapshotState:
+async def analyze_enriched(state: SnapshotState) -> SnapshotState:
     docs = state.get("enriched") or []
-    state["theme_documents"] = theme_router_agent.run(docs, state["request"])
+    request = state["request"]
+    start_time = time.perf_counter()
+    if not docs:
+        state["credibility_notes"] = {}
+        state["theme_documents"] = {key: [] for key in THEME_GROUPS}
+        logger.info("[snapshot] analyze_enriched skipped (no docs)")
+        return state
+
+    credibility_task = asyncio.to_thread(credibility_agent_node.run, docs)
+    theme_task = asyncio.to_thread(theme_router_agent.run, docs, request)
+    credibility_notes, theme_docs = await asyncio.gather(credibility_task, theme_task)
+    state["credibility_notes"] = credibility_notes
+    state["theme_documents"] = theme_docs
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info(
+        "[snapshot] analyze_enriched processed %d docs in %.1f ms",
+        len(docs),
+        duration_ms,
+    )
     return state
 
 
@@ -346,6 +367,7 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
     """Run Gemini mini-agents per theme to craft insights."""
     theme_docs = state.get("theme_documents", {})
     insights: list[Insight] = []
+    start_time = time.perf_counter()
 
     for theme_key, docs in theme_docs.items():
         if not docs:
@@ -353,6 +375,8 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
         meta = THEME_GROUPS.get(theme_key)
         label = meta["label"] if meta else theme_key.title()
         try:
+            if len(docs) < 2:
+                raise ValueError("skip_gemini_fallback")
             insight = _synthesize_theme_insight(label, docs)
             insights.append(insight)
         except Exception as exc:
@@ -366,6 +390,10 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
                     evidence=[str(doc.url) for doc in docs[:2] if doc.url],
                 )
             )
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info(
+        "[snapshot] Theme agents generated %d insights in %.1f ms", len(insights), duration_ms
+    )
     state["theme_insights"] = insights
     return state
 
@@ -511,16 +539,14 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 graph = StateGraph(SnapshotState)
 graph.add_node("fetch_documents", fetch_documents)
 graph.add_node("label_sentiment", label_sentiment)
-graph.add_node("credibility_agent", credibility_agent)
-graph.add_node("theme_router", theme_router)
+graph.add_node("analyze_enriched", analyze_enriched)
 graph.add_node("theme_agents", theme_agents)
 graph.add_node("build_snapshot", build_snapshot)
 
 graph.add_edge(START, "fetch_documents")
 graph.add_edge("fetch_documents", "label_sentiment")
-graph.add_edge("label_sentiment", "credibility_agent")
-graph.add_edge("credibility_agent", "theme_router")
-graph.add_edge("theme_router", "theme_agents")
+graph.add_edge("label_sentiment", "analyze_enriched")
+graph.add_edge("analyze_enriched", "theme_agents")
 graph.add_edge("theme_agents", "build_snapshot")
 graph.add_edge("build_snapshot", END)
 

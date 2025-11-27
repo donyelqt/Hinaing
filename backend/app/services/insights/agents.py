@@ -1,6 +1,7 @@
 """Lightweight agent orchestrators for the insights workflow."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Sequence
@@ -22,19 +23,30 @@ class RetrievalAgent:
     """Agent that decides which platforms to pull documents from."""
 
     async def run(self, request: SnapshotRequest) -> list[WebDocument]:
-        documents: list[WebDocument] = []
         logger.info(
             "[retrieval_agent] planning",
             extra={"platforms": request.platforms, "focus": request.focus_areas},
         )
 
+        tasks: list[asyncio.Task[list[WebDocument]]] = []
         if "web" in request.platforms:
             logger.info("[retrieval_agent] invoking LangSearch tool")
-            documents.extend(await search_web_documents(request))
+            tasks.append(asyncio.create_task(search_web_documents(request)))
 
         if "facebook" in request.platforms:
             logger.info("[retrieval_agent] invoking Facebook tool")
-            documents.extend(await fetch_facebook_documents(request))
+            tasks.append(asyncio.create_task(fetch_facebook_documents(request)))
+
+        if not tasks:
+            return []
+
+        documents: list[WebDocument] = []
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                logger.exception("[retrieval_agent] data source failed", exc_info=result)
+                continue
+            documents.extend(result)
 
         logger.info("[retrieval_agent] collected %d documents", len(documents))
         return documents

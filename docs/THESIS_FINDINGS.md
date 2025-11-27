@@ -19,10 +19,15 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 3. **Real-time coverage hinges on LangSearch + Apify** – The Retrieval Agent already fans out to both; adding more connectors (e.g., Reddit, X) requires only new tool wrappers.
 4. **Observability is the next blocker** – With multiple agents, we need per-agent metrics (latency, doc counts, confidence) and drift alerts to keep the system defensible.
 
+## Latest Evidence (Nov 27, 2025)
+- Added per-agent latency logging across retrieval, sentiment, analyze_enriched (credibility + routing), and theme agents to quantify performance gains.
+- Retrieval concurrency tightened (LangSearch + Facebook run together) and low-signal theme buckets now skip Gemini ReAct in favor of deterministic insights.
+- `docs/README.md` and `ROADMAP.md` updated to reflect the multi-agent flow + planned Qdrant RAG Solutions agent.
+
 ## Gaps & Next Steps
 - Integrate fine-tuned sentiment/credibility models to replace heuristic scoring.
 - Add the planned RAG Solutions agent backed by Qdrant for recommendation grounding.
-- Instrument per-agent telemetry + tracing for thesis evaluation.
+- Export the new per-agent telemetry (latency, doc counts, confidence) to dashboards + tracing for thesis evaluation.
 - Document the end-to-end agent flow in an architecture diagram for the dissertation.
 
 Keeping this doc updated will make it easier to demonstrate thesis impact during defenses and publications.

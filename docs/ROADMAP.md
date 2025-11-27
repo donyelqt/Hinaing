@@ -16,6 +16,7 @@ This document tracks what has been delivered so far and the remaining work neede
 - LangGraph workflow now integrates dedicated Retrieval, Sentiment, Credibility, and Theme Router agents plus theme-specific Gemini ReAct mini-agents—i.e., the multi-agent stack is live in production.
 - Authored `backend/README.md` with detailed plans for sentiment/credibility classifier upgrades, observability, and governance.
 - Integrated LangSearch Semantic Rerank API + Facebook ingestion into the retrieval agent so snapshots already leverage real-time intelligent search across multiple platforms.
+- Instrumented per-agent latency logging (retrieval, sentiment, enrichment, theme agents) and added selective Gemini skipping for low-document themes to cut wasted LLM time.
 
 ### Documentation
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
@@ -31,8 +32,8 @@ This document tracks what has been delivered so far and the remaining work neede
    - Define acceptance thresholds (precision/recall, false-positive rate) and automate reporting after each retrain.
 
 3. **Observability & performance**
-   - Publish per-agent metrics (latency, document counts, confidence) to the observability stack.
-   - Configure alerts for drift, low confidence, or inadequate sample coverage; profile agent latency and cache Gemini responses where possible.
+   - Export the new per-agent latency & doc-count metrics to the observability stack (Prometheus/LangSmith) with dashboards.
+   - Configure alerts for drift, low confidence, or inadequate sample coverage; profile agent latency and consider lightweight Gemini caching for hotspots.
 
 4. **Documentation expansion**
    - Create `docs/model-log.md` with model versions, dataset hashes, confusion matrices.

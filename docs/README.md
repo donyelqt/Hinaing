@@ -17,7 +17,13 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 2. **Sentiment & Credibility Agents** enrich every document with sentiment scores and domain credibility notes.
 3. **Theme Router Agent** clusters documents into Health/Safety, Infra/Env, and Tourism/Economy buckets.
 4. **Gemini Theme Agents** (ReAct) synthesize insights with traceable evidence for each bucket.
-5. **Coordinator Agents** merges insights, Gemini narrative, and alerting logic into the final snapshot consumed by the frontend.
+5. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
+6. **Coordinator Agents** merge theme insights, Gemini narrative, and alerting logic into the final snapshot consumed by the frontend.
+
+## Latest Updates (Nov 27, 2025)
+- Added per-agent latency logging across retrieval, sentiment, enrichment, and theme synthesis nodes to prove performance optimizations.
+- Parallelized the credibility + theme-routing stage (`analyze_enriched`) and tightened retrieval concurrency so LangSearch and Facebook fetches run together.
+- Theme agents now skip Gemini ReAct when a bucket has fewer than two documents, falling back to deterministic insight summaries to cut wasteful LLM calls.
 
 ## Getting Started
 1. Install dependencies via Poetry (backend) and npm (frontend).
