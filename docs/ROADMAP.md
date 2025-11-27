@@ -13,36 +13,36 @@ This document tracks what has been delivered so far and the remaining work neede
 - Documented sentiment/credibility computations and long-term accuracy roadmap in `frontend/README.md`.
 
 ### Backend
-- LangGraph-based agentic workflow already generates snapshots consumed by the UI.
+- LangGraph workflow now integrates dedicated Retrieval, Sentiment, Credibility, and Theme Router agents plus theme-specific Gemini ReAct mini-agents—i.e., the multi-agent stack is live in production.
 - Authored `backend/README.md` with detailed plans for sentiment/credibility classifier upgrades, observability, and governance.
- - Integrated LangSearch Semantic Rerank API into the web search pipeline so snapshot generation uses semantically reranked web documents by default.
+- Integrated LangSearch Semantic Rerank API + Facebook ingestion into the retrieval agent so snapshots already leverage real-time intelligent search across multiple platforms.
 
 ### Documentation
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
 
 ## 🚧 In Progress / Near-Term TODOs
 
-1. **Backend classifier integration**
-   - Plug fine-tuned sentiment and credibility models into `app/services/insights/graph.py`.
+1. **LLM/classifier alignment**
+   - Plug fine-tuned sentiment and credibility models into the new agent pipeline.
    - Emit `confidence`, `model_version`, and `credibility_breakdown` directly in `/insights/snapshot`.
 
 2. **Calibration & QA assets**
    - Assemble labeled validation sets for both sentiment and credibility.
    - Define acceptance thresholds (precision/recall, false-positive rate) and automate reporting after each retrain.
 
-3. **Monitoring & alerts**
-   - Publish metrics (`sentiment.*`, `credibility.*`, sample sizes, average confidence) to the observability stack.
-   - Configure alerts for drift, low confidence, or inadequate sample coverage.
+3. **Observability & performance**
+   - Publish per-agent metrics (latency, document counts, confidence) to the observability stack.
+   - Configure alerts for drift, low confidence, or inadequate sample coverage; profile agent latency and cache Gemini responses where possible.
 
 4. **Documentation expansion**
    - Create `docs/model-log.md` with model versions, dataset hashes, confusion matrices.
-   - Add architecture diagrams showing how LangGraph orchestrates the workflow (and how it may evolve into multi-agent form).
+   - Add updated architecture diagrams showing the current multi-agent workflow and planned RAG additions.
 
 ## 🧭 Longer-Term Roadmap
 
-1. **Multi-agent evolution**
-   - Split the single agent into specialized sub-agents (ingestion, sentiment, credibility, narrative) coordinated by a supervisor.
-   - Evaluate parallel execution and retry strategies for each agent.
+1. **Multi-agent evolution (next phase)**
+   - Introduce a RAG Solutions agent backed by Qdrant to recommend actions per theme.
+   - Explore parallel execution, retries, and shared memory across agents.
 
 2. **Real-time intelligent search & RAG**
    - Integrate live search connectors and retrieval-augmented generation so insights reference the freshest context automatically.
