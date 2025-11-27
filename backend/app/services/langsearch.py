@@ -44,7 +44,7 @@ class LangSearchClient:
 
         payload: dict[str, Any] = {
             "query": self._enrich_query(query=query, focus_areas=focus_areas),
-            "count": max(1, min(limit, 10)),
+            "count": max(1, limit),  # Removed hard cap; let API enforce its own limits
             "summary": True,
         }
         freshness = self._map_freshness(time_window)

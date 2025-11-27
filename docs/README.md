@@ -19,11 +19,14 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 4. **Gemini Theme Agents** (ReAct) synthesize insights with traceable evidence for each bucket.
 5. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
 6. **Coordinator Agents** merge theme insights, Gemini narrative, and alerting logic into the final snapshot consumed by the frontend.
+7. **Per-agent telemetry instrumentation** logs runtime + doc counts inside `backend/app/services/insights/graph.py` stages for observability rollouts.
 
 ## Latest Updates (Nov 27, 2025)
-- Added per-agent latency logging across retrieval, sentiment, enrichment, and theme synthesis nodes to prove performance optimizations.
-- Parallelized the credibility + theme-routing stage (`analyze_enriched`) and tightened retrieval concurrency so LangSearch and Facebook fetches run together.
-- Theme agents now skip Gemini ReAct when a bucket has fewer than two documents, falling back to deterministic insight summaries to cut wasteful LLM calls.
+- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
+- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
+- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
+- Low-signal theme buckets skip Gemini ReAct inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
+- This docs folder (`README.md`, `ROADMAP.md`, `THESIS_FINDINGS.md`) now mirrors the live multi-agent flow and flags the upcoming Qdrant-backed RAG Solutions agent.
 
 ## Getting Started
 1. Install dependencies via Poetry (backend) and npm (frontend).

@@ -12,6 +12,7 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 | Real-time intelligent search | `agent_tools.search_web_documents` + `fetch_facebook_documents` | Combines LangSearch semantic rerank + Facebook ingestion under the Retrieval Agent. |
 | Sentiment & credibility tagging | `SentimentAgent.run`, `CredibilityAgent.run` | Deterministic scoring ensures every document has sentiment + domain credibility metadata. |
 | Snapshot coordination | `build_snapshot` | Integrates agent outputs, Gemini narrative, alerts, and traceable evidence links for the UI. |
+| Per-agent telemetry instrumentation | `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) | Stage-level duration + document counts logged for benchmarking and observability rollouts. |
 
 ## Key Findings
 1. **Agent modularity speeds iteration** – New logic (e.g., classifiers, RAG solutions agent) can be introduced by swapping an agent node without rewriting the entire pipeline.
@@ -20,9 +21,11 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 4. **Observability is the next blocker** – With multiple agents, we need per-agent metrics (latency, doc counts, confidence) and drift alerts to keep the system defensible.
 
 ## Latest Evidence (Nov 27, 2025)
-- Added per-agent latency logging across retrieval, sentiment, analyze_enriched (credibility + routing), and theme agents to quantify performance gains.
-- Retrieval concurrency tightened (LangSearch + Facebook run together) and low-signal theme buckets now skip Gemini ReAct in favor of deterministic insights.
-- `docs/README.md` and `ROADMAP.md` updated to reflect the multi-agent flow + planned Qdrant RAG Solutions agent.
+- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
+- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
+- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
+- Low-signal theme buckets skip Gemini ReAct inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
+- `docs/README.md` and `ROADMAP.md` now mirror the live multi-agent flow and call out the planned Qdrant-backed RAG Solutions agent.
 
 ## Gaps & Next Steps
 - Integrate fine-tuned sentiment/credibility models to replace heuristic scoring.

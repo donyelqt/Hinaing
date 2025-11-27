@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 from typing import Any
 
 from langchain.agents import AgentExecutor, create_react_agent
@@ -107,7 +106,6 @@ def _build_llm() -> ChatGoogleGenerativeAI:
     )
 
 
-@lru_cache
 def get_gemini_agent() -> AgentExecutor:
     llm = _build_llm()
     tools = _build_tools()
@@ -121,7 +119,12 @@ def get_gemini_agent() -> AgentExecutor:
     )
 
 
-def run_gemini_agent(message: str, *, documents: list[dict[str, Any]] | None = None) -> str:
+def run_gemini_agent(
+    message: str,
+    *,
+    documents: list[dict[str, Any]] | None = None,
+    system_instruction: str | None = None,
+) -> str:
     executor = get_gemini_agent()
     if documents:
         doc_lines = [
@@ -129,7 +132,7 @@ def run_gemini_agent(message: str, *, documents: list[dict[str, Any]] | None = N
             for doc in documents[:5]
         ]
         context_block = "\n".join(doc_lines)
-        instructions = (
+        instructions = system_instruction or (
             "You are a civic operations analyst for Baguio City."
             " Return ONLY valid JSON with keys 'summary' (<=2 sentences) and"
             " 'insights' (array of up to 3 objects with category/title/detail/evidence array)."
@@ -139,7 +142,7 @@ def run_gemini_agent(message: str, *, documents: list[dict[str, Any]] | None = N
             f"{instructions}\n\nQuestion:\n{message}\n\nContext documents:\n{context_block}\n"
         )
     else:
-        instructions = (
+        instructions = system_instruction or (
             "You are a civic operations analyst for Baguio City."
             " Respond with JSON containing summary + insights as described."
         )

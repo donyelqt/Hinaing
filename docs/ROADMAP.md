@@ -17,9 +17,18 @@ This document tracks what has been delivered so far and the remaining work neede
 - Authored `backend/README.md` with detailed plans for sentiment/credibility classifier upgrades, observability, and governance.
 - Integrated LangSearch Semantic Rerank API + Facebook ingestion into the retrieval agent so snapshots already leverage real-time intelligent search across multiple platforms.
 - Instrumented per-agent latency logging (retrieval, sentiment, enrichment, theme agents) and added selective Gemini skipping for low-document themes to cut wasted LLM time.
+- Parallelized `analyze_enriched` (Credibility + Theme Router) via `asyncio.gather`, tightened LangSearch + Facebook concurrency inside `RetrievalAgent.run`, and kept deterministic fallbacks for low-signal themes when Gemini ReAct is skipped.
 
 ### Documentation
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
+- Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow and upcoming Qdrant-backed RAG Solutions agent.
+
+## 🔄 Latest Updates (Nov 27, 2025)
+- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
+- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
+- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
+- Low-signal theme buckets skip Gemini ReAct inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
+- Documentation (`README.md`, `ROADMAP.md`, `THESIS_FINDINGS.md`) now explicitly mirrors the live multi-agent flow and flags the upcoming Qdrant-backed RAG Solutions agent.
 
 ## 🚧 In Progress / Near-Term TODOs
 
