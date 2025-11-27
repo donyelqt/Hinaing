@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
@@ -21,10 +22,20 @@ from ...schemas.snapshot import (
     SnapshotResponse,
     WebDocument,
 )
-from ..ingestion.facebook import ApifyRunError, fetch_public_posts
-from ...schemas.social import RawSocialPost
+from .agents import (
+    RetrievalAgent,
+    SentimentAgent,
+    CredibilityAgent,
+    ThemeRouterAgent,
+)
 from ..langsearch import LangSearchClient
-from ..nlp.gemini import gemini_client
+from ..nlp.gemini import gemini_client, GeminiClient
+from ..agents.gemini import run_gemini_agent
+from .tools import (
+    build_focus_query,
+    get_window_timedelta,
+)
+from .agent_tools import set_theme_groups
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -39,331 +50,323 @@ class SnapshotState(TypedDict, total=False):
     request: SnapshotRequest
     documents: list[WebDocument]
     enriched: list[WebDocument]
+    theme_documents: dict[str, list[WebDocument]]
+    theme_insights: list[Insight]
+    credibility_notes: dict[str, float]
+    retrieval_plan: dict[str, Any]
     snapshot: SnapshotResponse
 
 
+THEME_GROUPS = {
+    "health_safety": {
+        "label": "Health & Safety",
+        "focus_values": {"health", "safety"},
+        "keywords": {
+            "hospital",
+            "clinic",
+            "health",
+            "dengue",
+            "covid",
+            "crime",
+            "police",
+            "fire",
+            "landslide",
+            "safety",
+        },
+    },
+    "infra_env": {
+        "label": "Infrastructure & Environment",
+        "focus_values": {"infrastructure", "environment"},
+        "keywords": {
+            "road",
+            "traffic",
+            "water",
+            "power",
+            "garbage",
+            "infrastructure",
+            "pollution",
+            "environment",
+            "rain",
+        },
+    },
+    "tourism_econ": {
+        "label": "Tourism & Economy",
+        "focus_values": {"tourism", "economy"},
+        "keywords": {
+            "tourism",
+            "tourist",
+            "hotel",
+            "market",
+            "vendor",
+            "livelihood",
+            "economy",
+            "mallification",
+            "sm prime",
+        },
+    },
+}
+
+set_theme_groups(THEME_GROUPS)
+
+
+retrieval_agent = RetrievalAgent()
+sentiment_agent = SentimentAgent()
+credibility_agent_node = CredibilityAgent()
+theme_router_agent = ThemeRouterAgent()
+
+
 def _build_query(request: SnapshotRequest) -> str:
-    # Concern/problem keywords - strict focus on issues only
-    concern_modifiers = ["problem", "issue", "concern", "complaint", "crisis"]
-    
-    # Map focus areas to Baguio-specific concern terms
-    # Each theme has problem-focused search terms
-    focus_concern_keywords: dict[str, list[str]] = {
-        "infrastructure": [
-            "Baguio road problem",
-            "Baguio traffic issue",
-            "Baguio water problem",
-            "Baguio power outage",
-            "Baguio pothole complaint",
-            "Kennon Road problem",
-            "Baguio jeepney concern",
-            "Baguio garbage issue",
-            "Session Road traffic",
-        ],
-        "health": [
-            "Baguio hospital problem",
-            "Baguio health concern",
-            "Baguio disease issue",
-            "Baguio sanitation problem",
-            "Baguio medical complaint",
-        ],
-        "safety": [
-            "Baguio crime problem",
-            "Baguio flood concern",
-            "Baguio landslide issue",
-            "Baguio fire problem",
-            "Baguio accident concern",
-            "Baguio safety issue",
-        ],
-        "tourism": [
-            "Baguio tourist complaint",
-            "Baguio overcrowding problem",
-            "Burnham Park issue",
-            "Baguio hotel complaint",
-            "Baguio tourism concern",
-        ],
-        "economy": [
-            "Baguio vendor problem",
-            "Baguio market issue",
-            "Baguio business concern",
-            "Baguio livelihood problem",
-            "Baguio employment issue",
-            "Baguio market mallification",
-            "Baguio public market mallification",
-            "Baguio mallification protest",
-            "Baguio public market redevelopment",
-            "Baguio PPP market redevelopment",
-            "SM Prime Baguio market",
-            "Baguio vendor displacement",
-        ],
-        "environment": [
-            "Baguio pollution problem",
-            "Baguio air quality concern",
-            "Baguio waste issue",
-            "Baguio flooding problem",
-            "Baguio environmental concern",
-        ],
-    }
-
-    # Build query - supports multiple selected themes
-    if request.focus_areas and len(request.focus_areas) > 0:
-        # Collect terms from ALL selected themes
-        all_terms: list[str] = []
-        for area in request.focus_areas:
-            area_lower = area.lower()
-            terms = focus_concern_keywords.get(area_lower)
-            if terms:
-                all_terms.extend(terms)
-            else:
-                # Fallback for unknown themes
-                all_terms.append(f"Baguio {area} problem")
-                all_terms.append(f"Baguio {area} concern")
-
-        # De-duplicate while preserving order
-        unique_terms = list(dict.fromkeys(all_terms))
-        
-        # Build OR query for all concern terms
-        terms_query = " OR ".join(f'"{term}"' for term in unique_terms)
-        query = f'({terms_query})'
-    else:
-        # Default: general Baguio concerns and problems
-        concern_terms = " OR ".join(concern_modifiers)
-        query = f'"Baguio City" AND ({concern_terms})'
-    
-    return query
+    return build_focus_query(request)
 
 
 def _get_window_timedelta(time_window: str | None) -> timedelta | None:
-    """Map a configured time_window string to a concrete timedelta."""
-    if not time_window:
-        return None
-    mapping: dict[str, timedelta] = {
-        "6h": timedelta(hours=6),
-        "24h": timedelta(hours=24),
-        "3d": timedelta(days=3),
-        "7d": timedelta(days=7),
-    }
-    return mapping.get(time_window)
-
-
-def _filter_by_time_window(documents: list[WebDocument], time_window: str | None) -> list[WebDocument]:
-    """Apply a strict client-side cutoff based on published_at timestamps.
-
-    This reinforces the LangSearch freshness hint so that UIs like "Past 6 hours"
-    behave more intuitively even if the upstream search provider returns older,
-    highly-ranked documents.
-    """
-
-    delta = _get_window_timedelta(time_window)
-    if not delta:
-        return documents
-
-    now = datetime.now(timezone.utc)
-    cutoff = now - delta
-    filtered = [doc for doc in documents if doc.published_at and doc.published_at >= cutoff]
-
-    # If everything was filtered out (e.g. no truly recent docs), fall back to
-    # the original set so the user still sees some signal rather than "no data".
-    return filtered or documents
-
-
-# Baguio/Benguet/Cordillera location identifiers for strict filtering
-_BAGUIO_LOCATION_TERMS = {
-    "baguio",
-    "benguet",
-    "cordillera",
-    "session road",
-    "burnham park",
-    "kennon road",
-    "marcos highway",
-    "la trinidad",
-    "panagbenga",
-    "camp john hay",
-    "mines view",
-    "wright park",
-    "baguio general hospital",
-    "bgh",
-    "summer capital",
-    "city of pines",
-    "governor pack",
-    "abanao",
-    "porta vaga",
-}
-
-
-def _filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
-    """Filter documents to only include those mentioning Baguio/Benguet/Cordillera.
-    
-    This is a strict post-fetch filter to exclude results from other regions
-    (e.g., Metro Manila, Batangas) that may have matched generic keywords.
-    """
-    filtered: list[WebDocument] = []
-    
-    for doc in documents:
-        # Combine title, snippet, and URL for location matching
-        url_str = str(doc.url) if doc.url else ""
-        searchable = f"{doc.title} {doc.snippet} {url_str}".lower()
-        
-        # Check if any Baguio location term appears in the document
-        if any(term in searchable for term in _BAGUIO_LOCATION_TERMS):
-            filtered.append(doc)
-        else:
-            logger.debug(
-                "Filtered out non-Baguio document: %s",
-                doc.title[:50] if doc.title else "Untitled",
-            )
-    
-    # If all documents were filtered out, return empty list
-    # (better to show "no data" than irrelevant data)
-    return filtered
-
-
-# Excluded domains - reference sites, not news/concerns sources
-_EXCLUDED_DOMAINS = {
-    "wikipedia.org",
-    "wikimedia.org",
-    "wikidata.org",
-    "britannica.com",
-    "dictionary.com",
-    "quora.com",
-    "tripadvisor.com",
-    "booking.com",
-    "agoda.com",
-    "expedia.com",
-    "airbnb.com",
-    "pinterest.com",
-}
-
-
-def _filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
-    """Filter out non-news sources like Wikipedia, travel sites, etc."""
-    filtered: list[WebDocument] = []
-    for doc in documents:
-        url = str(doc.url).lower() if doc.url else ""
-        is_excluded = any(domain in url for domain in _EXCLUDED_DOMAINS)
-        if not is_excluded:
-            filtered.append(doc)
-        else:
-            logger.debug("Filtered out excluded source: %s", doc.url)
-    return filtered
-
-
-def _facebook_post_to_webdoc(post: RawSocialPost) -> WebDocument:
-    """Convert a RawSocialPost from Facebook to WebDocument format."""
-    return WebDocument(
-        title=f"Facebook: {post.author}",
-        snippet=post.content[:500] if post.content else "",
-        url=post.url,
-        published_at=post.created_at,
-        sentiment=None,
-        metadata={
-            "source": "facebook",
-            "post_id": post.post_id,
-            "author": post.author,
-            "likes": post.metadata.get("likes", 0),
-            "comments_count": post.metadata.get("comments_count", 0),
-            "group_name": post.metadata.get("group_name", ""),
-        },
-    )
+    return get_window_timedelta(time_window)
 
 
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
-    documents: list[WebDocument] = []
+    logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
+    try:
+        documents = await retrieval_agent.run(request)
+    except Exception:
+        logger.exception("Retrieval agent failed; returning empty document set")
+        documents = []
 
-    # Fetch from LangSearch (web)
-    if "web" in request.platforms:
-        client = LangSearchClient()
+    if "web" in request.platforms and "facebook" in request.platforms and len(documents) > 1:
         query = _build_query(request)
-        logger.info(
-            "[snapshot] Fetching LangSearch documents",
-            extra={
-                "platforms": request.platforms,
-                "time_window": request.time_window,
-                "focus_areas": request.focus_areas,
-                "query": query,
-            },
-        )
-        try:
-            web_docs = await client.search(
-                query=query,
-                focus_areas=request.focus_areas,
-                time_window=request.time_window,
-                limit=25,
-            )
-            web_docs = _filter_excluded_sources(web_docs)
-            web_docs = _filter_by_location(web_docs)
-            web_docs = _filter_by_time_window(web_docs, request.time_window)
-            documents.extend(web_docs)
-            logger.info(
-                "[snapshot] LangSearch returned %d relevant documents",
-                len(web_docs),
-            )
-        except Exception as exc:
-            logger.exception("LangSearch fetch failed; continuing")
-
-    # Fetch from Facebook Groups via Apify
-    if "facebook" in request.platforms:
-        logger.info("[snapshot] Fetching Facebook group posts via Apify")
-        try:
-            fb_posts = await fetch_public_posts(region_keywords=request.focus_areas)
-            fb_docs = [_facebook_post_to_webdoc(post) for post in fb_posts]
-            # Apply Baguio location filter to Facebook posts too
-            fb_docs = _filter_by_location(fb_docs)
-            fb_docs = _filter_by_time_window(fb_docs, request.time_window)
-            documents.extend(fb_docs)
-            logger.info(
-                "[snapshot] Facebook returned %d relevant posts",
-                len(fb_docs),
-            )
-        except ApifyRunError as exc:
-            logger.error("Apify Facebook scraper failed: %s", exc)
-        except Exception as exc:
-            logger.exception("Facebook fetch failed; continuing")
-
-    # Apply semantic reranking when:
-    # - Facebook only: rerank FB posts
-    # - Both web + facebook: rerank combined set (web already reranked internally, but need to merge rankings)
-    # - Web only: skip (already reranked inside LangSearchClient.search())
-    needs_rerank = (
-        "facebook" in request.platforms and len(documents) > 1
-    )
-    
-    if needs_rerank:
-        query = _build_query(request)
-        logger.info("[snapshot] Applying semantic rerank to %d documents", len(documents))
         try:
             reranker = LangSearchClient()
             documents = await reranker.rerank(query=query, documents=documents)
-            logger.info("[snapshot] Semantic rerank completed")
         except Exception as exc:
-            logger.warning("Semantic rerank failed, using original order: %s", exc)
+            logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
 
     state["documents"] = documents
     return state
 
 
-POSITIVE_HINTS = {"improved", "great", "excellent", "success", "appreciate", "happy", "resolved"}
-NEGATIVE_HINTS = {"delay", "problem", "issue", "concern", "warning", "outage", "flood", "traffic", "risk"}
-
-
-def _score_sentiment(text: str) -> str:
-    lowered = text.lower()
-    pos_hits = sum(word in lowered for word in POSITIVE_HINTS)
-    neg_hits = sum(word in lowered for word in NEGATIVE_HINTS)
-    if neg_hits > pos_hits:
-        return "negative"
-    if pos_hits > neg_hits:
-        return "positive"
-    return "neutral"
-
-
 def label_sentiment(state: SnapshotState) -> SnapshotState:
-    enriched: list[WebDocument] = []
-    for doc in state.get("documents", []):
-        sentiment = doc.sentiment or _score_sentiment(doc.snippet)
-        enriched.append(doc.model_copy(update={"sentiment": sentiment}))
-    state["enriched"] = enriched
+    state["enriched"] = sentiment_agent.run(state.get("documents", []))
+    return state
+
+
+def credibility_agent(state: SnapshotState) -> SnapshotState:
+    docs = state.get("enriched") or state.get("documents") or []
+    state["credibility_notes"] = credibility_agent_node.run(docs)
+    return state
+
+
+def theme_router(state: SnapshotState) -> SnapshotState:
+    docs = state.get("enriched") or []
+    state["theme_documents"] = theme_router_agent.run(docs, state["request"])
+    return state
+
+
+def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
+    text = raw_text.strip()
+    if text.startswith("```") and text.endswith("```"):
+        inner = text.split("\n", 1)
+        text = inner[1] if len(inner) > 1 else text[3:]
+        text = text[:-3].strip()
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        logger.debug("Theme agent response not JSON: %s", raw_text)
+    return None
+
+
+def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
+    context_docs = [doc.model_dump() for doc in docs[:5]]
+    prompt = (
+        "You are a civic operations analyst for Baguio City. "
+        f"Focus on the theme '{label}'. "
+        "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
+        "Highlight actionable risk or opportunity from the provided documents."
+    )
+    response = run_gemini_agent(prompt, documents=context_docs)
+    parsed = _parse_agent_json(response)
+    evidence = [str(doc.url) for doc in docs[:3] if doc.url]
+    if parsed:
+        title = parsed.get("title") or f"Key updates in {label}"
+        detail = parsed.get("detail") or "Context unavailable"
+
+settings = get_settings()
+logger = logging.getLogger(__name__)
+if settings.langsmith_api_key:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+    if settings.langsmith_project:
+        os.environ.setdefault("LANGCHAIN_PROJECT", settings.langsmith_project)
+
+
+class SnapshotState(TypedDict, total=False):
+    request: SnapshotRequest
+    documents: list[WebDocument]
+    enriched: list[WebDocument]
+    theme_documents: dict[str, list[WebDocument]]
+    theme_insights: list[Insight]
+    credibility_notes: dict[str, float]
+    retrieval_plan: dict[str, Any]
+    snapshot: SnapshotResponse
+
+
+THEME_GROUPS = {
+    "health_safety": {
+        "label": "Health & Safety",
+        "focus_values": {"health", "safety"},
+        "keywords": {
+            "hospital",
+            "clinic",
+            "health",
+            "dengue",
+            "covid",
+            "crime",
+            "police",
+            "fire",
+            "landslide",
+            "safety",
+        },
+    },
+    "infra_env": {
+        "label": "Infrastructure & Environment",
+        "focus_values": {"infrastructure", "environment"},
+        "keywords": {
+            "road",
+            "traffic",
+            "water",
+            "power",
+            "garbage",
+            "infrastructure",
+            "pollution",
+            "environment",
+            "rain",
+        },
+    },
+    "tourism_econ": {
+        "label": "Tourism & Economy",
+        "focus_values": {"tourism", "economy"},
+        "keywords": {
+            "tourism",
+            "tourist",
+            "hotel",
+            "market",
+            "vendor",
+            "livelihood",
+            "economy",
+            "mallification",
+            "sm prime",
+        },
+    },
+}
+
+
+def _build_query(request: SnapshotRequest) -> str:
+    return build_focus_query(request)
+
+
+def _get_window_timedelta(time_window: str | None) -> timedelta | None:
+    return get_window_timedelta(time_window)
+
+
+async def fetch_documents(state: SnapshotState) -> SnapshotState:
+    request = state["request"]
+    logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
+    try:
+        documents = await retrieval_agent.run(request)
+    except Exception:
+        logger.exception("Retrieval agent failed; returning empty document set")
+        documents = []
+
+    if "web" in request.platforms and "facebook" in request.platforms and len(documents) > 1:
+        query = _build_query(request)
+        try:
+            reranker = LangSearchClient()
+            documents = await reranker.rerank(query=query, documents=documents)
+        except Exception as exc:
+            logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
+
+    state["documents"] = documents
+    return state
+
+
+    state["theme_documents"] = route_documents_by_theme(docs, state["request"].focus_areas)
+    return state
+
+
+def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
+    text = raw_text.strip()
+    if text.startswith("```") and text.endswith("```"):
+        inner = text.split("\n", 1)
+        text = inner[1] if len(inner) > 1 else text[3:]
+        text = text[:-3].strip()
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        logger.debug("Theme agent response not JSON: %s", raw_text)
+    return None
+
+
+def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
+    context_docs = [doc.model_dump() for doc in docs[:5]]
+    prompt = (
+        "You are a civic operations analyst for Baguio City. "
+        f"Focus on the theme '{label}'. "
+        "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
+        "Highlight actionable risk or opportunity from the provided documents."
+    )
+    response = run_gemini_agent(prompt, documents=context_docs)
+    parsed = _parse_agent_json(response)
+    evidence = [str(doc.url) for doc in docs[:3] if doc.url]
+    if parsed:
+        title = parsed.get("title") or f"Key updates in {label}"
+        detail = parsed.get("detail") or "Context unavailable"
+        parsed_evidence = parsed.get("evidence")
+        if isinstance(parsed_evidence, list) and parsed_evidence:
+            evidence = [str(item) for item in parsed_evidence if item]
+    else:
+        fallback_doc = max(
+            docs,
+            key=lambda d: (d.metadata or {}).get("semantic_relevance_score", 0.0),
+            default=docs[0],
+        )
+        title = f"Key updates in {label}"
+        detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240]
+    return Insight(
+        category=label,
+        title=title,
+        detail=detail[:240],
+        evidence=evidence,
+    )
+
+
+def theme_agents(state: SnapshotState) -> SnapshotState:
+    """Run Gemini mini-agents per theme to craft insights."""
+    theme_docs = state.get("theme_documents", {})
+    insights: list[Insight] = []
+
+    for theme_key, docs in theme_docs.items():
+        if not docs:
+            continue
+        meta = THEME_GROUPS.get(theme_key)
+        label = meta["label"] if meta else theme_key.title()
+        try:
+            insight = _synthesize_theme_insight(label, docs)
+            insights.append(insight)
+        except Exception as exc:
+            logger.warning("Theme agent failed for %s: %s", label, exc)
+            fallback_doc = docs[0]
+            insights.append(
+                Insight(
+                    category=label,
+                    title=f"Key updates in {label}",
+                    detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240],
+                    evidence=[str(doc.url) for doc in docs[:2] if doc.url],
+                )
+            )
+    state["theme_insights"] = insights
     return state
 
 
@@ -459,19 +462,23 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 logger.debug("Skipping malformed Gemini insight: %s", exc)
                 continue
     else:
-        for focus in (request.focus_areas or ["Operations"]):
-            related = [doc for doc in docs if focus.lower() in (doc.snippet.lower() + doc.title.lower())]
-            snippet = related[0].snippet if related else (docs[0].snippet if docs else "Residents request timely advisories.")
-            insights.append(
-                Insight(
-                    category=focus.title(),
-                    title=f"Monitor {focus.title()} developments",
-                    detail=snippet[:240],
-                    evidence=[doc.url for doc in related[:2] if doc.url],
+        theme_fallbacks = state.get("theme_insights") or []
+        if theme_fallbacks:
+            insights.extend(theme_fallbacks[:3])
+        else:
+            for focus in (request.focus_areas or ["Operations"]):
+                related = [doc for doc in docs if focus.lower() in (doc.snippet.lower() + doc.title.lower())]
+                snippet = related[0].snippet if related else (docs[0].snippet if docs else "Residents request timely advisories.")
+                insights.append(
+                    Insight(
+                        category=focus.title(),
+                        title=f"Monitor {focus.title()} developments",
+                        detail=snippet[:240],
+                        evidence=[str(doc.url) for doc in related[:2] if doc.url],
+                    )
                 )
-            )
-            if len(insights) >= 3:
-                break
+                if len(insights) >= 3:
+                    break
 
     alerts: list[str] | None = None
     if request.include_alerts and scores["negative"] >= 0.45:
@@ -504,11 +511,17 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 graph = StateGraph(SnapshotState)
 graph.add_node("fetch_documents", fetch_documents)
 graph.add_node("label_sentiment", label_sentiment)
+graph.add_node("credibility_agent", credibility_agent)
+graph.add_node("theme_router", theme_router)
+graph.add_node("theme_agents", theme_agents)
 graph.add_node("build_snapshot", build_snapshot)
 
 graph.add_edge(START, "fetch_documents")
 graph.add_edge("fetch_documents", "label_sentiment")
-graph.add_edge("label_sentiment", "build_snapshot")
+graph.add_edge("label_sentiment", "credibility_agent")
+graph.add_edge("credibility_agent", "theme_router")
+graph.add_edge("theme_router", "theme_agents")
+graph.add_edge("theme_agents", "build_snapshot")
 graph.add_edge("build_snapshot", END)
 
 compiled_graph = graph.compile()
