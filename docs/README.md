@@ -38,12 +38,14 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 - **FastAPI** – high-performance async web framework
 - **LangChain / LangGraph** – multi-agent orchestration and workflow
 - **LangSmith** – observability and tracing
+- **LangSearch** – semantic web search and reranking API for document retrieval(Intelligent search)
 - **Google Gemini** (`langchain-google-genai`, `google-generativeai`) – LLM for ReAct agents
 - **Qdrant** – vector database for RAG embeddings
 - **Sentence Transformers** – local embedding generation
 - **Supabase** – database and auth
 - **APScheduler** – background job scheduling
 - **Pydantic** – data validation and settings
+- **HTTPX** – async HTTP client for external API calls
 
 ### Frontend
 - **Next.js 16** with **React 19** and **TypeScript**
@@ -57,6 +59,10 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 - **Ruff** – Python linting
 - **ESLint** – TypeScript/JS linting
 - **Pytest** – backend testing
+
+### Deployment
+- **Railway** – backend hosting and deployment
+- **Vercel** – frontend hosting and deployment
 
 ## Getting Started
 1. Install dependencies via Poetry (backend) and npm (frontend).
