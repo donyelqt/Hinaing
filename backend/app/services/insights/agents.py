@@ -15,6 +15,7 @@ from .agent_tools import (
     score_credibility,
     route_documents_by_theme,
 )
+from ..agents.sentiment_agent import get_sentiment_agent
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +79,21 @@ class RetrievalAgent:
 
 @dataclass
 class SentimentAgent:
-    """Agent that labels sentiment for each document."""
+    """AI-powered agent that labels sentiment using Gemini."""
+
+    use_ai: bool = True  # Set to False to use rule-based fallback
 
     def run(self, documents: Sequence[WebDocument]) -> list[WebDocument]:
-        logger.info("[sentiment_agent] labeling %d documents", len(documents))
+        logger.info("[sentiment_agent] labeling %d documents (AI=%s)", len(documents), self.use_ai)
+        
+        if self.use_ai:
+            try:
+                agent = get_sentiment_agent()
+                return agent.analyze_batch(list(documents))
+            except Exception as exc:
+                logger.warning("[sentiment_agent] Gemini failed, falling back to rules: %s", exc)
+                return assign_sentiment(list(documents))
+        
         return assign_sentiment(list(documents))
 
 
