@@ -24,7 +24,13 @@ RUN poetry install --only main --no-root --no-ansi
 FROM python:3.11-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    # PyTorch CPU optimizations
+    OMP_NUM_THREADS=2 \
+    MKL_NUM_THREADS=2 \
+    EMBEDDING_CPU_THREADS=2 \
+    # Disable tokenizers parallelism to avoid deadlocks in containers
+    TOKENIZERS_PARALLELISM=false
 
 WORKDIR /app
 
