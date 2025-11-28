@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class GeminiClient:
     """Thin wrapper around the Gemini GenerativeModel."""
 
-    def __init__(self, *, model_name: str = "gemini-2.5-flash") -> None:
+    def __init__(self, *, model_name: str = "gemini-2.5-pro") -> None:
         settings = get_settings()
         self._api_key = settings.gemini_api_key
         self._model_name = model_name

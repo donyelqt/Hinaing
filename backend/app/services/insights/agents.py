@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from ...schemas.snapshot import SnapshotRequest, WebDocument
+from ...schemas.query import QueryPlan, QueryTask
 from .agent_tools import (
     search_web_documents,
     fetch_facebook_documents,
@@ -22,16 +23,39 @@ logger = logging.getLogger(__name__)
 class RetrievalAgent:
     """Agent that decides which platforms to pull documents from."""
 
-    async def run(self, request: SnapshotRequest) -> list[WebDocument]:
+    async def run(
+        self,
+        request: SnapshotRequest,
+        query_plan: QueryPlan | None = None,
+    ) -> list[WebDocument]:
         logger.info(
             "[retrieval_agent] planning",
-            extra={"platforms": request.platforms, "focus": request.focus_areas},
+            extra={
+                "platforms": request.platforms,
+                "focus": request.focus_areas,
+                "queries": len(query_plan.queries) if query_plan else 0,
+            },
         )
 
         tasks: list[asyncio.Task[list[WebDocument]]] = []
         if "web" in request.platforms:
-            logger.info("[retrieval_agent] invoking LangSearch tool")
-            tasks.append(asyncio.create_task(search_web_documents(request)))
+            if query_plan and query_plan.queries:
+                logger.info(
+                    "[retrieval_agent] executing orchestrated web queries",
+                    extra={"count": len(query_plan.queries)},
+                )
+                for task in query_plan.queries:
+                    tasks.append(
+                        asyncio.create_task(
+                            search_web_documents(
+                                request,
+                                custom_query=task.query,
+                            )
+                        )
+                    )
+            else:
+                logger.info("[retrieval_agent] invoking LangSearch tool (baseline)")
+                tasks.append(asyncio.create_task(search_web_documents(request)))
 
         if "facebook" in request.platforms:
             logger.info("[retrieval_agent] invoking Facebook tool")

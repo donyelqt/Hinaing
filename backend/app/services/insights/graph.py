@@ -24,12 +24,16 @@ from ...schemas.snapshot import (
     SnapshotResponse,
     WebDocument,
 )
+from ...schemas.rag import AugmentedContext
+from ...schemas.query import QueryPlan
 from .agents import (
     RetrievalAgent,
     SentimentAgent,
     CredibilityAgent,
     ThemeRouterAgent,
 )
+from ..agents.query_orchestrator import QueryOrchestratorAgent
+from ..agents.context_agent import ContextAugmentationAgent
 from ..langsearch import LangSearchClient
 from ..nlp.gemini import gemini_client, GeminiClient
 from ..agents.gemini import run_gemini_agent
@@ -53,9 +57,10 @@ class SnapshotState(TypedDict, total=False):
     documents: list[WebDocument]
     enriched: list[WebDocument]
     theme_documents: dict[str, list[WebDocument]]
+    augmented_contexts: dict[str, AugmentedContext]
     theme_insights: list[Insight]
     credibility_notes: dict[str, float]
-    retrieval_plan: dict[str, Any]
+    retrieval_plan: QueryPlan
     snapshot: SnapshotResponse
 
 
@@ -115,6 +120,7 @@ retrieval_agent = RetrievalAgent()
 sentiment_agent = SentimentAgent()
 credibility_agent_node = CredibilityAgent()
 theme_router_agent = ThemeRouterAgent()
+query_orchestrator = QueryOrchestratorAgent()
 
 
 def _build_query(request: SnapshotRequest) -> str:
@@ -125,12 +131,24 @@ def _get_window_timedelta(time_window: str | None) -> timedelta | None:
     return get_window_timedelta(time_window)
 
 
+async def orchestrate_queries(state: SnapshotState) -> SnapshotState:
+    request = state["request"]
+    try:
+        plan = query_orchestrator.run(request)
+    except Exception as exc:
+        logger.warning("[snapshot] Query orchestrator failed, falling back: %s", exc)
+        plan = None
+    state["retrieval_plan"] = plan
+    return state
+
+
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
+    plan = state.get("retrieval_plan")
     logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
     start_time = time.perf_counter()
     try:
-        documents = await retrieval_agent.run(request)
+        documents = await retrieval_agent.run(request, query_plan=plan)
     except Exception:
         logger.exception("Retrieval agent failed; returning empty document set")
         documents = []
@@ -146,6 +164,39 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info("[snapshot] Retrieval agent completed in %.1f ms with %d docs", duration_ms, len(documents))
     state["documents"] = documents
+    return state
+
+
+async def augment_context(state: SnapshotState) -> SnapshotState:
+    """Augment theme context using RAG pipeline."""
+    theme_docs = state.get("theme_documents") or {}
+    if not theme_docs:
+        state["augmented_contexts"] = {}
+        logger.info("[snapshot] augment_context skipped (no theme docs)")
+        return state
+
+    request = state["request"]
+    agent = ContextAugmentationAgent()
+    augmented: dict[str, AugmentedContext] = {}
+
+    for theme_key, docs in theme_docs.items():
+        if not docs:
+            continue
+        meta = THEME_GROUPS.get(theme_key)
+        label = meta["label"] if meta else theme_key.title()
+        try:
+            context = await agent.augment_context(
+                documents=docs,
+                theme=label,
+                time_window=request.time_window,
+                top_k=10,
+            )
+            augmented[theme_key] = context
+        except Exception as exc:
+            logger.warning("[snapshot] augment_context failed for %s: %s", label, exc)
+
+    state["augmented_contexts"] = augmented
+    logger.info("[snapshot] RAG augmented context for %d themes", len(augmented))
     return state
 
 
@@ -331,6 +382,8 @@ def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
 
 
 def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
+    from ..agents.theme_agent import run_theme_agent
+    
     context_docs = [doc.model_dump() for doc in docs[:5]]
     prompt = (
         "You are a civic operations analyst for Baguio City. "
@@ -338,7 +391,11 @@ def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
         "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
         "Highlight actionable risk or opportunity from the provided documents."
     )
-    response = run_gemini_agent(prompt, documents=context_docs)
+    response = run_theme_agent(
+        theme_label=label,
+        prompt=prompt,
+        documents=context_docs,
+    )
     parsed = _parse_agent_json(response)
     evidence = [str(doc.url) for doc in docs[:3] if doc.url]
     if parsed:
@@ -363,33 +420,111 @@ def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
     )
 
 
+def _synthesize_single_theme(
+    theme_key: str,
+    docs: list[WebDocument],
+    contexts: dict[str, AugmentedContext] | None,
+) -> Insight | None:
+    """Synthesize insight for a single theme."""
+    meta = THEME_GROUPS.get(theme_key)
+    label = meta["label"] if meta else theme_key.title()
+    context = (contexts or {}).get(theme_key)
+
+    if context and context.relevant_chunks:
+        top_chunks = context.relevant_chunks[:5]
+        top_scores = context.relevance_scores[: len(top_chunks)]
+        enriched_docs = [
+            {
+                "title": chunk.source_title,
+                "snippet": chunk.content,
+                "url": chunk.source_url,
+                "relevance_score": score,
+            }
+            for chunk, score in zip(top_chunks, top_scores)
+        ]
+    else:
+        enriched_docs = [doc.model_dump() for doc in docs[:5]]
+
+    evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
+    try:
+        if len(docs) < 2:
+            raise ValueError("skip_gemini_fallback")
+        from ..agents.theme_agent import run_theme_agent
+
+        prompt = (
+            "You are a civic operations analyst for Baguio City. "
+            f"Focus on the theme '{label}'. "
+            "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
+            "Highlight actionable risk or opportunity from the provided documents."
+        )
+        response = run_theme_agent(
+            theme_label=label,
+            prompt=prompt,
+            documents=enriched_docs,
+        )
+        parsed = _parse_agent_json(response)
+        evidence = evidence_seed
+        if parsed:
+            title = parsed.get("title") or f"Key updates in {label}"
+            detail = parsed.get("detail") or "Context unavailable"
+            parsed_evidence = parsed.get("evidence")
+            if isinstance(parsed_evidence, list) and parsed_evidence:
+                evidence = [str(item) for item in parsed_evidence if item]
+        else:
+            fallback_doc = max(
+                docs,
+                key=lambda d: (d.metadata or {}).get("semantic_relevance_score", 0.0),
+                default=docs[0],
+            )
+            title = f"Key updates in {label}"
+            detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240]
+        return Insight(
+            category=label,
+            title=title,
+            detail=detail[:240],
+            evidence=evidence,
+        )
+    except Exception as exc:
+        logger.warning("Theme agent failed for %s: %s", label, exc)
+        fallback_doc = docs[0]
+        return Insight(
+            category=label,
+            title=f"Key updates in {label}",
+            detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240],
+            evidence=[str(doc.url) for doc in docs[:2] if doc.url],
+        )
+
+
 def theme_agents(state: SnapshotState) -> SnapshotState:
-    """Run Gemini mini-agents per theme to craft insights."""
+    """Run Gemini mini-agents per theme to craft insights in parallel."""
     theme_docs = state.get("theme_documents", {})
-    insights: list[Insight] = []
+    contexts = state.get("augmented_contexts", {})
     start_time = time.perf_counter()
 
+    # Prepare tasks for parallel execution
+    tasks = []
     for theme_key, docs in theme_docs.items():
-        if not docs:
-            continue
-        meta = THEME_GROUPS.get(theme_key)
-        label = meta["label"] if meta else theme_key.title()
-        try:
-            if len(docs) < 2:
-                raise ValueError("skip_gemini_fallback")
-            insight = _synthesize_theme_insight(label, docs)
-            insights.append(insight)
-        except Exception as exc:
-            logger.warning("Theme agent failed for %s: %s", label, exc)
-            fallback_doc = docs[0]
-            insights.append(
-                Insight(
-                    category=label,
-                    title=f"Key updates in {label}",
-                    detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240],
-                    evidence=[str(doc.url) for doc in docs[:2] if doc.url],
-                )
-            )
+        if docs:
+            tasks.append((theme_key, docs))
+    
+    # Run all theme agents in parallel using threads
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    insights = []
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(_synthesize_single_theme, theme_key, docs, contexts): theme_key
+            for theme_key, docs in tasks
+        }
+        
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if isinstance(result, Insight):
+                    insights.append(result)
+            except Exception as exc:
+                theme_key = futures[future]
+                logger.exception("Theme agent task failed for %s: %s", theme_key, exc)
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info(
         "[snapshot] Theme agents generated %d insights in %.1f ms", len(insights), duration_ms
@@ -537,16 +672,20 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 
 
 graph = StateGraph(SnapshotState)
+graph.add_node("orchestrate_queries", orchestrate_queries)
 graph.add_node("fetch_documents", fetch_documents)
 graph.add_node("label_sentiment", label_sentiment)
 graph.add_node("analyze_enriched", analyze_enriched)
 graph.add_node("theme_agents", theme_agents)
+graph.add_node("augment_context", augment_context)
 graph.add_node("build_snapshot", build_snapshot)
 
-graph.add_edge(START, "fetch_documents")
+graph.add_edge(START, "orchestrate_queries")
+graph.add_edge("orchestrate_queries", "fetch_documents")
 graph.add_edge("fetch_documents", "label_sentiment")
 graph.add_edge("label_sentiment", "analyze_enriched")
-graph.add_edge("analyze_enriched", "theme_agents")
+graph.add_edge("analyze_enriched", "augment_context")
+graph.add_edge("augment_context", "theme_agents")
 graph.add_edge("theme_agents", "build_snapshot")
 graph.add_edge("build_snapshot", END)
 

@@ -50,10 +50,11 @@ async def search_web_documents(
     request: SnapshotRequest,
     *,
     limit: int = 25,
+    custom_query: str | None = None,
 ) -> list[WebDocument]:
     """Call LangSearch using the focus-aware query."""
     client = LangSearchClient()
-    query = build_focus_query(request)
+    query = custom_query or build_focus_query(request)
     web_docs = await client.search(
         query=query,
         focus_areas=request.focus_areas,
