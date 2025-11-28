@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from ...schemas.snapshot import SnapshotRequest, WebDocument
 from ...schemas.social import RawSocialPost
 from ..ingestion.facebook import ApifyRunError, fetch_public_posts
+from ..ingestion.reddit import fetch_public_posts as fetch_reddit_posts
 from ..langsearch import LangSearchClient
 from .tools import (
     build_focus_query,

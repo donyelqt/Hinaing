@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim AS base
+
+# ============ Builder Stage ============
+FROM python:3.11-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     POETRY_VERSION=1.8.3 \
     POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
     PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
@@ -17,6 +19,17 @@ RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --only main --no-root --no-ansi
+
+# ============ Runtime Stage ============
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# Copy only the virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
 
 COPY app ./app
 
