@@ -31,6 +31,33 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 - Low-signal theme buckets skip Gemini ReAct inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
 - This docs folder (`README.md`, `ROADMAP.md`, `THESIS_FINDINGS.md`) now mirrors the live multi-agent flow and flags the upcoming Qdrant-backed RAG Solutions agent.
 
+## Tech Stack
+
+### Backend
+- **Python 3.11+** with **Poetry** for dependency management
+- **FastAPI** – high-performance async web framework
+- **LangChain / LangGraph** – multi-agent orchestration and workflow
+- **LangSmith** – observability and tracing
+- **Google Gemini** (`langchain-google-genai`, `google-generativeai`) – LLM for ReAct agents
+- **Qdrant** – vector database for RAG embeddings
+- **Sentence Transformers** – local embedding generation
+- **Supabase** – database and auth
+- **APScheduler** – background job scheduling
+- **Pydantic** – data validation and settings
+
+### Frontend
+- **Next.js 16** with **React 19** and **TypeScript**
+- **Tailwind CSS** – utility-first styling
+- **SWR** – data fetching and caching
+- **Supabase JS** – client-side database access
+- **Lucide React** – icon library
+
+### DevOps & Tooling
+- **Docker** – containerization
+- **Ruff** – Python linting
+- **ESLint** – TypeScript/JS linting
+- **Pytest** – backend testing
+
 ## Getting Started
 1. Install dependencies via Poetry (backend) and npm (frontend).
 2. Set environment variables for LangSearch + Google Gemini.
