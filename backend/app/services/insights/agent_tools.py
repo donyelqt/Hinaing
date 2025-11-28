@@ -107,7 +107,7 @@ def score_credibility(documents: list[WebDocument]) -> dict[str, float]:
     return notes
 
 
-THEME_GROUPS: dict[str, dict[str, Any]]
+THEME_GROUPS: dict[str, dict[str, Any]] | None = None
 
 
 def set_theme_groups(theme_groups: dict[str, dict[str, Any]]) -> None:
@@ -134,4 +134,9 @@ def route_documents_by_theme(
             keyword_match = any(word in content for word in meta.get("keywords", set()))
             if focus_match or keyword_match:
                 theme_docs[key].append(doc)
+    
+    # Log routing stats for debugging
+    stats = {k: len(v) for k, v in theme_docs.items()}
+    logger.info("[theme_router] Routing stats: %s", stats)
+    
     return theme_docs

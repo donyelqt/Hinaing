@@ -27,6 +27,8 @@ This document tracks what has been delivered so far and the remaining work neede
 - Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
 - `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
 - Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
+- LangSearch retrieval now applies rate-limit resilience with retriable 429 handling, exponential backoff, and constrained concurrency in `agent_tools.search_web_documents` so high-volume snapshots fail gracefully with retries rather than crashing.
+- Theme routing now uses six closer-aligned sub-themes defined in `agent_tools.THEME_GROUPS`, increases per-theme document analysis from 5 to 25, logs routing/insight stats, and prioritizes theme-generated summaries before invoking Gemini with a prompt tuned for balanced coverage.
 - Low-signal theme buckets skip Gemini ReAct inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
 - Documentation (`README.md`, `ROADMAP.md`, `THESIS_FINDINGS.md`) now explicitly mirrors the live multi-agent flow and flags the upcoming Qdrant-backed RAG Solutions agent.
 

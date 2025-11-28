@@ -65,50 +65,87 @@ class SnapshotState(TypedDict, total=False):
 
 
 THEME_GROUPS = {
-    "health_safety": {
-        "label": "Health & Safety",
-        "focus_values": {"health", "safety"},
+    "infrastructure": {
+        "label": "Infrastructure",
+        "focus_values": {"infrastructure"},
+        "keywords": {
+            "road",
+            "traffic",
+            "water",
+            "power",
+            "infrastructure",
+            "bridge",
+            "construction",
+        },
+    },
+    "health": {
+        "label": "Health & Wellness",
+        "focus_values": {"health"},
         "keywords": {
             "hospital",
             "clinic",
             "health",
             "dengue",
             "covid",
+            "medicine",
+            "vaccine",
+            "wellness",
+        },
+    },
+    "safety": {
+        "label": "Public Safety",
+        "focus_values": {"safety"},
+        "keywords": {
             "crime",
             "police",
             "fire",
             "landslide",
             "safety",
+            "accident",
+            "emergency",
+            "security",
         },
     },
-    "infra_env": {
-        "label": "Infrastructure & Environment",
-        "focus_values": {"infrastructure", "environment"},
-        "keywords": {
-            "road",
-            "traffic",
-            "water",
-            "power",
-            "garbage",
-            "infrastructure",
-            "pollution",
-            "environment",
-            "rain",
-        },
-    },
-    "tourism_econ": {
-        "label": "Tourism & Economy",
-        "focus_values": {"tourism", "economy"},
+    "tourism": {
+        "label": "Tourism & Events",
+        "focus_values": {"tourism"},
         "keywords": {
             "tourism",
             "tourist",
             "hotel",
+            "festival",
+            "event",
+            "panagbenga",
+            "visitor",
+        },
+    },
+    "economy": {
+        "label": "Business & Economy",
+        "focus_values": {"economy", "business"},
+        "keywords": {
             "market",
             "vendor",
             "livelihood",
             "economy",
+            "business",
+            "investment",
             "mallification",
             "sm prime",
+            "price",
+        },
+    },
+    "environment": {
+        "label": "Environment",
+        "focus_values": {"environment"},
+        "keywords": {
+            "garbage",
+            "pollution",
+            "environment",
+            "rain",
+            "waste",
+            "tree",
+            "green",
+            "climate",
         },
     },
 }
@@ -175,14 +212,30 @@ async def augment_context(state: SnapshotState) -> SnapshotState:
         logger.info("[snapshot] augment_context skipped (no theme docs)")
         return state
 
+    # Use the shared source of truth from agent_tools to avoid split-brain during reloads
+    from . import agent_tools
+    current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
+    
     request = state["request"]
+
+    # Determine active themes based on focus areas
+    active_themes = set(current_theme_groups.keys())
+    if request.focus_areas:
+        requested_focus = {f.lower() for f in request.focus_areas}
+        matched_themes = {
+            key for key, meta in current_theme_groups.items()
+            if requested_focus & meta.get("focus_values", set())
+        }
+        if matched_themes:
+            active_themes = matched_themes
+
     agent = ContextAugmentationAgent()
     augmented: dict[str, AugmentedContext] = {}
 
     for theme_key, docs in theme_docs.items():
-        if not docs:
+        if not docs or theme_key not in active_themes:
             continue
-        meta = THEME_GROUPS.get(theme_key)
+        meta = current_theme_groups.get(theme_key)
         label = meta["label"] if meta else theme_key.title()
         try:
             context = await agent.augment_context(
@@ -283,54 +336,7 @@ class SnapshotState(TypedDict, total=False):
     snapshot: SnapshotResponse
 
 
-THEME_GROUPS = {
-    "health_safety": {
-        "label": "Health & Safety",
-        "focus_values": {"health", "safety"},
-        "keywords": {
-            "hospital",
-            "clinic",
-            "health",
-            "dengue",
-            "covid",
-            "crime",
-            "police",
-            "fire",
-            "landslide",
-            "safety",
-        },
-    },
-    "infra_env": {
-        "label": "Infrastructure & Environment",
-        "focus_values": {"infrastructure", "environment"},
-        "keywords": {
-            "road",
-            "traffic",
-            "water",
-            "power",
-            "garbage",
-            "infrastructure",
-            "pollution",
-            "environment",
-            "rain",
-        },
-    },
-    "tourism_econ": {
-        "label": "Tourism & Economy",
-        "focus_values": {"tourism", "economy"},
-        "keywords": {
-            "tourism",
-            "tourist",
-            "hotel",
-            "market",
-            "vendor",
-            "livelihood",
-            "economy",
-            "mallification",
-            "sm prime",
-        },
-    },
-}
+
 
 
 def _build_query(request: SnapshotRequest) -> str:
@@ -426,12 +432,14 @@ def _synthesize_single_theme(
     contexts: dict[str, AugmentedContext] | None,
 ) -> Insight | None:
     """Synthesize insight for a single theme."""
-    meta = THEME_GROUPS.get(theme_key)
+    from . import agent_tools
+    current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
+    meta = current_theme_groups.get(theme_key)
     label = meta["label"] if meta else theme_key.title()
     context = (contexts or {}).get(theme_key)
 
     if context and context.relevant_chunks:
-        top_chunks = context.relevant_chunks[:5]
+        top_chunks = context.relevant_chunks[:25]
         top_scores = context.relevance_scores[: len(top_chunks)]
         enriched_docs = [
             {
@@ -443,7 +451,7 @@ def _synthesize_single_theme(
             for chunk, score in zip(top_chunks, top_scores)
         ]
     else:
-        enriched_docs = [doc.model_dump() for doc in docs[:5]]
+        enriched_docs = [doc.model_dump() for doc in docs[:25]]
 
     evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
     try:
@@ -499,19 +507,43 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
     """Run Gemini mini-agents per theme to craft insights in parallel."""
     theme_docs = state.get("theme_documents", {})
     contexts = state.get("augmented_contexts", {})
+    request = state["request"]
     start_time = time.perf_counter()
+
+    from . import agent_tools
+    current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
+
+    # Determine active themes based on focus areas
+    active_themes = set(current_theme_groups.keys())
+    if request.focus_areas:
+        requested_focus = {f.lower() for f in request.focus_areas}
+        # Find themes that have at least one matching focus value
+        matched_themes = {
+            key for key, meta in current_theme_groups.items()
+            if requested_focus & meta.get("focus_values", set())
+        }
+        # If we found matches, strictly filter. If no matches (e.g. "general"), 
+        # we might want to keep all, but here we strictly respect the user's filter 
+        # if they provided specific known categories.
+        if matched_themes:
+            active_themes = matched_themes
+        
+        logger.info(
+            "[snapshot] Filtering themes by focus areas: %s -> %s", 
+            request.focus_areas, active_themes
+        )
 
     # Prepare tasks for parallel execution
     tasks = []
     for theme_key, docs in theme_docs.items():
-        if docs:
+        if docs and theme_key in active_themes:
             tasks.append((theme_key, docs))
     
     # Run all theme agents in parallel using threads
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
     insights = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         futures = {
             executor.submit(_synthesize_single_theme, theme_key, docs, contexts): theme_key
             for theme_key, docs in tasks
@@ -600,8 +632,17 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
         )
     logger.info("[snapshot] Summary text ready: %s", summary_text[:100] if summary_text else "None")
 
+    # Primary: Use theme insights which are already balanced by theme
     insights: list[Insight] = []
-    if insights_payload:
+    theme_fallbacks = state.get("theme_insights") or []
+    
+    if theme_fallbacks:
+        # Use theme insights as primary source (they're already balanced)
+        logger.info("[snapshot] Using %d theme-generated insights", len(theme_fallbacks))
+        insights.extend(theme_fallbacks[:3])
+    elif insights_payload:
+        # Only use Gemini insights if no theme insights available
+        logger.info("[snapshot] Using %d Gemini-generated insights", len(insights_payload))
         for idx, payload in enumerate(insights_payload[:3], start=1):
             try:
                 evidence_raw = payload.get("evidence")
@@ -625,23 +666,21 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 logger.debug("Skipping malformed Gemini insight: %s", exc)
                 continue
     else:
-        theme_fallbacks = state.get("theme_insights") or []
-        if theme_fallbacks:
-            insights.extend(theme_fallbacks[:3])
-        else:
-            for focus in (request.focus_areas or ["Operations"]):
-                related = [doc for doc in docs if focus.lower() in (doc.snippet.lower() + doc.title.lower())]
-                snippet = related[0].snippet if related else (docs[0].snippet if docs else "Residents request timely advisories.")
-                insights.append(
-                    Insight(
-                        category=focus.title(),
-                        title=f"Monitor {focus.title()} developments",
-                        detail=snippet[:240],
-                        evidence=[str(doc.url) for doc in related[:2] if doc.url],
-                    )
+        # Last resort: generate basic insights from focus areas
+        logger.info("[snapshot] Generating fallback insights from focus areas")
+        for focus in (request.focus_areas or ["Operations"]):
+            related = [doc for doc in docs if focus.lower() in (doc.snippet.lower() + doc.title.lower())]
+            snippet = related[0].snippet if related else (docs[0].snippet if docs else "Residents request timely advisories.")
+            insights.append(
+                Insight(
+                    category=focus.title(),
+                    title=f"Monitor {focus.title()} developments",
+                    detail=snippet[:240],
+                    evidence=[str(doc.url) for doc in related[:2] if doc.url],
                 )
-                if len(insights) >= 3:
-                    break
+            )
+            if len(insights) >= 3:
+                break
 
     alerts: list[str] | None = None
     if request.include_alerts and scores["negative"] >= 0.45:

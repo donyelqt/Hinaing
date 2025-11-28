@@ -135,11 +135,14 @@ class GeminiClient:
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
+        num_focus_areas = len(focus_areas) if focus_areas else 1
         return (
             "Summarize public chatter for the Baguio City command center."
             f" Time window: {window}. Focus areas: {focus}."
             " Produce a JSON object with keys summary (<=2 sentences) and insights (array of up to 3 items)."
             " Each insight needs category, title, detail, and optional evidence array."
+            f" IMPORTANT: Generate at least one insight for EACH focus area ({focus})."
+            " Ensure balanced coverage - do not focus only on the most common topic."
             " Cite only from the provided context block and highlight actionable guidance."
         )
 

@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import clsx from "clsx";
-import { 
-  RefreshCw, 
-  Save, 
-  MapPin, 
+import {
+  RefreshCw,
+  Save,
+  MapPin,
   AlertTriangle,
   ExternalLink,
   Loader2,
@@ -90,24 +90,24 @@ const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => 
     const summaryText = typeof parsed.summary === "string" ? parsed.summary : undefined;
     const insights = Array.isArray(parsed.insights)
       ? parsed.insights
-          .map((item: unknown) => {
-            if (typeof item !== "object" || item === null) return null;
-            const record = item as Record<string, unknown>;
-            const evidence = Array.isArray(record.evidence)
-              ? record.evidence.filter((e): e is string => typeof e === "string")
-              : undefined;
+        .map((item: unknown) => {
+          if (typeof item !== "object" || item === null) return null;
+          const record = item as Record<string, unknown>;
+          const evidence = Array.isArray(record.evidence)
+            ? record.evidence.filter((e): e is string => typeof e === "string")
+            : undefined;
 
-            return {
-              category: typeof record.category === "string" ? record.category : undefined,
-              title: typeof record.title === "string" ? record.title : undefined,
-              detail: typeof record.detail === "string" ? record.detail : undefined,
-              evidence,
-            } satisfies DisplayInsight;
-          })
-          .filter(
-            (item: DisplayInsight | null): item is DisplayInsight =>
-              Boolean(item && (item.title || item.detail || item.category)),
-          )
+          return {
+            category: typeof record.category === "string" ? record.category : undefined,
+            title: typeof record.title === "string" ? record.title : undefined,
+            detail: typeof record.detail === "string" ? record.detail : undefined,
+            evidence,
+          } satisfies DisplayInsight;
+        })
+        .filter(
+          (item: DisplayInsight | null): item is DisplayInsight =>
+            Boolean(item && (item.title || item.detail || item.category)),
+        )
       : undefined;
 
     if (!summaryText && !insights) {
@@ -135,7 +135,7 @@ const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | nul
     const isVerified = metadata.is_verified === true || (verification && verification.includes("verified"));
     const flaggedAsFake = Boolean(
       (credibility && ["fake", "hoax", "misinfo", "misinformation", "rumor"].some((flag) => credibility.includes(flag))) ||
-        (verification && ["fake", "misinfo", "unverified", "rumor"].some((flag) => verification.includes(flag))),
+      (verification && ["fake", "misinfo", "unverified", "rumor"].some((flag) => verification.includes(flag))),
     );
 
     if (flaggedAsFake) {
@@ -228,7 +228,16 @@ function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; in
       {insight.evidence && insight.evidence.length ? (
         <ul className="mt-3 space-y-1 list-disc pl-4 text-xs text-slate-500">
           {insight.evidence.map((item, evidenceIndex) => (
-            <li key={evidenceIndex}>{item}</li>
+            <li key={evidenceIndex} className="break-all">
+              <a
+                href={item}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-hinaing-blue-600 hover:underline hover:text-hinaing-blue-700 transition-colors"
+              >
+                {item}
+              </a>
+            </li>
           ))}
         </ul>
       ) : null}
@@ -355,9 +364,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
     <>
       <div className="min-h-screen bg-slate-100">
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-10 lg:py-12 xl:px-16">
-          
-          <Sidebar 
-            onOpenMobileFilters={() => actions.setShowMobileFilters(true)} 
+
+          <Sidebar
+            onOpenMobileFilters={() => actions.setShowMobileFilters(true)}
             activePage={activePage}
             onNavigate={onNavigate}
           />
@@ -610,10 +619,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             </p>
                           </div>
                         </div>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setShowSources(!showSources)}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-hinaing-blue-600 hover:text-hinaing-blue-500 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 rounded" 
+                          className="inline-flex items-center gap-1 text-sm font-medium text-hinaing-blue-600 hover:text-hinaing-blue-500 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 rounded"
                           aria-label="View detailed conversation data"
                         >
                           {showSources ? 'Hide' : 'View'} supporting conversations ({snapshot.sources?.length || 0})
@@ -656,9 +665,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                         )}
                                       </div>
                                       {source.url && (
-                                        <a 
-                                          href={source.url} 
-                                          target="_blank" 
+                                        <a
+                                          href={source.url}
+                                          target="_blank"
                                           rel="noopener noreferrer"
                                           className="inline-flex items-center gap-1 text-hinaing-blue-600 hover:text-hinaing-blue-500 font-medium"
                                         >
@@ -744,7 +753,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className={clsx("h-4 w-72 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                          {['Negative','Neutral','Positive'].map((label) => (
+                          {['Negative', 'Neutral', 'Positive'].map((label) => (
                             <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
                               <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                               <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
@@ -752,7 +761,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           ))}
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-center text-xs">
-                          {['Legit Sources','Potential Fake News'].map((label) => (
+                          {['Legit Sources', 'Potential Fake News'].map((label) => (
                             <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
                               <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
                               <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
@@ -783,7 +792,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             )}
                           </p>
                           <div className="mt-4 grid gap-3 text-[13px] text-slate-500 sm:grid-cols-2">
-                            {['Infrastructure readiness','Community health','Incident response'].map((label) => (
+                            {['Infrastructure readiness', 'Community health', 'Incident response'].map((label) => (
                               <div
                                 key={label}
                                 className={clsx(
@@ -824,7 +833,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
           </main>
         </div>
       </div>
-      
+
       {/* Mobile Filters */}
       <MobileFilters
         showMobileFilters={state.showMobileFilters}
