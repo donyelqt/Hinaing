@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Build version: 2025-11-29-v2
+# Build version: 2025-11-29-v3
 
 # ============ Builder Stage ============
 FROM python:3.11-slim AS builder
@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 COPY pyproject.toml poetry.lock ./
 # Regenerate lock file if pyproject.toml changed, then install
-RUN poetry lock --no-update && poetry install --only main --no-root --no-ansi
+RUN poetry lock && poetry install --only main --no-root --no-ansi
 
 # ============ Runtime Stage ============
 FROM python:3.11-slim AS runtime
