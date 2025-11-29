@@ -362,8 +362,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
   return (
     <>
-      <div className="min-h-screen bg-slate-100">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-10 lg:py-12 xl:px-16">
+      <div className="min-h-screen bg-slate-50 font-sans">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
           <Sidebar
             onOpenMobileFilters={() => actions.setShowMobileFilters(true)}
@@ -391,12 +391,17 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
             </section>
 
             <section className="grid gap-y-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-x-8" role="main" aria-label="Sentiment analysis configuration">
-              <Card className="space-y-6 border border-slate-200 shadow-md p-5 md:p-6 lg:p-8" role="form" aria-labelledby="config-heading">
-                <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <Card className="space-y-8 border-0 shadow-lg shadow-slate-200/50 p-6 md:p-8 rounded-3xl bg-white ring-1 ring-slate-100" role="form" aria-labelledby="config-heading">
+                <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
-                    <h2 id="config-heading" className="text-xl font-semibold text-slate-900 md:text-2xl">Generate Public Sentiment Snapshot</h2>
-                    <p className="text-sm text-slate-500">
-                      Configure data sources and focus areas. The agent will gather the latest public posts, classify sentiment, and surface actionable intelligence for decision-makers.
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                        <Settings className="h-4 w-4" />
+                      </div>
+                      <h2 id="config-heading" className="text-xl font-bold text-slate-900 md:text-2xl">Configuration</h2>
+                    </div>
+                    <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
+                      Configure data sources and focus areas. The agent will gather the latest public posts, classify sentiment, and surface actionable intelligence.
                     </p>
                   </div>
                 </header>
@@ -431,12 +436,12 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 {/* Configuration Sections */}
                 <div className="space-y-6">
                   {/* Quick Start Presets */}
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-hinaing-blue-600">Quick start</span>
+                      <span className="text-xs font-bold uppercase tracking-wide text-violet-600">Quick start</span>
                       <span className="text-xs text-slate-400">Choose a preset to auto-fill filters</span>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       {PRESET_OPTIONS.map((preset) => {
                         const isActive =
                           preset.platforms.every((platform) => state.platforms.includes(platform)) &&
@@ -448,30 +453,28 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             type="button"
                             onClick={() => actions.applyPreset(preset.id)}
                             className={clsx(
-                              "group flex flex-col rounded-xl border p-4 text-left transition-transform duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 hover:-translate-y-0.5",
+                              "group relative flex flex-col rounded-2xl border p-5 text-left transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 hover:-translate-y-1 hover:shadow-md",
                               isActive
-                                ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
+                                ? "border-transparent bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-violet-200 hover:bg-violet-50/30",
                             )}
                             aria-pressed={isActive}
                             aria-describedby={`preset-${preset.id}-desc`}
                           >
-                            <span className="flex items-center justify-between text-sm font-semibold">
+                            <span className="flex items-center justify-between text-sm font-bold">
                               {preset.name}
-                              <span
-                                className={clsx(
-                                  "rounded-full border px-2 py-0.5 text-xs",
-                                  isActive ? "border-white/70 text-white" : "border-slate-200 text-slate-400",
-                                )}
-                              >
-                                Apply
-                              </span>
+                              {isActive && (
+                                <span className="absolute top-4 right-4 flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                                </span>
+                              )}
                             </span>
                             <p
                               id={`preset-${preset.id}-desc`}
                               className={clsx(
-                                "mt-2 text-xs",
-                                isActive ? "text-white/80" : "text-slate-500 group-hover:text-slate-400",
+                                "mt-3 text-xs leading-relaxed",
+                                isActive ? "text-white/80" : "text-slate-500 group-hover:text-slate-600",
                               )}
                             >
                               {preset.description}
@@ -555,6 +558,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 </div>
               </Card>
 
+              {/* Live Preview */}
               {/* Live Preview */}
               <Card className="order-first space-y-6 border border-slate-200 shadow-md p-5 md:order-none md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
