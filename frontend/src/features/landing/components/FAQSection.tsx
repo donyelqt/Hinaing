@@ -3,7 +3,7 @@ import { FAQ_ITEMS } from "../constants";
 export function FAQSection() {
   return (
     <section id="faq" className="bg-white">
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16 xl:px-0">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16 xl:px-8">
         <div className="mb-8 space-y-2 text-center">
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Frequently asked</h2>
           <p className="text-sm text-slate-600 sm:text-base">

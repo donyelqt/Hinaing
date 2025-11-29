@@ -13,7 +13,7 @@ export function LivePreviewSection() {
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-blue-100/50 to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 xl:px-8">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="grid gap-16 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-center">
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">

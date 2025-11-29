@@ -8,7 +8,7 @@ export function ValuePropsSection() {
       {/* Decorative background blob */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-violet-100/40 to-blue-100/40 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="mb-16 max-w-2xl mx-auto text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             What Hinaing gives your team
