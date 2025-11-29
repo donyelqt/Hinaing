@@ -1,10 +1,40 @@
 import logging
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .routers import agent, health, snapshot
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Preload heavy models at startup to avoid OOM during requests."""
+    logger.info("[startup] Preloading ML models...")
+    
+    # Preload RoBERTa sentiment model (prevents OOM on first request)
+    try:
+        from .services.agents.sentiment_agent import get_sentiment_model
+        get_sentiment_model()
+        logger.info("[startup] RoBERTa sentiment model loaded")
+    except Exception as e:
+        logger.warning(f"[startup] Failed to preload sentiment model: {e}")
+    
+    # Preload embedding model for RAG
+    try:
+        from .services.rag.embeddings import get_embedding_service
+        get_embedding_service()
+        logger.info("[startup] Embedding model loaded")
+    except Exception as e:
+        logger.warning(f"[startup] Failed to preload embedding model: {e}")
+    
+    logger.info("[startup] Model preloading complete")
+    yield
+    logger.info("[shutdown] Application shutting down")
 
 
 def create_app() -> FastAPI:
@@ -14,7 +44,7 @@ def create_app() -> FastAPI:
     )
     settings = get_settings()
 
-    app = FastAPI(title=settings.app_name)
+    app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
