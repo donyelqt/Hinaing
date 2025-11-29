@@ -16,7 +16,6 @@ from .tools import (
     filter_by_location,
     filter_by_time_window,
     filter_excluded_sources,
-    score_sentiment,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,10 +81,31 @@ async def fetch_facebook_documents(request: SnapshotRequest) -> list[WebDocument
 
 
 def assign_sentiment(documents: list[WebDocument]) -> list[WebDocument]:
-    """Attach sentiment labels to documents."""
+    """Fallback sentiment assignment using simple heuristics.
+    
+    Note: Primary sentiment analysis uses HybridSentimentAgent (RoBERTa + Gemini).
+    This function is only called as a last-resort fallback.
+    """
+    positive_hints = {"improved", "great", "excellent", "success", "appreciate", "happy", "resolved", "good"}
+    negative_hints = {"delay", "problem", "issue", "concern", "warning", "outage", "flood", "traffic", "risk", "accident", "crime"}
+    
     enriched: list[WebDocument] = []
     for doc in documents:
-        sentiment = doc.sentiment or score_sentiment(doc.snippet)
+        if doc.sentiment:
+            enriched.append(doc)
+            continue
+        
+        text = f"{doc.title} {doc.snippet}".lower()
+        pos_hits = sum(word in text for word in positive_hints)
+        neg_hits = sum(word in text for word in negative_hints)
+        
+        if neg_hits > pos_hits:
+            sentiment = "negative"
+        elif pos_hits > neg_hits:
+            sentiment = "positive"
+        else:
+            sentiment = "neutral"
+        
         enriched.append(doc.model_copy(update={"sentiment": sentiment}))
     return enriched
 

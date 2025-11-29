@@ -8,7 +8,7 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 | Capability | Evidence | Notes |
 | --- | --- | --- |
 | Multi-agent architecture | `backend/app/services/insights/agents.py`, LangGraph workflow in `backend/app/services/insights/graph.py` | Query Orchestrator/Retrieval/Sentiment/Credibility/Theme Router/Context Augmentation agents cooperate via shared `SnapshotState`. |
-| AI-powered sentiment analysis | `backend/app/services/agents/sentiment_agent.py` | Gemini-based classification with batch processing, safety filters disabled for civic news, and rule-based fallback. |
+| Ensemble sentiment analysis | `backend/app/services/agents/sentiment_agent.py` | Full ensemble: RoBERTa (40%) + Gemini (60%) weighted voting for all documents. |
 | Theme-specific LLM reasoning | `backend/app/services/agents/theme_agent.py` | Direct Gemini calls with theme-specific prompts produce JSON insights for each category. |
 | Real-time intelligent search | `agent_tools.search_web_documents` + `fetch_facebook_documents` | Combines LangSearch semantic rerank + Facebook ingestion under the Retrieval Agent. |
 | RAG pipeline | `backend/app/services/rag/` | SemanticChunker → EmbeddingService (MiniLM-L6-v2) → Qdrant VectorStore for context augmentation. |
@@ -18,15 +18,54 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 
 ## Key Findings
 
-### 1. AI-Powered Sentiment Analysis (Nov 29, 2025)
-**Problem**: Rule-based keyword matching was inaccurate for nuanced civic discourse (sarcasm, context-dependent sentiment, mixed opinions).
+### 1. Full Ensemble Sentiment Analysis (Nov 29, 2025)
 
-**Solution**: Implemented `GeminiSentimentAgent` with:
-- Batch processing (5 documents per API call) for efficiency
-- Disabled Gemini safety filters (`BLOCK_NONE`) for legitimate civic news analysis
-- Graceful fallback to enhanced rule-based scoring when Gemini fails
+**Problem**: Single-model approaches (rule-based or LLM-only) had accuracy limitations and cost/speed trade-offs.
+
+**Solution**: Implemented `EnsembleSentimentAgent` combining two models:
+
+| Model | Type | Weight | Strengths |
+|-------|------|--------|-----------|
+| RoBERTa | Transformer | 40% | Fast, trained on 124M tweets, good for social media slang |
+| Gemini | LLM | 60% | Context-aware, understands Baguio civic issues, nuanced |
 
 **Technical Implementation**:
+```python
+# Both models analyze ALL documents
+roberta_probs = roberta.predict_batch_with_probs(texts)  # P(neg, neu, pos)
+gemini_probs = gemini.analyze_all(documents)             # P(neg, neu, pos)
+
+# Weighted combination
+combined = {
+    "negative": (0.4 * roberta["negative"]) + (0.6 * gemini["negative"]),
+    "neutral":  (0.4 * roberta["neutral"])  + (0.6 * gemini["neutral"]),
+    "positive": (0.4 * roberta["positive"]) + (0.6 * gemini["positive"]),
+}
+
+# Final prediction = argmax
+final_label = max(combined, key=combined.get)
+```
+
+**Why Full Ensemble over Hybrid**:
+- Hybrid: RoBERTa for all, Gemini only for uncertain (~20%)
+- Full Ensemble: Both models for ALL documents
+- Trade-off: Slightly slower, but higher accuracy and richer metadata for thesis
+
+**Metadata Captured Per Document**:
+```python
+{
+    "sentiment": "negative",
+    "sentiment_confidence": 0.79,
+    "sentiment_method": "ensemble",
+    "roberta_prediction": "negative",
+    "roberta_confidence": 0.70,
+    "gemini_prediction": "negative",
+    "gemini_confidence": 0.85,
+    "model_agreement": "full_agreement",  # or "roberta_dominant", "gemini_dominant"
+}
+```
+
+**Safety Filter Configuration**:
 ```python
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -36,10 +75,10 @@ SAFETY_SETTINGS = {
 }
 ```
 
-**Rationale**: Civic news often contains reports about crimes, accidents, protests, and public complaints. Gemini's default safety filters incorrectly blocked this legitimate content. Disabling filters is appropriate because:
+**Rationale for Disabled Safety Filters**: Civic news contains reports about crimes, accidents, protests. Gemini's default filters incorrectly blocked legitimate content. Disabling is appropriate because:
 - Content is factual news reporting, not harmful user-generated content
-- The system analyzes public sentiment, not generates harmful content
-- Fallback mechanisms ensure reliability when API issues occur
+- System analyzes sentiment, not generates harmful content
+- Fallback mechanisms ensure reliability
 
 ### 2. Agent Modularity Speeds Iteration
 New logic (e.g., classifiers, RAG solutions agent) can be introduced by swapping an agent node without rewriting the entire pipeline.
@@ -54,22 +93,22 @@ The Retrieval Agent fans out to both; adding more connectors (e.g., Reddit, X) r
 Context Augmentation Agent uses semantic chunking + vector search to provide relevant context to theme agents.
 
 ## Latest Evidence (Nov 29, 2025)
-- **AI-Powered Sentiment Agent**: Replaced rule-based keyword matching with `GeminiSentimentAgent`. Processes documents in batches of 5, uses disabled safety filters for civic news, falls back to enhanced rule-based scoring.
-- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
-- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
-- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
-- LangSearch usage now includes rate-limit resilience with retries, exponential backoff, and constrained concurrency.
-- Theme routing now relies on six refined categories (from `agent_tools.THEME_GROUPS`), raises per-theme document analysis to 25, logs routing/insight stats.
-- Low-signal theme buckets skip Gemini inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
+- **Full Ensemble Sentiment Agent**: Both RoBERTa and Gemini analyze ALL documents with weighted voting (40%/60%). Provides rich metadata including both predictions, confidence scores, and model agreement status.
+- Added per-agent latency logging for thesis benchmarking.
+- `analyze_enriched` dispatches CredibilityAgent and ThemeRouterAgent concurrently.
+- Retrieval concurrency tightened with LangSearch + Facebook futures together.
+- LangSearch includes rate-limit resilience with retries and exponential backoff.
+- Theme routing uses six refined categories, 25 docs per theme analysis.
 
 ## Gaps & Next Steps
-- ✅ ~~Integrate AI-based sentiment model~~ (Completed: GeminiSentimentAgent)
-- Integrate fine-tuned credibility models to replace heuristic scoring.
-- Add the planned RAG Solutions agent backed by Qdrant for recommendation grounding.
-- Switch Qdrant from in-memory to persistent storage for production.
-- Export the new per-agent telemetry (latency, doc counts, confidence) to dashboards + tracing for thesis evaluation.
-- Document the end-to-end agent flow in an architecture diagram for the dissertation.
-- Add Reddit integration (code exists in `backend/app/services/ingestion/reddit.py` but not wired).
+- ✅ ~~Integrate AI-based sentiment model~~ (Completed: Ensemble RoBERTa + Gemini)
+- Tune ensemble weights based on validation set performance
+- Integrate fine-tuned credibility models to replace heuristic scoring
+- Add the planned RAG Solutions agent backed by Qdrant
+- Switch Qdrant from in-memory to persistent storage for production
+- Export per-agent telemetry to dashboards for thesis evaluation
+- Document end-to-end agent flow in architecture diagram
+- Add Reddit integration (code exists but not wired)
 
 ## Architecture Flow
 ```
@@ -79,7 +118,10 @@ orchestrate_queries (QueryOrchestratorAgent)
        ↓
 fetch_documents (RetrievalAgent → LangSearch + Facebook → Rerank)
        ↓
-label_sentiment (SentimentAgent - Gemini AI)
+label_sentiment (EnsembleSentimentAgent)
+       ├── RoBERTa (all docs) → probabilities
+       ├── Gemini (all docs) → probabilities
+       └── Weighted Voting → final labels
        ↓
 analyze_enriched (CredibilityAgent ∥ ThemeRouterAgent) ← parallel
        ↓
@@ -91,5 +133,13 @@ build_snapshot (GeminiClient narrative + assembly)
        ↓
 SnapshotResponse
 ```
+
+## Novel Contributions
+
+1. **Weighted Ensemble of Transformer + LLM**: Combines fast transformer classification with context-aware LLM verification through probability-based voting.
+
+2. **Multi-Agent Agentic RAG**: 8+ specialized agents orchestrated via LangGraph with theme-specific RAG context augmentation.
+
+3. **Domain-Specific Application**: First real-time civic sentiment analysis system for Baguio City, Philippines.
 
 Keeping this doc updated will make it easier to demonstrate thesis impact during defenses and publications.

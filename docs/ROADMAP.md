@@ -13,44 +13,51 @@ This document tracks what has been delivered so far and the remaining work neede
 - Documented sentiment/credibility computations and long-term accuracy roadmap in `frontend/README.md`.
 
 ### Backend
-- LangGraph workflow now integrates dedicated Retrieval, Sentiment, Credibility, and Theme Router agents plus theme-specific Gemini ReAct mini-agents—i.e., the multi-agent stack is live in production.
-- Authored `backend/README.md` with detailed plans for sentiment/credibility classifier upgrades, observability, and governance.
+- LangGraph workflow now integrates dedicated Retrieval, Sentiment, Credibility, and Theme Router agents plus theme-specific Gemini mini-agents—i.e., the multi-agent stack is live in production.
+- **Full Ensemble Sentiment Agent**: RoBERTa transformer + Gemini LLM analyze ALL documents with weighted voting (40%/60%) for maximum accuracy.
 - Integrated LangSearch Semantic Rerank API + Facebook ingestion into the retrieval agent so snapshots already leverage real-time intelligent search across multiple platforms.
 - Instrumented per-agent latency logging (retrieval, sentiment, enrichment, theme agents) and added selective Gemini skipping for low-document themes to cut wasted LLM time.
-- Parallelized `analyze_enriched` (Credibility + Theme Router) via `asyncio.gather`, tightened LangSearch + Facebook concurrency inside `RetrievalAgent.run`, and kept deterministic fallbacks for low-signal themes when Gemini ReAct is skipped.
+- Parallelized `analyze_enriched` (Credibility + Theme Router) via `asyncio.gather`, tightened LangSearch + Facebook concurrency inside `RetrievalAgent.run`.
 
 ### Documentation
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
-- Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow and upcoming Qdrant-backed RAG Solutions agent.
+- Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
 
 ## 🔄 Latest Updates (Nov 29, 2025)
-- **AI-Powered Sentiment Agent**: Replaced rule-based keyword matching with `GeminiSentimentAgent` for accurate sentiment classification. Uses batch processing (5 docs per API call), disabled safety filters for civic news, and graceful fallback to enhanced rule-based scoring.
-- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
-- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
-- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together in `backend/app/services/insights/agents.py:RetrievalAgent.run`, then conditionally reranking via `LangSearchClient` when both sources return context.
-- LangSearch retrieval now applies rate-limit resilience with retriable 429 handling, exponential backoff, and constrained concurrency.
-- Theme routing now uses six closer-aligned sub-themes defined in `agent_tools.THEME_GROUPS`, increases per-theme document analysis from 5 to 25, logs routing/insight stats.
-- Low-signal theme buckets skip Gemini inside `theme_agents`/`_synthesize_theme_insight`, falling back to deterministic summaries when a cluster has <2 docs.
-- Documentation (`README.md`, `ROADMAP.md`, `THESIS_FINDINGS.md`) now explicitly mirrors the live multi-agent flow.
+- **Full Ensemble Sentiment Agent**: Upgraded from hybrid (selective Gemini) to full ensemble approach:
+  - RoBERTa (`twitter-roberta-base-sentiment`) analyzes ALL documents → probability distribution
+  - Gemini LLM analyzes ALL documents → probability distribution
+  - Weighted voting combines predictions (40% RoBERTa + 60% Gemini)
+  - Rich metadata: both predictions, confidence scores, model agreement status
+- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` for thesis benchmarking.
+- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`.
+- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together.
+- LangSearch retrieval now applies rate-limit resilience with retriable 429 handling, exponential backoff.
+- Theme routing uses six refined categories, increases per-theme document analysis to 25 docs.
+- Low-signal theme buckets skip Gemini, falling back to deterministic summaries when cluster has <2 docs.
 
 ## 🚧 In Progress / Near-Term TODOs
 
-1. **LLM/classifier alignment**
-   - ✅ Sentiment Agent now uses Gemini for AI-powered classification (completed Nov 29, 2025).
+1. **Sentiment Ensemble Optimization**
+   - ✅ Full ensemble with RoBERTa + Gemini (completed Nov 29, 2025)
+   - Tune ensemble weights based on validation set performance
+   - Add confidence calibration for probability outputs
+
+2. **Credibility Enhancement**
    - Plug fine-tuned credibility models into the agent pipeline.
    - Emit `confidence`, `model_version`, and `credibility_breakdown` directly in `/insights/snapshot`.
 
-2. **Calibration & QA assets**
+3. **Calibration & QA assets**
    - Assemble labeled validation sets for both sentiment and credibility.
-   - Define acceptance thresholds (precision/recall, false-positive rate) and automate reporting after each retrain.
+   - Define acceptance thresholds (precision/recall, false-positive rate) and automate reporting.
 
-3. **Observability & performance**
-   - Export the new per-agent latency & doc-count metrics to the observability stack (Prometheus/LangSmith) with dashboards.
-   - Configure alerts for drift, low confidence, or inadequate sample coverage; profile agent latency and consider lightweight Gemini caching for hotspots.
+4. **Observability & performance**
+   - Export per-agent latency & doc-count metrics to observability stack (Prometheus/LangSmith).
+   - Configure alerts for drift, low confidence, or inadequate sample coverage.
 
-4. **Documentation expansion**
+5. **Documentation expansion**
    - Create `docs/model-log.md` with model versions, dataset hashes, confusion matrices.
-   - Add updated architecture diagrams showing the current multi-agent workflow and planned RAG additions.
+   - Add updated architecture diagrams showing ensemble sentiment flow.
 
 ## 🧭 Longer-Term Roadmap
 

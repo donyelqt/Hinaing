@@ -104,9 +104,6 @@ EXCLUDED_DOMAINS = {
     "pinterest.com",
 }
 
-POSITIVE_HINTS = {"improved", "great", "excellent", "success", "appreciate", "happy", "resolved"}
-NEGATIVE_HINTS = {"delay", "problem", "issue", "concern", "warning", "outage", "flood", "traffic", "risk"}
-
 
 def build_focus_query(request: SnapshotRequest) -> str:
     """Construct a LangSearch-ready query based on selected focus areas."""
@@ -175,14 +172,3 @@ def filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
             continue
         filtered.append(doc)
     return filtered
-
-
-def score_sentiment(text: str) -> str:
-    lowered = text.lower()
-    pos_hits = sum(word in lowered for word in POSITIVE_HINTS)
-    neg_hits = sum(word in lowered for word in NEGATIVE_HINTS)
-    if neg_hits > pos_hits:
-        return "negative"
-    if pos_hits > neg_hits:
-        return "positive"
-    return "neutral"
