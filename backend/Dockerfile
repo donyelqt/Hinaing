@@ -18,7 +18,8 @@ RUN apt-get update \
 RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --only main --no-root --no-ansi
+# Regenerate lock file if pyproject.toml changed, then install
+RUN poetry lock --no-update && poetry install --only main --no-root --no-ansi
 
 # ============ Runtime Stage ============
 FROM python:3.11-slim AS runtime
