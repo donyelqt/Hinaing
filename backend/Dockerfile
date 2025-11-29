@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# Build version: 2025-11-29-v2
 
 # ============ Builder Stage ============
 FROM python:3.11-slim AS builder
