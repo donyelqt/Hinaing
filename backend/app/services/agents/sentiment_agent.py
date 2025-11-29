@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Literal
@@ -37,6 +38,30 @@ ROBERTA_WEIGHT = 0.4   # Transformer model weight
 GEMINI_WEIGHT = 0.6    # LLM weight (higher because context-aware)
 
 
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break APIs.
+    
+    The character \ud835 and similar surrogates cause:
+    - UnicodeEncodeError in Gemini API
+    - Tokenizer errors in transformers
+    - JSON serialization failures
+    """
+    if not text:
+        return ""
+    
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    # These are invalid in UTF-8 and break most APIs
+    cleaned = re.sub(r'[\ud800-\udfff]', '', text)
+    
+    # Also remove other problematic characters
+    # - Control characters except newline/tab
+    # - Zero-width characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    
+    return cleaned.strip()
+
+
 class RoBERTaSentimentModel:
     """RoBERTa fine-tuned on 124M tweets for social media sentiment."""
     
@@ -51,58 +76,50 @@ class RoBERTaSentimentModel:
         
         # Model outputs: 0=negative, 1=neutral, 2=positive
         self.label_map = {0: "negative", 1: "neutral", 2: "positive"}
-        self.label_to_idx = {"negative": 0, "neutral": 1, "positive": 2}
         
         logger.info("RoBERTa sentiment model loaded")
-    
-    def predict_with_probs(self, text: str) -> dict[str, float]:
-        """Get probability distribution over all classes."""
-        inputs = self.tokenizer(
-            text[:512],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-            padding=True,
-        )
-        
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)[0]
-        
-        return {
-            "negative": probs[0].item(),
-            "neutral": probs[1].item(),
-            "positive": probs[2].item(),
-        }
     
     def predict_batch_with_probs(self, texts: list[str]) -> list[dict[str, float]]:
         """Get probability distributions for batch of texts."""
         if not texts:
             return []
         
-        truncated = [t[:512] for t in texts]
+        # Sanitize and validate texts
+        sanitized = []
+        for t in texts:
+            clean = sanitize_text(t)
+            # Ensure non-empty string for tokenizer
+            if not clean:
+                clean = "neutral content"
+            sanitized.append(clean[:512])
         
-        inputs = self.tokenizer(
-            truncated,
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-            padding=True,
-        )
-        
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        
-        results = []
-        for prob in probs:
-            results.append({
-                "negative": prob[0].item(),
-                "neutral": prob[1].item(),
-                "positive": prob[2].item(),
-            })
-        
-        return results
+        try:
+            inputs = self.tokenizer(
+                sanitized,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True,
+            )
+            
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            
+            results = []
+            for prob in probs:
+                results.append({
+                    "negative": prob[0].item(),
+                    "neutral": prob[1].item(),
+                    "positive": prob[2].item(),
+                })
+            
+            return results
+            
+        except Exception as e:
+            logger.warning(f"RoBERTa batch failed: {e}")
+            # Return neutral for all on failure
+            return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(texts)
 
 
 @lru_cache(maxsize=1)
@@ -112,18 +129,7 @@ def get_sentiment_model() -> RoBERTaSentimentModel:
 
 
 class EnsembleSentimentAgent:
-    """Full Ensemble: RoBERTa + Gemini analyze ALL documents.
-    
-    Strategy:
-    1. RoBERTa analyzes all docs → probability distribution
-    2. Gemini analyzes all docs → probability distribution  
-    3. Weighted ensemble combines both predictions
-    4. Final label = argmax of combined probabilities
-    
-    This maximizes accuracy by leveraging:
-    - RoBERTa: Fast, trained on social media, good at slang/informal
-    - Gemini: Context-aware, understands Baguio civic issues
-    """
+    """Full Ensemble: RoBERTa + Gemini analyze ALL documents."""
     
     def __init__(self):
         settings = get_settings()
@@ -147,15 +153,21 @@ class EnsembleSentimentAgent:
         
         logger.info(f"[EnsembleSentimentAgent] Analyzing {len(documents)} documents with full ensemble")
         
-        texts = [f"{doc.title}. {doc.snippet}"[:512] for doc in documents]
+        # Sanitize texts before processing
+        texts = []
+        for doc in documents:
+            title = sanitize_text(doc.title)
+            snippet = sanitize_text(doc.snippet)
+            texts.append(f"{title}. {snippet}"[:512])
         
-        # Step 1: Get RoBERTa probabilities (fast, local)
-        logger.info("[EnsembleSentimentAgent] Running RoBERTa...")
-        roberta_probs = self.roberta.predict_batch_with_probs(texts)
-        
-        # Step 2: Get Gemini probabilities (parallel API calls)
-        logger.info("[EnsembleSentimentAgent] Running Gemini...")
-        gemini_probs = self._gemini_analyze_all(documents)
+        # Run RoBERTa and Gemini in PARALLEL for speed
+        logger.info("[EnsembleSentimentAgent] Running RoBERTa + Gemini in parallel...")
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            roberta_future = executor.submit(self.roberta.predict_batch_with_probs, texts)
+            gemini_future = executor.submit(self._gemini_analyze_all, documents)
+            
+            roberta_probs = roberta_future.result()
+            gemini_probs = gemini_future.result()
         
         # Step 3: Combine predictions with weighted ensemble
         enriched: list[WebDocument] = []
@@ -171,11 +183,9 @@ class EnsembleSentimentAgent:
                 "positive": (ROBERTA_WEIGHT * r_probs["positive"]) + (GEMINI_WEIGHT * g_probs["positive"]),
             }
             
-            # Final prediction = highest combined probability
             final_label = max(combined, key=combined.get)
             final_confidence = combined[final_label]
             
-            # Determine agreement
             roberta_label = max(r_probs, key=r_probs.get)
             gemini_label = max(g_probs, key=g_probs.get)
             
@@ -188,7 +198,6 @@ class EnsembleSentimentAgent:
             else:
                 agreement = "ensemble_decision"
             
-            # Detect source type
             source_type = self._detect_source_type(doc)
             
             enriched.append(doc.model_copy(update={
@@ -206,9 +215,7 @@ class EnsembleSentimentAgent:
                 }
             }))
         
-        # Log distribution
         self._log_distribution(enriched)
-        
         return enriched
     
     def _gemini_analyze_all(self, documents: list[WebDocument]) -> list[dict[str, float]]:
@@ -227,7 +234,10 @@ class EnsembleSentimentAgent:
         doc_entries = []
         for idx, doc in enumerate(batch):
             source_type = self._detect_source_type(doc)
-            text = f"{doc.title}. {doc.snippet}"[:250].replace('"', "'")
+            # Sanitize text before sending to Gemini
+            title = sanitize_text(doc.title)
+            snippet = sanitize_text(doc.snippet)
+            text = f"{title}. {snippet}"[:250].replace('"', "'")
             doc_entries.append(f"{idx}. [{source_type.upper()}] {text}")
         
         docs_block = "\n".join(doc_entries)
@@ -275,7 +285,6 @@ Return JSON array with sentiment AND confidence for each:
         elif "```" in text:
             text = text.split("```")[1].split("```")[0].strip()
         
-        # Default uniform distribution
         default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
         results = [default_probs.copy() for _ in range(expected_count)]
         
@@ -289,9 +298,7 @@ Return JSON array with sentiment AND confidence for each:
                         confidence = item.get("confidence", 0.7)
                         
                         if 0 <= idx < expected_count and sentiment in ("positive", "negative", "neutral"):
-                            # Convert single prediction to probability distribution
-                            # High confidence for predicted class, split remainder
-                            confidence = min(max(confidence, 0.4), 0.95)  # Clamp to reasonable range
+                            confidence = min(max(confidence, 0.4), 0.95)
                             remainder = (1.0 - confidence) / 2
                             
                             probs = {

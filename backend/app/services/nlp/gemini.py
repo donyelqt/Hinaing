@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from typing import Any, Callable
 
 import google.generativeai as genai
@@ -13,6 +14,18 @@ from ...core.config import get_settings
 from ..agents.gemini import run_gemini_agent
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break Gemini API."""
+    if not text:
+        return ""
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', str(text))
+    # Remove control characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    return cleaned.strip()
 
 
 class GeminiClient:
@@ -48,8 +61,8 @@ class GeminiClient:
             )
             parsed = self._try_parse_json(agent_output)
             if parsed is not None:
-                summary = parsed.get("summary")
-                insights = parsed.get("insights") or []
+                summary = sanitize_text(parsed.get("summary"))
+                insights = self._sanitize_insights(parsed.get("insights") or [])
                 return summary, insights
         except Exception:
             logger.exception("Gemini agent execution failed")
@@ -63,6 +76,25 @@ class GeminiClient:
             focus_areas=focus_areas,
             documents=documents,
         )
+
+    def _sanitize_insights(self, insights: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Sanitize all text fields in insights to remove surrogates."""
+        sanitized = []
+        for item in insights:
+            if not isinstance(item, dict):
+                continue
+            clean_item = {
+                "category": sanitize_text(item.get("category")),
+                "title": sanitize_text(item.get("title")),
+                "detail": sanitize_text(item.get("detail")),
+            }
+            evidence = item.get("evidence")
+            if isinstance(evidence, list):
+                clean_item["evidence"] = [sanitize_text(str(e)) for e in evidence]
+            elif isinstance(evidence, str):
+                clean_item["evidence"] = [sanitize_text(evidence)]
+            sanitized.append(clean_item)
+        return sanitized
 
     async def _run_direct_generation(
         self,
@@ -98,10 +130,10 @@ class GeminiClient:
 
         parsed = self._try_parse_json(raw_text)
         if parsed is None:
-            return raw_text.strip(), []
+            return sanitize_text(raw_text.strip()), []
 
-        summary = parsed.get("summary")
-        insights = parsed.get("insights") or []
+        summary = sanitize_text(parsed.get("summary"))
+        insights = self._sanitize_insights(parsed.get("insights") or [])
         return summary, insights
 
     def _build_prompt(
@@ -115,8 +147,11 @@ class GeminiClient:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         doc_lines = []
         for idx, doc in enumerate(documents[:10], start=1):
+            title = sanitize_text(doc.get('title'))
+            snippet = sanitize_text(doc.get('snippet'))
+            sentiment = doc.get('sentiment', 'neutral')
             doc_lines.append(
-                f"{idx}. Title: {doc.get('title')} | Snippet: {doc.get('snippet')} | Sentiment: {doc.get('sentiment')}"
+                f"{idx}. Title: {title} | Snippet: {snippet} | Sentiment: {sentiment}"
             )
         context_block = "\n".join(doc_lines) or "No documents available."
         plan_section = plan.strip() if plan else "1. Review documents\n2. Extract key signals\n3. Draft JSON summary"
@@ -150,7 +185,7 @@ class GeminiClient:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         doc_sample = documents[:5]
         doc_summaries = "\n".join(
-            f"- {doc.get('title')}: {doc.get('snippet')}" for doc in doc_sample
+            f"- {sanitize_text(doc.get('title'))}: {sanitize_text(doc.get('snippet'))}" for doc in doc_sample
         ) or "- No documents available"
 
         return (

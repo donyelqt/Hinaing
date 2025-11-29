@@ -12,6 +12,18 @@ from ...schemas.snapshot import WebDocument
 logger = logging.getLogger(__name__)
 
 
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break tokenizers."""
+    if not text:
+        return ""
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', text)
+    # Remove control characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    return cleaned.strip()
+
+
 class SemanticChunker:
     """Intelligent document chunking with overlap for context continuity."""
     
@@ -68,9 +80,9 @@ class SemanticChunker:
         Returns:
             List of chunks from this document
         """
-        # Build full text
-        title = document.title or ""
-        snippet = document.snippet or ""
+        # Build full text with sanitization
+        title = sanitize_text(document.title)
+        snippet = sanitize_text(document.snippet)
         full_text = f"{title}. {snippet}".strip()
         
         if not full_text or len(full_text) < self.min_chunk_size:

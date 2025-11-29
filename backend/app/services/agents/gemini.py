@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from langchain.agents import AgentExecutor, create_react_agent
@@ -12,6 +13,18 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from ...core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break Gemini API."""
+    if not text:
+        return ""
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', str(text))
+    # Remove control characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    return cleaned.strip()
 
 
 def _mock_weather(city: str) -> str:
@@ -129,10 +142,11 @@ def run_gemini_agent(
 ) -> str:
     executor = get_gemini_agent()
     if documents:
-        doc_lines = [
-            f"- {doc.get('title', 'Untitled')} :: {doc.get('snippet', '')[:180]}"
-            for doc in documents[:5]
-        ]
+        doc_lines = []
+        for doc in documents[:5]:
+            title = sanitize_text(doc.get('title', 'Untitled'))
+            snippet = sanitize_text(doc.get('snippet', ''))[:180]
+            doc_lines.append(f"- {title} :: {snippet}")
         context_block = "\n".join(doc_lines)
         instructions = system_instruction or (
             "You are a civic operations analyst for Baguio City."
@@ -140,15 +154,19 @@ def run_gemini_agent(
             " 'insights' (array of up to 3 objects with category/title/detail/evidence array)."
             " Use tools if needed before answering."
         )
+        # Sanitize the message and context
+        safe_message = sanitize_text(message)
+        safe_context = sanitize_text(context_block)
         input_payload = (
-            f"{instructions}\n\nQuestion:\n{message}\n\nContext documents:\n{context_block}\n"
+            f"{instructions}\n\nQuestion:\n{safe_message}\n\nContext documents:\n{safe_context}\n"
         )
     else:
         instructions = system_instruction or (
             "You are a civic operations analyst for Baguio City."
             " Respond with JSON containing summary + insights as described."
         )
-        input_payload = f"{instructions}\n\nQuestion:\n{message}"
+        safe_message = sanitize_text(message)
+        input_payload = f"{instructions}\n\nQuestion:\n{safe_message}"
 
     result = executor.invoke({"input": input_payload})
     output = result.get("output")

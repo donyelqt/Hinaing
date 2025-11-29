@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 import google.generativeai as genai
@@ -10,6 +11,18 @@ import google.generativeai as genai
 from ...core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break Gemini API."""
+    if not text:
+        return ""
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', text)
+    # Remove control characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    return cleaned.strip()
 
 
 def run_theme_agent(
@@ -26,11 +39,12 @@ def run_theme_agent(
     genai.configure(api_key=settings.gemini_api_key)
     model = genai.GenerativeModel("gemini-2.0-flash-exp")
     
-    # Build context
-    doc_lines = [
-        f"- {doc.get('title', 'Untitled')}: {doc.get('snippet', '')[:200]}"
-        for doc in documents[:5]
-    ]
+    # Build context with sanitized text
+    doc_lines = []
+    for doc in documents[:5]:
+        title = sanitize_text(doc.get('title', 'Untitled'))
+        snippet = sanitize_text(doc.get('snippet', ''))[:200]
+        doc_lines.append(f"- {title}: {snippet}")
     context_block = "\n".join(doc_lines)
     
     # Theme-specific focus
@@ -78,20 +92,37 @@ JSON:"""
             )
         )
         
-        output = response.text.strip()
+        # Sanitize output to remove surrogates that break JSON serialization
+        output = sanitize_text(response.text)
         logger.info(f"[Direct Gemini] Completed for '{theme_label}'")
         
         # Validate JSON
         try:
-            json.loads(output)
-            return output
+            parsed = json.loads(output)
+            # Sanitize all string fields in the parsed JSON
+            sanitized = {
+                "title": sanitize_text(parsed.get("title", "")),
+                "detail": sanitize_text(parsed.get("detail", "")),
+                "evidence": [sanitize_text(str(e)) for e in parsed.get("evidence", []) if e],
+            }
+            return json.dumps(sanitized)
         except json.JSONDecodeError:
             # Extract JSON if wrapped in markdown
             if "```json" in output:
                 output = output.split("```json")[1].split("```")[0].strip()
             elif "```" in output:
                 output = output.split("```")[1].split("```")[0].strip()
-            return output
+            # Try parsing again after extraction
+            try:
+                parsed = json.loads(output)
+                sanitized = {
+                    "title": sanitize_text(parsed.get("title", "")),
+                    "detail": sanitize_text(parsed.get("detail", "")),
+                    "evidence": [sanitize_text(str(e)) for e in parsed.get("evidence", []) if e],
+                }
+                return json.dumps(sanitized)
+            except json.JSONDecodeError:
+                return output
             
     except Exception as e:
         logger.error(f"[Direct Gemini] Failed for '{theme_label}': {e}")

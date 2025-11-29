@@ -6,9 +6,22 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from functools import lru_cache
 
 import torch
+
+
+def sanitize_text(text: str | None) -> str:
+    """Remove invalid Unicode characters (surrogates) that break tokenizers."""
+    if not text:
+        return ""
+    # Remove surrogate characters (U+D800 to U+DFFF)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', text)
+    # Remove control characters
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+    cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+    return cleaned.strip() or "empty"
 
 # Optimize CPU threading for Railway containers (typically 1-2 vCPUs)
 CPU_THREADS = int(os.getenv("EMBEDDING_CPU_THREADS", "2"))
@@ -93,14 +106,17 @@ class EmbeddingService:
         """
         if not texts:
             return []
+        
+        # Sanitize all texts to remove invalid Unicode
+        sanitized_texts = [sanitize_text(t) for t in texts]
             
-        logger.info(f"Embedding {len(texts)} texts in batches of {batch_size}")
+        logger.info(f"Embedding {len(sanitized_texts)} texts in batches of {batch_size}")
         
         with torch.inference_mode():
             embeddings = self._model.encode(
-                texts,
+                sanitized_texts,
                 batch_size=batch_size,
-                show_progress_bar=len(texts) > 100,
+                show_progress_bar=len(sanitized_texts) > 100,
                 convert_to_numpy=True,
                 normalize_embeddings=True,
             )
