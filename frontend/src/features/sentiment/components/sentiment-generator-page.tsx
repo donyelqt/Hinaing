@@ -10,7 +10,9 @@ import {
   ExternalLink,
   Loader2,
   BarChart3,
-  Settings
+  Settings,
+  Menu,
+  X
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
@@ -254,6 +256,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [showSources, setShowSources] = React.useState(false);
   const [animatedSummary, setAnimatedSummary] = React.useState("");
   const [isTypingSummary, setIsTypingSummary] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   React.useEffect(() => {
     apiGet<{ status: string }>("/health")
@@ -362,13 +365,30 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
   return (
     <>
+      {/* Fixed Hamburger Menu at Top Right - Mobile Only */}
+      <button
+        type="button"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+        aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isSidebarOpen}
+      >
+        {isSidebarOpen ? (
+          <X className="h-6 w-6" aria-hidden="true" />
+        ) : (
+          <Menu className="h-6 w-6" aria-hidden="true" />
+        )}
+      </button>
+
       <div className="min-h-screen bg-slate-50 font-sans">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
           <Sidebar
             onOpenMobileFilters={() => actions.setShowMobileFilters(true)}
             activePage={activePage}
             onNavigate={onNavigate}
+            isSidebarOpen={isSidebarOpen}
+            onCloseSidebar={() => setIsSidebarOpen(false)}
           />
 
           {/* Main Content */}
@@ -391,7 +411,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
             </section>
 
             <section className="grid gap-y-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-x-8" role="main" aria-label="Sentiment analysis configuration">
-              <Card className="space-y-8 border-0 shadow-lg shadow-slate-200/50 p-6 md:p-8 rounded-3xl bg-white ring-1 ring-slate-100" role="form" aria-labelledby="config-heading">
+              <Card className="space-y-8 border-x-0 border-y border-slate-200 shadow-sm p-5 md:border md:shadow-lg md:shadow-slate-200/50 md:p-8 md:rounded-3xl bg-white ring-0 md:ring-1 md:ring-slate-100" role="form" aria-labelledby="config-heading">
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -560,7 +580,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
               {/* Live Preview */}
               {/* Live Preview */}
-              <Card className="order-first space-y-6 border border-slate-200 shadow-md p-5 md:order-none md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
+              <Card className="space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 md:border md:rounded-xl md:shadow-md md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-sm text-slate-500">
