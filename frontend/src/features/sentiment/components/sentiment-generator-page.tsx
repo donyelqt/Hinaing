@@ -392,7 +392,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
           />
 
           {/* Main Content */}
-          <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-10 xl:gap-12">
+          <main className="order-1 flex w-full min-w-0 flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-10 xl:gap-12">
             <section className="space-y-4">
               <HeroSection
                 selectedWindowLabel={computed.selectedWindowLabel}
@@ -580,7 +580,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
               {/* Live Preview */}
               {/* Live Preview */}
-              <Card className="space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 md:border md:rounded-xl md:shadow-md md:p-6 lg:max-w-md" role="region" aria-labelledby="preview-heading">
+              <Card className="mx-auto w-full max-w-md space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 sm:mx-0 sm:max-w-none md:max-w-md md:border md:rounded-xl md:shadow-md md:p-6" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-sm text-slate-500">
