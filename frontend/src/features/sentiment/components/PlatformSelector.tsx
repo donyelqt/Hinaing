@@ -17,29 +17,34 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms }: Platform
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORM_OPTIONS.map((option) => {
           const isActive = platforms.includes(option.value);
+          const isDisabled = option.value === "facebook";
           return (
             <button
               key={option.value}
               type="button"
-              onClick={() => onToggle(option.value, setPlatforms)}
+              onClick={() => !isDisabled && onToggle(option.value, setPlatforms)}
+              disabled={isDisabled}
               aria-pressed={isActive}
+              aria-disabled={isDisabled}
               className={clsx(
                 "flex flex-col rounded-xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
-                isActive
-                  ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
+                isDisabled
+                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
+                  : isActive
+                    ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
               )}
-              aria-label={`${isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
+              aria-label={`${isDisabled ? 'Unavailable' : isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
             >
               <span className="font-medium">{option.label}</span>
               {option.hint ? (
                 <small
                   className={clsx(
                     "text-xs",
-                    isActive ? "text-white/80" : "text-slate-500",
+                    isDisabled ? "text-slate-400" : isActive ? "text-white/80" : "text-slate-500",
                   )}
                 >
-                  {option.hint}
+                  {isDisabled ? "Coming soon" : option.hint}
                 </small>
               ) : null}
             </button>
