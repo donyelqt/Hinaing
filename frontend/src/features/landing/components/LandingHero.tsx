@@ -128,65 +128,75 @@ export function LandingHero() {
             aria-hidden="true"
           />
 
-          <Card className="relative w-full max-w-[440px] transform transition-all duration-500 hover:scale-[1.02] hover:rotate-1 rounded-[2rem] border-0 bg-white/80 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl ring-1 ring-slate-100">
-            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/50 to-white/0 pointer-events-none" />
+          <div className="relative w-full max-w-[440px] group">
+            <div className="relative transform transition-all duration-500 hover:scale-[1.02] hover:rotate-1">
+              {/* Animated Rainbow Border - Subtle Glow */}
+              <div className="absolute -inset-[6px] rounded-[2.2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 opacity-30 blur-lg animate-rainbow-border" />
 
-            <div className="relative z-10">
-              <div className="mb-5 flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                  </span>
-                  Live Snapshot
-                </span>
-                <span className="text-xs font-medium text-slate-400">Just now</span>
-              </div>
+              {/* Gradient Border Wrapper */}
+              <div className="relative rounded-[2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 p-[1.5px] animate-rainbow-border">
+                <Card className="relative h-full w-full rounded-[1.9rem] border-0 bg-white/90 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl">
+                  <div className="absolute inset-0 rounded-[1.9rem] bg-gradient-to-br from-white/50 to-white/0 pointer-events-none" />
 
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Overall Sentiment</p>
-                  <p className="text-xl font-bold text-slate-900 tracking-tight">Cautious but engaged</p>
-                  <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                    Infrastructure and transport issues dominate, but support remains high for cleanup and tourism efforts.
-                  </p>
-                </div>
+                  <div className="relative z-10">
+                    <div className="mb-5 flex items-center justify-between">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                        </span>
+                        Live Snapshot
+                      </span>
+                      <span className="text-xs font-medium text-slate-400">Just now</span>
+                    </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl bg-rose-50 p-3 text-center transition-colors hover:bg-rose-100">
-                    <p className="text-lg font-bold text-rose-600">52%</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Negative</p>
+                    <div className="space-y-5">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Overall Sentiment</p>
+                        <p className="text-xl font-bold text-slate-900 tracking-tight">Cautious but engaged</p>
+                        <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                          Infrastructure and transport issues dominate, but support remains high for cleanup and tourism efforts.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl bg-rose-50 p-3 text-center transition-colors hover:bg-rose-100">
+                          <p className="text-lg font-bold text-rose-600">52%</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Negative</p>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 p-3 text-center transition-colors hover:bg-slate-100">
+                          <p className="text-lg font-bold text-slate-700">31%</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Neutral</p>
+                        </div>
+                        <div className="rounded-xl bg-emerald-50 p-3 text-center transition-colors hover:bg-emerald-100">
+                          <p className="text-lg font-bold text-emerald-600">17%</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/70">Positive</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Tonight's Highlights</p>
+                        <ul className="space-y-2.5">
+                          <li className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-rose-400 flex-shrink-0" />
+                            Rising complaints on evening traffic in Session Road.
+                          </li>
+                          <li className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                            Persistent chatter on water reliability in barangays.
+                          </li>
+                          <li className="flex items-start gap-2.5 text-sm text-slate-600">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                            Strong positive sentiment around cleanup efforts.
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3 text-center transition-colors hover:bg-slate-100">
-                    <p className="text-lg font-bold text-slate-700">31%</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Neutral</p>
-                  </div>
-                  <div className="rounded-xl bg-emerald-50 p-3 text-center transition-colors hover:bg-emerald-100">
-                    <p className="text-lg font-bold text-emerald-600">17%</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/70">Positive</p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Tonight's Highlights</p>
-                  <ul className="space-y-2.5">
-                    <li className="flex items-start gap-2.5 text-sm text-slate-600">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-rose-400 flex-shrink-0" />
-                      Rising complaints on evening traffic in Session Road.
-                    </li>
-                    <li className="flex items-start gap-2.5 text-sm text-slate-600">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                      Persistent chatter on water reliability in barangays.
-                    </li>
-                    <li className="flex items-start gap-2.5 text-sm text-slate-600">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                      Strong positive sentiment around cleanup efforts.
-                    </li>
-                  </ul>
-                </div>
+                </Card>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </section>
