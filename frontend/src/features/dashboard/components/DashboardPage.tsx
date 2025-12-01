@@ -1,16 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Sidebar } from "../../shared/components";
 import type { ActivePage } from "../../shared/types/navigation";
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Activity, 
-  Users, 
+import {
+  BarChart3,
+  TrendingUp,
+  Activity,
+  Users,
   AlertCircle,
   Calendar,
-  Filter
+  Filter,
+  Menu,
+  X
 } from "lucide-react";
 
 type DashboardPageProps = {
@@ -19,14 +22,33 @@ type DashboardPageProps = {
 };
 
 export function DashboardPage({ activePage = 'dashboard', onNavigate }: DashboardPageProps = {}) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-100">
+      {/* Mobile Hamburger Toggle */}
+      <button
+        type="button"
+        onClick={() => setIsSidebarOpen((prev) => !prev)}
+        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+        aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isSidebarOpen}
+      >
+        {isSidebarOpen ? (
+          <X className="h-6 w-6" aria-hidden="true" />
+        ) : (
+          <Menu className="h-6 w-6" aria-hidden="true" />
+        )}
+      </button>
+
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-10 lg:py-12 xl:px-16">
         
         <Sidebar 
           onOpenMobileFilters={() => {}} 
           activePage={activePage}
           onNavigate={onNavigate}
+          isSidebarOpen={isSidebarOpen}
+          onCloseSidebar={() => setIsSidebarOpen(false)}
         />
 
         <main className="order-1 flex w-full flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-8">
