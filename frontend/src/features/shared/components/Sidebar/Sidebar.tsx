@@ -161,7 +161,7 @@ export function Sidebar({
             className="rounded-xl bg-gradient-to-r from-hinaing-blue-500/10 via-hinaing-blue-400/10 to-violet-500/10 p-4 text-xs text-hinaing-blue-800 sm:text-sm"
             role="note"
           >
-            Keep track of emerging concerns from Facebook and Reddit to support rapid response planning for Baguio communities.
+            Keep track of emerging concerns from Web, Facebook, and Reddit to support rapid response planning for Baguio communities.
           </div>
         </div>
       </aside>

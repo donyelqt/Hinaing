@@ -75,7 +75,7 @@ export function LandingHero() {
               </span>
             </h1>
             <p className="max-w-lg text-base leading-relaxed text-slate-600">
-              Hinaing turns noisy Facebook and Reddit conversations into clear, actionable briefings so Baguio City
+              Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
               decision-makers can respond faster and plan better.
             </p>
 
