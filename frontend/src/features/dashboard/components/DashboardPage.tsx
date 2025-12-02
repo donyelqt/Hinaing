@@ -25,7 +25,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-50">
       {/* Mobile Hamburger Toggle */}
       <button
         type="button"
@@ -41,7 +41,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
         )}
       </button>
 
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:gap-8 lg:px-10 lg:py-12 xl:px-16">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
         
         <Sidebar 
           onOpenMobileFilters={() => {}} 

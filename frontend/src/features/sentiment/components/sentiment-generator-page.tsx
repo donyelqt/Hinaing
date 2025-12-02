@@ -392,7 +392,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
           />
 
           {/* Main Content */}
-          <main className="order-1 flex w-full min-w-0 flex-col gap-6 lg:order-2 lg:flex-1 lg:gap-10 xl:gap-12">
+          <main className="order-1 flex w-full min-w-0 flex-col gap-4 lg:order-2 lg:flex-1 lg:gap-6 xl:gap-8">
             <section className="space-y-4">
               <HeroSection
                 selectedWindowLabel={computed.selectedWindowLabel}
