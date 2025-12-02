@@ -4,14 +4,9 @@ import type { SentimentState, SentimentActions } from '../types';
 
 export function useSentimentGenerator() {
   // State
-  const [platforms, setPlatforms] = useState<string[]>(
-    PLATFORM_OPTIONS.map((option) => option.value)
-  );
-  const [timeWindow, setTimeWindow] = useState<string>(TIME_WINDOW_OPTIONS[1].value);
-  const [focusAreas, setFocusAreas] = useState<string[]>([
-    FOCUS_OPTIONS[0].value,
-    FOCUS_OPTIONS[1].value,
-  ]);
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [timeWindow, setTimeWindow] = useState<string>("");
+  const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [includeAlerts, setIncludeAlerts] = useState<boolean>(true);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
