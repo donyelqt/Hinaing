@@ -13,12 +13,17 @@ from ...core.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-def sanitize_text(text: str | None) -> str:
-    """Remove invalid Unicode characters (surrogates) that break Gemini API."""
+def sanitize_text(text: Any) -> str:
+    """Remove invalid Unicode characters (surrogates) that break Gemini API.
+    
+    Handles HttpUrl, strings, and other types by converting to string first.
+    """
     if not text:
         return ""
+    # Convert to string first (handles HttpUrl, int, etc.)
+    text_str = str(text)
     # Remove surrogate characters (U+D800 to U+DFFF)
-    cleaned = re.sub(r'[\ud800-\udfff]', '', text)
+    cleaned = re.sub(r'[\ud800-\udfff]', '', text_str)
     # Remove control characters
     cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
     cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
@@ -39,12 +44,16 @@ def run_theme_agent(
     genai.configure(api_key=settings.gemini_api_key)
     model = genai.GenerativeModel("gemini-2.0-flash-exp")
     
-    # Build context with sanitized text
+    # Build context with sanitized text - INCLUDE URLs for evidence
     doc_lines = []
     for doc in documents[:5]:
         title = sanitize_text(doc.get('title', 'Untitled'))
         snippet = sanitize_text(doc.get('snippet', ''))[:200]
-        doc_lines.append(f"- {title}: {snippet}")
+        url = sanitize_text(doc.get('url', ''))
+        if url:
+            doc_lines.append(f"- [{title}]({url}): {snippet}")
+        else:
+            doc_lines.append(f"- {title}: {snippet}")
     context_block = "\n".join(doc_lines)
     
     # Theme-specific focus
@@ -74,8 +83,10 @@ Return ONLY valid JSON with this exact structure:
 {{
   "title": "Concise insight title",
   "detail": "Actionable detail under 240 characters",
-  "evidence": ["URL1", "URL2", "URL3"]
+  "evidence": ["actual_url_from_documents_above"]
 }}
+
+IMPORTANT: The "evidence" array MUST contain the actual URLs from the documents above (the URLs in parentheses after titles). Do NOT use placeholder text like "URL1" - use the real URLs.
 
 If documents lack {theme_label} content, return: {{"title": "No {theme_label} Data", "detail": "Documents don't contain relevant {theme_label} information.", "evidence": []}}
 
@@ -99,6 +110,11 @@ JSON:"""
         # Validate JSON
         try:
             parsed = json.loads(output)
+            # Handle case where Gemini returns a list instead of dict
+            if isinstance(parsed, list) and len(parsed) > 0:
+                parsed = parsed[0]  # Take first item
+            if not isinstance(parsed, dict):
+                raise ValueError(f"Expected dict, got {type(parsed)}")
             # Sanitize all string fields in the parsed JSON
             sanitized = {
                 "title": sanitize_text(parsed.get("title", "")),
@@ -106,7 +122,7 @@ JSON:"""
                 "evidence": [sanitize_text(str(e)) for e in parsed.get("evidence", []) if e],
             }
             return json.dumps(sanitized)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             # Extract JSON if wrapped in markdown
             if "```json" in output:
                 output = output.split("```json")[1].split("```")[0].strip()
@@ -115,13 +131,18 @@ JSON:"""
             # Try parsing again after extraction
             try:
                 parsed = json.loads(output)
+                # Handle list case again
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    parsed = parsed[0]
+                if not isinstance(parsed, dict):
+                    raise ValueError(f"Expected dict, got {type(parsed)}")
                 sanitized = {
                     "title": sanitize_text(parsed.get("title", "")),
                     "detail": sanitize_text(parsed.get("detail", "")),
                     "evidence": [sanitize_text(str(e)) for e in parsed.get("evidence", []) if e],
                 }
                 return json.dumps(sanitized)
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError):
                 return output
             
     except Exception as e:

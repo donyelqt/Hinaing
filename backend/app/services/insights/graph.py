@@ -445,13 +445,20 @@ def _synthesize_single_theme(
             {
                 "title": chunk.source_title,
                 "snippet": chunk.content,
-                "url": chunk.source_url,
+                "url": str(chunk.source_url) if chunk.source_url else "",
                 "relevance_score": score,
             }
             for chunk, score in zip(top_chunks, top_scores)
         ]
     else:
-        enriched_docs = [doc.model_dump() for doc in docs[:25]]
+        # Ensure URL is string (HttpUrl -> str) for theme agent
+        enriched_docs = [
+            {
+                **doc.model_dump(),
+                "url": str(doc.url) if doc.url else "",
+            }
+            for doc in docs[:25]
+        ]
 
     evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
     try:
@@ -477,7 +484,14 @@ def _synthesize_single_theme(
             detail = parsed.get("detail") or "Context unavailable"
             parsed_evidence = parsed.get("evidence")
             if isinstance(parsed_evidence, list) and parsed_evidence:
-                evidence = [str(item) for item in parsed_evidence if item]
+                # Filter out placeholder text and empty strings
+                valid_urls = [
+                    str(item) for item in parsed_evidence 
+                    if item and str(item).startswith("http")
+                ]
+                if valid_urls:
+                    evidence = valid_urls
+                # If LLM returned invalid URLs, fall back to evidence_seed
         else:
             fallback_doc = max(
                 docs,
