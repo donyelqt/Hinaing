@@ -23,7 +23,27 @@ This document tracks what has been delivered so far and the remaining work neede
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
 - Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
 
-## 🔄 Latest Updates (Nov 29, 2025)
+## 🔄 Latest Updates (Dec 3, 2025)
+
+### Phase 2 Complete: Query Orchestrator Agent (ReAct)
+- **ReAct Reasoning Loop**: Implemented LLM-powered Thought → Action → Observation cycle
+- **3 Custom Tools** in `backend/app/services/agents/query_orchestrator.py`:
+  - `analyze_focus_areas` - Determines search strategy (urgent/trend/broad) per focus area
+  - `generate_query` - Creates optimized queries with location + temporal context
+  - `evaluate_query` - Scores query quality (0-1) before execution
+- **Gemini 2.0 Flash** for reasoning, typically 3-4 iterations per plan
+- **Fallback generation** when ReAct fails ensures 100% availability
+- Retrieval agent now uses orchestrated query plans instead of static queries
+
+### Phase 1 Complete: RAG Pipeline
+- **SemanticChunker**: Sentence-based chunking (400 chars, 100 overlap) with metadata preservation
+- **EmbeddingService**: MiniLM-L6-v2 embeddings (384 dimensions, CPU-optimized, batch processing)
+- **VectorStore**: Qdrant in-memory with cosine similarity search
+- **ContextAugmentationAgent**: Retrieves top-k relevant chunks per theme
+- Theme agents receive RAG-augmented context (top 25 chunks) for higher quality insights
+- Files: `backend/app/services/rag/chunker.py`, `embeddings.py`, `vector_store.py`, `backend/app/services/agents/context_agent.py`
+
+### Previous Updates (Nov 29, 2025)
 - **Full Ensemble Sentiment Agent**: Upgraded from hybrid (selective Gemini) to full ensemble approach:
   - RoBERTa (`twitter-roberta-base-sentiment`) analyzes ALL documents → probability distribution
   - Gemini LLM analyzes ALL documents → probability distribution

@@ -9,28 +9,39 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 
 ## Application Overview
 - **Frontend**: React/TypeScript Sentiment Generator that visualizes snapshots, credibility tags, and alerts.
-- **Backend**: FastAPI service running a LangGraph workflow with Retrieval, Sentiment, Credibility, Theme Router agents, plus per-theme Gemini mini-agents.
+- **Backend**: FastAPI service running a LangGraph workflow with Query Orchestrator, Retrieval, Sentiment, Credibility, Theme Router, Context Augmentation agents, plus per-theme Gemini mini-agents.
 - **Shared goals**: Provide civic leaders with near real-time sentiment summaries grounded in the latest news, social, and forum discussions.
 
 ## Architecture Highlights
-1. **Query Orchestrator Agent** generates adaptive query plans (broad + targeted + risk queries) for downstream retrieval.
-2. **Retrieval Agent** combines LangSearch semantic rerank + Facebook ingestion to gather documents per request.
+1. **Query Orchestrator Agent (ReAct)** uses LLM-powered reasoning loop (Thought → Action → Observation) with 3 custom tools to generate adaptive query plans. Located in `backend/app/services/agents/query_orchestrator.py`.
+   - `analyze_focus_areas` - Determines search strategy per focus area (urgent/trend/broad)
+   - `generate_query` - Creates optimized search queries with location + temporal context
+   - `evaluate_query` - Scores query quality (0-1) before execution
+   - Uses Gemini 2.0 Flash for reasoning, typically 3-4 iterations per plan
+   - Fallback plan generation when ReAct fails
+2. **Retrieval Agent** combines LangSearch semantic rerank + Facebook ingestion to gather documents per request, using orchestrated query plans.
 3. **Ensemble Sentiment Agent** uses weighted voting of RoBERTa transformer (40%) + Gemini LLM (60%) for maximum accuracy sentiment classification.
 4. **Credibility Agent** scores domain trustworthiness based on source type (.gov.ph, .org) and recency.
 5. **Theme Router Agent** clusters documents into six focused categories via `agent_tools.THEME_GROUPS`, logging routing/insight stats.
-6. **Context Augmentation Agent** enriches each theme's state with RAG pipeline (chunking → embeddings → Qdrant vector search).
-7. **Gemini Theme Agents** synthesize insights with traceable evidence for each bucket using direct Gemini calls with theme-specific prompts.
+6. **Context Augmentation Agent** enriches each theme's state with RAG pipeline:
+   - `SemanticChunker` - Sentence-based chunking with overlap (400 chars, 100 overlap)
+   - `EmbeddingService` - MiniLM-L6-v2 embeddings (384 dimensions, CPU-optimized)
+   - `VectorStore` - Qdrant in-memory vector search with cosine similarity
+7. **Gemini Theme Agents** synthesize insights with traceable evidence for each bucket using direct Gemini calls with theme-specific prompts. Runs in parallel (6 threads via ThreadPoolExecutor). Respects focus area filtering.
 8. **Coordinator Agents** merge theme insights, Gemini narrative, and alerting logic into the final snapshot consumed by the frontend.
 9. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
 10. **Per-agent telemetry** logs runtime + doc counts inside `backend/app/services/insights/graph.py` for observability.
 
-## Latest Updates (Nov 29, 2025)
-- **Full Ensemble Sentiment Agent**: Upgraded from hybrid to full ensemble approach. Both RoBERTa (transformer) and Gemini (LLM) analyze ALL documents, with weighted voting (40% RoBERTa, 60% Gemini) for maximum accuracy. Provides rich metadata including both model predictions, confidence scores, and agreement metrics.
-- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` (`fetch_documents`, `label_sentiment`, `analyze_enriched`, `theme_agents`) so every node reports runtime + document counts for thesis benchmarking.
-- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`, tightening latency before the Gemini stages.
-- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together, then conditionally reranking via `LangSearchClient` when both sources return context.
-- LangSearch retrieval now includes retryable rate-limit handling plus exponential backoff, ensuring 429 responses are throttled gracefully.
-- Theme routing now relies on six refined categories defined inside `agent_tools.THEME_GROUPS`, logging routing/insight selection stats, raising per-theme analysis to 25 docs.
+## Latest Updates (Dec 3, 2025)
+- **Phase 2 Complete: Query Orchestrator Agent (ReAct)** - Implemented LLM-powered reasoning loop (Thought → Action → Observation) with 3 custom tools for adaptive query planning. Uses Gemini 2.0 Flash, typically 3-4 iterations per plan with fallback generation when ReAct fails.
+- **Phase 1 Complete: RAG Pipeline** - Full context augmentation system with SemanticChunker (sentence-based, 400 chars, 100 overlap), EmbeddingService (MiniLM-L6-v2, 384 dims), and Qdrant VectorStore (in-memory, cosine similarity). Integrated into workflow between theme routing and theme agents.
+- **Full Ensemble Sentiment Agent**: Both RoBERTa (transformer) and Gemini (LLM) analyze ALL documents, with weighted voting (40% RoBERTa, 60% Gemini) for maximum accuracy. Provides rich metadata including both model predictions, confidence scores, and agreement metrics.
+- **Parallel Theme Agent Execution**: Theme agents now run in parallel using ThreadPoolExecutor (6 workers) for faster insight generation.
+- Per-agent latency logging in `graph.py` (`orchestrate_queries`, `fetch_documents`, `label_sentiment`, `analyze_enriched`, `augment_context`, `theme_agents`) for thesis benchmarking.
+- `analyze_enriched` dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`.
+- Retrieval uses orchestrated query plans from ReAct agent, with LangSearch + Facebook futures together and conditional semantic reranking.
+- Theme agents receive RAG-augmented context (top 25 chunks per theme) for higher quality insights.
+- **Focus Area Filtering**: Theme agents now respect user-specified focus areas, only generating insights for relevant themes.
 
 ## Tech Stack
 
