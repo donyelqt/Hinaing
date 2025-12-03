@@ -40,7 +40,7 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 - Per-agent latency logging in `graph.py` (`orchestrate_queries`, `fetch_documents`, `label_sentiment`, `analyze_enriched`, `augment_context`, `theme_agents`) for thesis benchmarking.
 - `analyze_enriched` dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`.
 - Retrieval uses orchestrated query plans from ReAct agent, with LangSearch + Facebook futures together and conditional semantic reranking.
-- Theme agents receive RAG-augmented context (top 25 chunks per theme) for higher quality insights.
+- Theme agents receive RAG-augmented context (top 10 chunks per theme) for higher quality insights.
 - **Focus Area Filtering**: Theme agents now respect user-specified focus areas, only generating insights for relevant themes.
 
 ## Tech Stack

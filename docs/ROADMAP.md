@@ -40,7 +40,7 @@ This document tracks what has been delivered so far and the remaining work neede
 - **EmbeddingService**: MiniLM-L6-v2 embeddings (384 dimensions, CPU-optimized, batch processing)
 - **VectorStore**: Qdrant in-memory with cosine similarity search
 - **ContextAugmentationAgent**: Retrieves top-k relevant chunks per theme
-- Theme agents receive RAG-augmented context (top 25 chunks) for higher quality insights
+- Theme agents receive RAG-augmented context (top 10 chunks) for higher quality insights
 - Files: `backend/app/services/rag/chunker.py`, `embeddings.py`, `vector_store.py`, `backend/app/services/agents/context_agent.py`
 
 ### Previous Updates (Nov 29, 2025)
