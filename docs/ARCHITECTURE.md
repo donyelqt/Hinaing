@@ -239,7 +239,7 @@ SnapshotRequest
 | LLM | Google Gemini (2.0-flash, 2.0-flash-exp) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment) |
 | Embeddings | MiniLM-L6-v2 (384 dimensions) |
-| Vector DB | Qdrant (in-memory) |
+| Vector DB | Qdrant |
 | Search | LangSearch API |
 | Database | Supabase |
 | Observability | LangSmith |
