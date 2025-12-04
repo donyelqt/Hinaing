@@ -44,7 +44,7 @@ Prove that ensemble sentiment (RoBERTa + Gemini) outperforms individual models.
 - Balanced: ~33 positive, ~34 negative, ~33 neutral
 - Sources: news, Facebook, forums about Baguio City
 
-### Expected Results
+### Expected Results (Not official)
 
 | Config | Expected Accuracy | Rationale |
 |--------|-------------------|-----------|
