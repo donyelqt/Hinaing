@@ -360,23 +360,54 @@ class QueryOrchestratorAgent:
             data = json.loads(json_str)
             
             queries = []
-            for q in data.get("queries", []):
-                queries.append(
-                    QueryTask(
-                        query=q.get("query", ""),
-                        intent=q.get("intent", "broad"),
-                        priority=q.get("priority", 1),
+            for idx, q in enumerate(data.get("queries", [])):
+                # Handle both string queries and object queries
+                if isinstance(q, str):
+                    # LLM returned plain string query
+                    queries.append(
+                        QueryTask(
+                            query=q,
+                            intent="targeted" if idx > 0 else "broad",
+                            priority=idx + 1,
+                        )
                     )
-                )
+                elif isinstance(q, dict):
+                    # LLM returned object with query details
+                    query_text = (
+                        q.get("query") or 
+                        q.get("query_string") or 
+                        q.get("search_query") or 
+                        ""
+                    )
+                    intent = q.get("intent") or q.get("type") or "broad"
+                    if query_text:
+                        queries.append(
+                            QueryTask(
+                                query=query_text,
+                                intent=intent,
+                                priority=q.get("priority", idx + 1),
+                            )
+                        )
 
             # Ensure we have at least some queries
             if not queries:
                 return self._fallback_plan(focus_values, time_window)
 
+            # Handle expected_results - ensure they're strings
+            raw_results = data.get("expected_results", [])
+            expected_results = []
+            for r in raw_results[:3]:
+                if isinstance(r, str):
+                    expected_results.append(r)
+                elif isinstance(r, dict):
+                    expected_results.append(r.get("description", str(r)))
+                else:
+                    expected_results.append(str(r))
+
             return QueryPlan(
                 strategy=data.get("strategy", f"ReAct-planned queries for {', '.join(focus_values)}"),
                 queries=queries[: self.max_queries],
-                expected_results=data.get("expected_results", [])[:3],
+                expected_results=expected_results,
             )
 
         except (json.JSONDecodeError, ValueError, KeyError) as exc:

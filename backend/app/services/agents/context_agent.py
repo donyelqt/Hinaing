@@ -99,25 +99,49 @@ class ContextAugmentationAgent:
         )
     
     def _build_theme_query(self, theme: str) -> str:
-        """Build search query optimized for theme.
+        """Build search query optimized for theme with Baguio-specific keywords.
         
         Args:
             theme: Theme label
             
         Returns:
-            Optimized search query
+            Optimized search query with local context
         """
-        # Theme-specific query templates
+        # Theme-specific query templates with Baguio-specific terms
         theme_queries = {
-            "Health & Wellness": "health disease medical hospital clinic outbreak wellness sanitation hygiene",
-            "Public Safety": "crime police fire accident emergency disaster safety rescue security",
-            "Infrastructure": "road traffic water power electricity infrastructure construction utility building",
-            "Environment": "pollution waste environmental flooding climate landslide drainage air quality",
-            "Tourism & Events": "tourism visitor hotel accommodation festival event Panagbenga tourist attraction",
-            "Business & Economy": "business economy market vendor employment livelihood revenue trade commerce"
+            "Health & Wellness": (
+                "Baguio hospital health disease clinic medical sanitation "
+                "Baguio General Hospital BGH wellness hygiene outbreak "
+                "BGH substandard construction building defect hospital facility"
+            ),
+            "Public Safety": (
+                "Baguio crime police fire accident emergency landslide flood "
+                "Kennon Road accident safety disaster rescue security "
+                "student walkout protest rally school incident demonstration"
+            ),
+            "Infrastructure": (
+                "Baguio road traffic water power pothole Session Road "
+                "Kennon Road Marcos Highway jeepney garbage infrastructure "
+                "construction utility building BENECO water district"
+            ),
+            "Environment": (
+                "Baguio pollution air quality waste flooding landslide "
+                "environmental drainage climate pine trees deforestation"
+            ),
+            "Tourism & Events": (
+                "Baguio tourist Panagbenga Burnham Park Camp John Hay "
+                "Mines View Wright Park overcrowding hotel festival "
+                "Summer Capital City of Pines tourism visitor"
+            ),
+            "Business & Economy": (
+                "Baguio vendor market business livelihood employment "
+                "public market mallification SM Prime redevelopment PPP "
+                "vendor displacement economy trade commerce "
+                "student walkout protest mallification anti-mall"
+            ),
         }
         
-        return theme_queries.get(theme, f"Baguio City {theme} news updates issues")
+        return theme_queries.get(theme, f"Baguio City {theme} news updates issues concerns")
     
     def _get_temporal_range(
         self, 

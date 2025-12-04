@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -11,14 +11,155 @@ from ...schemas.social import RawSocialPost
 from ..ingestion.facebook import ApifyRunError, fetch_public_posts
 from ..ingestion.reddit import fetch_public_posts as fetch_reddit_posts
 from ..langsearch import LangSearchClient
-from .tools import (
-    build_focus_query,
-    filter_by_location,
-    filter_by_time_window,
-    filter_excluded_sources,
-)
 
 logger = logging.getLogger(__name__)
+
+# Baguio-specific location terms for filtering
+BAGUIO_LOCATION_TERMS = {
+    "baguio", "benguet", "cordillera", "session road", "burnham park",
+    "kennon road", "marcos highway", "la trinidad", "panagbenga",
+    "camp john hay", "mines view", "wright park", "baguio general hospital",
+    "bgh", "summer capital", "city of pines", "governor pack", "abanao",
+    "porta vaga", "sm baguio", "baguio city market",
+}
+
+# Domains to exclude from search results
+EXCLUDED_DOMAINS = {
+    "wikipedia.org", "wikimedia.org", "wikidata.org", "britannica.com",
+    "dictionary.com", "quora.com", "tripadvisor.com", "booking.com",
+    "agoda.com", "expedia.com", "airbnb.com", "pinterest.com",
+}
+
+# Focus area concern keywords for query building
+FOCUS_CONCERN_KEYWORDS: dict[str, list[str]] = {
+    "infrastructure": [
+        "Baguio road problem", "Baguio traffic issue", "Baguio water problem",
+        "Baguio power outage", "Kennon Road problem", "Session Road traffic",
+        "BGH substandard construction", "Baguio building construction issue",
+    ],
+    "health": [
+        "Baguio hospital problem", "Baguio health concern", "Baguio disease issue",
+        "Baguio General Hospital substandard", "BGH construction issue",
+        "BGH building problem", "Baguio hospital construction",
+    ],
+    "safety": [
+        "Baguio crime problem", "Baguio landslide issue", "Baguio flood concern",
+        "Baguio accident concern", "Baguio safety issue",
+        "Baguio student walkout", "Baguio protest", "Baguio rally",
+        "Baguio school incident", "Baguio student protest",
+        "Baguio schools walkout mallification", "Baguio youth rally",
+    ],
+    "tourism": [
+        "Baguio tourist complaint", "Baguio overcrowding problem", "Burnham Park issue",
+    ],
+    "economy": [
+        "Baguio vendor problem", "Baguio market issue", "Baguio business concern",
+        "Baguio mallification", "Baguio public market redevelopment",
+        "Baguio student walkout mallification", "Baguio students protest market",
+        "SM Prime Baguio protest", "Baguio vendor displacement",
+        "Baguio schools walkout", "Baguio youth protest market",
+    ],
+    "environment": [
+        "Baguio pollution problem", "Baguio air quality concern", "Baguio flooding problem",
+    ],
+}
+
+
+def build_focus_query(request: SnapshotRequest) -> str:
+    """Construct a search query based on selected focus areas."""
+    if request.focus_areas:
+        all_terms: list[str] = []
+        for area in request.focus_areas:
+            area_lower = area.lower()
+            terms = FOCUS_CONCERN_KEYWORDS.get(area_lower)
+            if terms:
+                all_terms.extend(terms)
+            else:
+                all_terms.append(f"Baguio {area} problem")
+                all_terms.append(f"Baguio {area} concern")
+        unique_terms = list(dict.fromkeys(all_terms))
+        terms_query = " OR ".join(f'"{term}"' for term in unique_terms[:6])
+        return f"({terms_query})"
+    return '"Baguio City" AND (problem OR issue OR concern)'
+
+
+def get_window_timedelta(time_window: str | None) -> timedelta | None:
+    """Convert time window string to timedelta."""
+    if not time_window:
+        return None
+    mapping = {"6h": timedelta(hours=6), "24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
+    return mapping.get(time_window)
+
+
+def filter_by_time_window(documents: list[WebDocument], time_window: str | None) -> list[WebDocument]:
+    """Filter documents by time window."""
+    delta = get_window_timedelta(time_window)
+    if not delta:
+        return documents
+    now = datetime.now(timezone.utc)
+    cutoff = now - delta
+    filtered = [doc for doc in documents if doc.published_at and doc.published_at >= cutoff]
+    return filtered or documents
+
+
+def filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
+    """Filter documents to only include Baguio-related content."""
+    filtered: list[WebDocument] = []
+    for doc in documents:
+        url_str = str(doc.url) if doc.url else ""
+        searchable = f"{doc.title} {doc.snippet} {url_str}".lower()
+        if any(term in searchable for term in BAGUIO_LOCATION_TERMS):
+            filtered.append(doc)
+        else:
+            logger.debug("Filtered out non-Baguio document: %s", doc.title[:50] if doc.title else "Untitled")
+    return filtered
+
+
+def filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
+    """Filter out documents from excluded domains."""
+    filtered: list[WebDocument] = []
+    for doc in documents:
+        url = str(doc.url).lower() if doc.url else ""
+        if any(domain in url for domain in EXCLUDED_DOMAINS):
+            logger.debug("Filtered out excluded source: %s", doc.url)
+            continue
+        filtered.append(doc)
+    return filtered
+
+
+def deduplicate_documents(documents: list[WebDocument]) -> list[WebDocument]:
+    """Remove duplicate documents based on URL and similar titles."""
+    seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
+    unique: list[WebDocument] = []
+    
+    for doc in documents:
+        # Normalize URL for comparison
+        url = str(doc.url).lower().rstrip("/") if doc.url else ""
+        
+        # Skip if URL already seen
+        if url and url in seen_urls:
+            logger.debug("Filtered duplicate URL: %s", doc.url)
+            continue
+        
+        # Normalize title for comparison (first 50 chars, lowercase, alphanumeric only)
+        title_key = "".join(c for c in (doc.title or "")[:50].lower() if c.isalnum())
+        
+        # Skip if very similar title already seen
+        if title_key and title_key in seen_titles:
+            logger.debug("Filtered duplicate title: %s", doc.title[:50] if doc.title else "")
+            continue
+        
+        if url:
+            seen_urls.add(url)
+        if title_key:
+            seen_titles.add(title_key)
+        unique.append(doc)
+    
+    if len(documents) != len(unique):
+        logger.info(f"Deduplicated {len(documents)} -> {len(unique)} documents")
+    
+    return unique
 
 
 def _facebook_post_to_webdoc(post: RawSocialPost) -> WebDocument:
@@ -64,6 +205,7 @@ async def search_web_documents(
     web_docs = filter_excluded_sources(web_docs)
     web_docs = filter_by_location(web_docs)
     web_docs = filter_by_time_window(web_docs, request.time_window)
+    web_docs = deduplicate_documents(web_docs)
     return web_docs
 
 
@@ -77,6 +219,7 @@ async def fetch_facebook_documents(request: SnapshotRequest) -> list[WebDocument
     docs = [_facebook_post_to_webdoc(post) for post in posts]
     docs = filter_by_location(docs)
     docs = filter_by_time_window(docs, request.time_window)
+    docs = deduplicate_documents(docs)
     return docs
 
 

@@ -37,10 +37,7 @@ from ..agents.context_agent import ContextAugmentationAgent
 from ..langsearch import LangSearchClient
 from ..nlp.gemini import gemini_client, GeminiClient
 from ..agents.gemini import run_gemini_agent
-from .tools import (
-    build_focus_query,
-    get_window_timedelta,
-)
+# Note: build_focus_query and get_window_timedelta removed - query building now handled by QueryOrchestratorAgent
 from .agent_tools import set_theme_groups
 
 settings = get_settings()
@@ -158,14 +155,6 @@ sentiment_agent = SentimentAgent()
 credibility_agent_node = CredibilityAgent()
 theme_router_agent = ThemeRouterAgent()
 query_orchestrator = QueryOrchestratorAgent()
-
-
-def _build_query(request: SnapshotRequest) -> str:
-    return build_focus_query(request)
-
-
-def _get_window_timedelta(time_window: str | None) -> timedelta | None:
-    return get_window_timedelta(time_window)
 
 
 async def orchestrate_queries(state: SnapshotState) -> SnapshotState:
@@ -334,19 +323,6 @@ class SnapshotState(TypedDict, total=False):
     credibility_notes: dict[str, float]
     retrieval_plan: dict[str, Any]
     snapshot: SnapshotResponse
-
-
-
-
-
-def _build_query(request: SnapshotRequest) -> str:
-    return build_focus_query(request)
-
-
-def _get_window_timedelta(time_window: str | None) -> timedelta | None:
-    return get_window_timedelta(time_window)
-
-
 async def fetch_documents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
@@ -426,6 +402,10 @@ def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
     )
 
 
+# Minimum average relevance score to generate insights for a theme
+MIN_RELEVANCE_THRESHOLD = 0.55
+
+
 def _synthesize_single_theme(
     theme_key: str,
     docs: list[WebDocument],
@@ -437,6 +417,15 @@ def _synthesize_single_theme(
     meta = current_theme_groups.get(theme_key)
     label = meta["label"] if meta else theme_key.title()
     context = (contexts or {}).get(theme_key)
+
+    # Check relevance threshold - skip themes with low relevance
+    if context and context.relevance_scores:
+        avg_score = sum(context.relevance_scores) / len(context.relevance_scores)
+        if avg_score < MIN_RELEVANCE_THRESHOLD:
+            logger.info(
+                f"[theme_insight] Skipping '{label}' - low relevance (avg={avg_score:.3f} < {MIN_RELEVANCE_THRESHOLD})"
+            )
+            return None
 
     if context and context.relevant_chunks:
         top_chunks = context.relevant_chunks[:25]
