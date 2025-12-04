@@ -23,7 +23,22 @@ This document tracks what has been delivered so far and the remaining work neede
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
 - Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
 
-## 🔄 Latest Updates (Dec 3, 2025)
+## 🔄 Latest Updates (Dec 4, 2025)
+
+### Performance Optimization: Narrative Generation
+- **Model Switch**: Changed `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for narrative generation
+- **~5x faster** response times while maintaining output quality
+- Located in `backend/app/services/nlp/gemini.py`
+
+### Refactor: Agent Tools Consolidation & Query Parsing
+- **Centralized Tool Management**: Migrated tool definitions from `tools.py` to `agent_tools.py`, deleted redundant `tools.py`
+- **Baguio-Specific Keywords**: Enhanced `context_agent.py` with local search terms (BGH, Kennon Road, Session Road, etc.)
+- **Theme-Specific Query Templates**: Expanded with location-aware terms for improved local relevance
+- **Robust Query Parsing**: `query_orchestrator.py` now handles both string and object query formats from LLM responses
+- **Fallback Query Fields**: Added support for `query_string`, `search_query` field variants for resilient parsing
+- **Graph Module Update**: `graph.py` now uses consolidated `agent_tools` module
+
+## Previous Updates (Dec 3, 2025)
 
 ### Phase 2 Complete: Query Orchestrator Agent (ReAct)
 - **ReAct Reasoning Loop**: Implemented LLM-powered Thought → Action → Observation cycle

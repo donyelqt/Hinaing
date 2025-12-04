@@ -13,7 +13,7 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 | Real-time intelligent search | `agent_tools.search_web_documents` + `fetch_facebook_documents` | Combines LangSearch semantic rerank + Facebook ingestion under the Retrieval Agent. |
 | RAG pipeline | `backend/app/services/rag/` | SemanticChunker → EmbeddingService (MiniLM-L6-v2) → Qdrant VectorStore for context augmentation. |
 | Credibility tagging | `CredibilityAgent.run` | Domain-based scoring (.gov.ph, .org boost) + recency factors. |
-| Snapshot coordination | `build_snapshot` | Integrates agent outputs, Gemini narrative, alerts, and traceable evidence links for the UI. |
+| Snapshot coordination | `build_snapshot` | Integrates agent outputs, Gemini narrative (gemini-2.0-flash-exp), alerts, and traceable evidence links for the UI. |
 | Per-agent telemetry | `backend/app/services/insights/graph.py` | Stage-level duration + document counts logged for benchmarking and observability. |
 
 ## Key Findings
@@ -139,7 +139,13 @@ The Retrieval Agent fans out to both; adding more connectors (e.g., Reddit, X) r
 ### 5. RAG Pipeline Enhances Context
 Context Augmentation Agent uses semantic chunking + vector search to provide relevant context to theme agents.
 
-## Latest Evidence (Nov 29, 2025)
+## Latest Evidence (Dec 4, 2025)
+- **Narrative Generation Optimization**: Switched `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for ~5x faster response times while maintaining output quality.
+- **Agent Tools Consolidation**: Centralized tool definitions in `agent_tools.py`, eliminating code duplication from redundant `tools.py`.
+- **Baguio-Specific Search Enhancement**: Added local keywords (BGH, Kennon Road, Session Road, Burnham Park, etc.) to `context_agent.py` for improved local search relevance.
+- **Robust Query Parsing**: `query_orchestrator.py` now handles flexible LLM output formats (string/object queries, fallback field names like `query_string`, `search_query`).
+
+## Previous Evidence (Nov 29, 2025)
 - **Full Ensemble Sentiment Agent**: Both RoBERTa and Gemini analyze ALL documents with weighted voting (40%/60%). Provides rich metadata including both predictions, confidence scores, and model agreement status.
 - Added per-agent latency logging for thesis benchmarking.
 - `analyze_enriched` dispatches CredibilityAgent and ThemeRouterAgent concurrently.

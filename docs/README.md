@@ -32,7 +32,13 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 9. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
 10. **Per-agent telemetry** logs runtime + doc counts inside `backend/app/services/insights/graph.py` for observability.
 
-## Latest Updates (Dec 3, 2025)
+## Latest Updates (Dec 4, 2025)
+- **Narrative Generation Optimization**: Switched from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for narrative generation (~5x faster response times while maintaining quality).
+- **Agent Tools Consolidation**: Migrated tool definitions to centralized `agent_tools.py`, removed redundant `tools.py`.
+- **Baguio-Specific Search Enhancement**: Added local keywords (BGH, Kennon Road, Session Road, etc.) to `context_agent.py` for improved local search relevance.
+- **Robust Query Parsing**: `query_orchestrator.py` now handles flexible LLM output formats (string/object queries, fallback field names).
+
+## Previous Updates (Dec 3, 2025)
 - **Phase 2 Complete: Query Orchestrator Agent (ReAct)** - Implemented LLM-powered reasoning loop (Thought → Action → Observation) with 3 custom tools for adaptive query planning. Uses Gemini 2.0 Flash, typically 3-4 iterations per plan with fallback generation when ReAct fails.
 - **Phase 1 Complete: RAG Pipeline** - Full context augmentation system with SemanticChunker (sentence-based, 400 chars, 100 overlap), EmbeddingService (MiniLM-L6-v2, 384 dims), and Qdrant VectorStore (in-memory, cosine similarity). Integrated into workflow between theme routing and theme agents.
 - **Full Ensemble Sentiment Agent**: Both RoBERTa (transformer) and Gemini (LLM) analyze ALL documents, with weighted voting (40% RoBERTa, 60% Gemini) for maximum accuracy. Provides rich metadata including both model predictions, confidence scores, and agreement metrics.

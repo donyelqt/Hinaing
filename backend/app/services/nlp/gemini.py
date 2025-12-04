@@ -31,7 +31,7 @@ def sanitize_text(text: str | None) -> str:
 class GeminiClient:
     """Thin wrapper around the Gemini GenerativeModel."""
 
-    def __init__(self, *, model_name: str = "gemini-2.5-pro") -> None:
+    def __init__(self, *, model_name: str = "gemini-2.0-flash-exp") -> None:
         settings = get_settings()
         self._api_key = settings.gemini_api_key
         self._model_name = model_name
