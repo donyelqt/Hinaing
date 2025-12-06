@@ -43,12 +43,14 @@
 }
 
 @keyframes hero-glow-pulse {
+
   0%,
   100% {
     opacity: 0.45;
     transform: scale(0.95);
     background-position: 0% 50%;
   }
+
   50% {
     opacity: 1;
     transform: scale(1.08);
@@ -61,10 +63,12 @@
     opacity: 0.9;
     transform: scale(0.7);
   }
+
   60% {
     opacity: 0;
     transform: scale(1.4);
   }
+
   100% {
     opacity: 0;
     transform: scale(1.4);
@@ -76,6 +80,7 @@
     opacity: 0;
     transform: translateY(4px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -86,9 +91,11 @@
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
@@ -97,4 +104,14 @@
 .animate-rainbow-border {
   animation: rainbow-border 3s ease infinite;
   background-size: 200% 200%;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.animate-dash-flow {
+  animation: dash-flow 1s linear infinite;
 }
