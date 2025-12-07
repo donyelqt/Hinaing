@@ -8,8 +8,8 @@ The prototype now delivers a multi-agent, real-time intelligent search stack for
 | Capability | Evidence | Notes |
 | --- | --- | --- |
 | Multi-agent architecture | `backend/app/services/insights/agents.py`, LangGraph workflow in `backend/app/services/insights/graph.py` | Query Orchestrator/Retrieval/Sentiment/Credibility/Theme Router/Context Augmentation agents cooperate via shared `SnapshotState`. |
-| Ensemble sentiment analysis | `backend/app/services/agents/sentiment_agent.py` | Full ensemble: RoBERTa (40%) + Gemini (60%) weighted voting for all documents. |
-| Theme-specific LLM reasoning | `backend/app/services/agents/theme_agent.py` | Direct Gemini calls with theme-specific prompts produce JSON insights for each category. |
+| Ensemble sentiment analysis | `backend/app/services/agents/sentiment_agent.py` | Full ensemble: RoBERTa (40%) + Gemini 2.5 Pro (60%) weighted voting for all documents. |
+| Theme-specific LLM reasoning | `backend/app/services/agents/theme_agent.py` | Direct Gemini 2.5 Pro calls with theme-specific prompts produce JSON insights for each category. |
 | Real-time intelligent search | `agent_tools.search_web_documents` + `fetch_facebook_documents` | Combines LangSearch semantic rerank + Facebook ingestion under the Retrieval Agent. |
 | RAG pipeline | `backend/app/services/rag/` | SemanticChunker → EmbeddingService (MiniLM-L6-v2) → Qdrant VectorStore for context augmentation. |
 | Credibility tagging | `CredibilityAgent.run` | Domain-based scoring (.gov.ph, .org boost) + recency factors. |

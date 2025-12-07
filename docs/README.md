@@ -57,7 +57,7 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 - **LangChain / LangGraph** – multi-agent orchestration and workflow
 - **LangSmith** – observability and tracing
 - **LangSearch** – semantic web search and reranking API for document retrieval (Intelligent Search)
-- **Google Gemini** (`google-generativeai`) – LLM for sentiment ensemble and theme agents
+- **Google Gemini** (`google-generativeai`) – LLM for sentiment ensemble and theme agents (Gemini 2.5 Pro)
 - **HuggingFace Transformers** – RoBERTa sentiment model (`twitter-roberta-base-sentiment`)
 - **Qdrant** – vector database for RAG embeddings
 - **Sentence Transformers** – local embedding generation (MiniLM-L6-v2)

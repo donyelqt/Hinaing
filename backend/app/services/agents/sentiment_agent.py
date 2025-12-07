@@ -137,7 +137,7 @@ class EnsembleSentimentAgent:
             raise RuntimeError("GEMINI_API_KEY missing")
         
         genai.configure(api_key=settings.gemini_api_key)
-        self.gemini_model = genai.GenerativeModel("gemini-2.0-flash-exp")
+        self.gemini_model = genai.GenerativeModel("gemini-2.5-pro")
         self.roberta = get_sentiment_model()
         self.batch_size = 8
         

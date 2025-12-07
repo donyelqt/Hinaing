@@ -38,7 +38,7 @@ flowchart TB
 
             subgraph Stage3["3. Ensemble Sentiment Agent"]
                 RB[RoBERTa 40%<br/>twitter-roberta]
-                GM[Gemini LLM 60%<br/>gemini-2.0-flash]
+                GM[Gemini LLM 60%<br/>gemini-2.5-pro]
                 WV[Weighted Voting]
                 RB & GM --> WV
                 ED[Enriched Docs + Sentiment]
@@ -236,7 +236,7 @@ SnapshotRequest
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11+, Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.0-flash, 2.0-flash-exp) |
+| LLM | Google Gemini (2.5-pro, 2.0-flash-exp) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment) |
 | Embeddings | MiniLM-L6-v2 (384 dimensions) |
 | Vector DB | Qdrant |
