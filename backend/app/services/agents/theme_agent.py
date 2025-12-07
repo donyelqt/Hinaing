@@ -42,7 +42,7 @@ def run_theme_agent(
         raise RuntimeError("GEMINI_API_KEY missing")
     
     genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-pro")
     
     # Build context with sanitized text - INCLUDE URLs for evidence
     doc_lines = []
@@ -94,17 +94,60 @@ JSON:"""
     
     logger.info(f"[Direct Gemini] Starting for '{theme_label}'")
     
+    # Disable safety filters for civic news analysis
+    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+    
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+
     try:
         response = model.generate_content(
             full_prompt,
             generation_config=genai.GenerationConfig(
                 temperature=0.1,
-                max_output_tokens=500,
-            )
+                max_output_tokens=3000,
+            ),
+            safety_settings=safety_settings,
         )
         
-        # Sanitize output to remove surrogates that break JSON serialization
-        output = sanitize_text(response.text)
+        # Check if response is valid
+        if not response.candidates:
+            logger.warning(f"[Direct Gemini] No candidates returned for '{theme_label}'. Feedback: {response.prompt_feedback}")
+            return json.dumps({
+                "title": f"No Data for {theme_label}",
+                "detail": "AI model returned no response.",
+                "evidence": []
+            })
+
+        candidate = response.candidates[0]
+        if candidate.finish_reason != 1:  # 1 = STOP
+            logger.warning(f"[Direct Gemini] Finish reason: {candidate.finish_reason} for '{theme_label}'. Safety: {candidate.safety_ratings}")
+            
+            # If blocked or truncated with no content
+            if not candidate.content.parts:
+                reason_map = {1: "STOP", 2: "MAX_TOKENS", 3: "SAFETY", 4: "RECITATION", 5: "OTHER"}
+                reason_str = reason_map.get(candidate.finish_reason, f"UNKNOWN({candidate.finish_reason})")
+                return json.dumps({
+                    "title": f"Generation Failed ({reason_str})",
+                    "detail": f"Model stopped due to {reason_str}.",
+                    "evidence": []
+                })
+
+        # Safe access to text
+        try:
+            output = sanitize_text(response.text)
+        except Exception as exc:
+            logger.warning(f"[Direct Gemini] Failed to access text: {exc}. Parts: {candidate.content.parts}")
+            return json.dumps({
+                "title": f"Processing Error ({theme_label})",
+                "detail": "Failed to parse AI response.",
+                "evidence": []
+            })
+
         logger.info(f"[Direct Gemini] Completed for '{theme_label}'")
         
         # Validate JSON
@@ -143,10 +186,15 @@ JSON:"""
                 }
                 return json.dumps(sanitized)
             except (json.JSONDecodeError, ValueError):
-                return output
+                logger.warning(f"[Direct Gemini] JSON parse failed for '{theme_label}': {output[:100]}")
+                return json.dumps({
+                    "title": f"Analysis for {theme_label}",
+                    "detail": output[:240],  # Return raw text as detail if it's not JSON
+                    "evidence": []
+                })
             
     except Exception as e:
-        logger.error(f"[Direct Gemini] Failed for '{theme_label}': {e}")
+        logger.exception(f"[Direct Gemini] Unexpected error for '{theme_label}': {e}")
         return json.dumps({
             "title": f"Error in {theme_label}",
             "detail": "Failed to generate insight due to technical error.",

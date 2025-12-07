@@ -139,7 +139,7 @@ class EnsembleSentimentAgent:
         genai.configure(api_key=settings.gemini_api_key)
         self.gemini_model = genai.GenerativeModel("gemini-2.5-pro")
         self.roberta = get_sentiment_model()
-        self.batch_size = 8
+        self.batch_size = 12
         
         logger.info(
             f"EnsembleSentimentAgent initialized "
@@ -261,13 +261,30 @@ Return JSON array with sentiment AND confidence for each:
                 prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.1,
-                    max_output_tokens=500,
+                    max_output_tokens=3000,
                 ),
                 safety_settings=SAFETY_SETTINGS,
             )
             
-            if not response.candidates or not response.candidates[0].content.parts:
-                logger.warning("Gemini returned empty response")
+            # Comprehensive response validation
+            if not response.candidates:
+                logger.warning(f"Gemini returned no candidates. Prompt feedback: {response.prompt_feedback}")
+                return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(batch)
+            
+            candidate = response.candidates[0]
+            
+            # Check finish reason
+            if candidate.finish_reason != 1:  # 1 = STOP (successful completion)
+                finish_reason_map = {1: "STOP", 2: "MAX_TOKENS", 3: "SAFETY", 4: "RECITATION", 5: "OTHER"}
+                reason_str = finish_reason_map.get(candidate.finish_reason, f"UNKNOWN({candidate.finish_reason})")
+                logger.warning(
+                    f"Gemini finished with reason: {reason_str}. "
+                    f"Safety ratings: {candidate.safety_ratings}"
+                )
+            
+            # Check if content parts exist
+            if not candidate.content.parts:
+                logger.warning(f"Gemini returned empty content parts. Finish reason: {candidate.finish_reason}")
                 return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(batch)
             
             return self._parse_gemini_probs(response.text, len(batch))

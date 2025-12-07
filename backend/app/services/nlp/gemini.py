@@ -105,8 +105,20 @@ class GeminiClient:
     ) -> tuple[str | None, list[dict[str, Any]]]:
         plan_prompt = self._build_plan_prompt(window=window, focus_areas=focus_areas, documents=documents)
 
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
         def _invoke(prompt_builder: Callable[[], str]) -> str:
-            response = self._model.generate_content(prompt_builder())
+            response = self._model.generate_content(
+                prompt_builder(),
+                safety_settings=safety_settings,
+            )
             return response.text or ""
 
         try:

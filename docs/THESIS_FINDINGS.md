@@ -127,6 +127,13 @@ SAFETY_SETTINGS = {
 - System analyzes sentiment, not generates harmful content
 - Fallback mechanisms ensure reliability
 
+**Configuration (December 2025)**:
+- Model: `gemini-2.5-pro` for sentiment and theme agents
+- Batch size: 12 documents per sentiment request
+- Max output tokens: 3000 (sentiment and theme agents)
+- Safety settings: `BLOCK_NONE` for all harm categories
+- This configuration balances quality, speed, and API rate limits (15 RPM)
+
 ### 2. Agent Modularity Speeds Iteration
 New logic (e.g., classifiers, RAG solutions agent) can be introduced by swapping an agent node without rewriting the entire pipeline.
 

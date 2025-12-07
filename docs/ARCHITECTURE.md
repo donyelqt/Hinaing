@@ -236,7 +236,7 @@ SnapshotRequest
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11+, Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5-pro, 2.0-flash-exp) |
+| LLM | Google Gemini (2.5-pro for sentiment/theme, 2.0-flash-exp for orchestration/narrative) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment) |
 | Embeddings | MiniLM-L6-v2 (384 dimensions) |
 | Vector DB | Qdrant |
