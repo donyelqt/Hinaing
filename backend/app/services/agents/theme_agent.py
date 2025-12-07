@@ -42,7 +42,7 @@ def run_theme_agent(
         raise RuntimeError("GEMINI_API_KEY missing")
     
     genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel("gemini-2.5-pro")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     
     # Build context with sanitized text - INCLUDE URLs for evidence
     doc_lines = []

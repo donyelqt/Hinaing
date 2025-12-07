@@ -113,7 +113,7 @@ def _build_llm() -> ChatGoogleGenerativeAI:
     if not settings.gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY is missing. Unable to initialize Gemini agent.")
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-pro",
+        model="gemini-2.5-flash",
         temperature=0.2,
         google_api_key=settings.gemini_api_key,
     )
