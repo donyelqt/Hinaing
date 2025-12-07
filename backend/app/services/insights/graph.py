@@ -290,118 +290,6 @@ def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
     return None
 
 
-def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
-    context_docs = [doc.model_dump() for doc in docs[:5]]
-    prompt = (
-        "You are a civic operations analyst for Baguio City. "
-        f"Focus on the theme '{label}'. "
-        "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
-        "Highlight actionable risk or opportunity from the provided documents."
-    )
-    response = run_gemini_agent(prompt, documents=context_docs)
-    parsed = _parse_agent_json(response)
-    evidence = [str(doc.url) for doc in docs[:3] if doc.url]
-    if parsed:
-        title = parsed.get("title") or f"Key updates in {label}"
-        detail = parsed.get("detail") or "Context unavailable"
-
-settings = get_settings()
-logger = logging.getLogger(__name__)
-if settings.langsmith_api_key:
-    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
-    os.environ.setdefault("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
-    if settings.langsmith_project:
-        os.environ.setdefault("LANGCHAIN_PROJECT", settings.langsmith_project)
-
-
-class SnapshotState(TypedDict, total=False):
-    request: SnapshotRequest
-    documents: list[WebDocument]
-    enriched: list[WebDocument]
-    theme_documents: dict[str, list[WebDocument]]
-    theme_insights: list[Insight]
-    credibility_notes: dict[str, float]
-    retrieval_plan: dict[str, Any]
-    snapshot: SnapshotResponse
-async def fetch_documents(state: SnapshotState) -> SnapshotState:
-    request = state["request"]
-    logger.info("[snapshot] Retrieval agent planning fetch", extra={"platforms": request.platforms})
-    try:
-        documents = await retrieval_agent.run(request)
-    except Exception:
-        logger.exception("Retrieval agent failed; returning empty document set")
-        documents = []
-
-    if "web" in request.platforms and "facebook" in request.platforms and len(documents) > 1:
-        query = _build_query(request)
-        try:
-            reranker = LangSearchClient()
-            documents = await reranker.rerank(query=query, documents=documents)
-        except Exception as exc:
-            logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
-
-    state["documents"] = documents
-    return state
-
-
-    state["theme_documents"] = route_documents_by_theme(docs, state["request"].focus_areas)
-    return state
-
-
-def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
-    text = raw_text.strip()
-    if text.startswith("```") and text.endswith("```"):
-        inner = text.split("\n", 1)
-        text = inner[1] if len(inner) > 1 else text[3:]
-        text = text[:-3].strip()
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            return data
-    except json.JSONDecodeError:
-        logger.debug("Theme agent response not JSON: %s", raw_text)
-    return None
-
-
-def _synthesize_theme_insight(label: str, docs: list[WebDocument]) -> Insight:
-    from ..agents.theme_agent import run_theme_agent
-    
-    context_docs = [doc.model_dump() for doc in docs[:5]]
-    prompt = (
-        "You are a civic operations analyst for Baguio City. "
-        f"Focus on the theme '{label}'. "
-        "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
-        "Highlight actionable risk or opportunity from the provided documents."
-    )
-    response = run_theme_agent(
-        theme_label=label,
-        prompt=prompt,
-        documents=context_docs,
-    )
-    parsed = _parse_agent_json(response)
-    evidence = [str(doc.url) for doc in docs[:3] if doc.url]
-    if parsed:
-        title = parsed.get("title") or f"Key updates in {label}"
-        detail = parsed.get("detail") or "Context unavailable"
-        parsed_evidence = parsed.get("evidence")
-        if isinstance(parsed_evidence, list) and parsed_evidence:
-            evidence = [str(item) for item in parsed_evidence if item]
-    else:
-        fallback_doc = max(
-            docs,
-            key=lambda d: (d.metadata or {}).get("semantic_relevance_score", 0.0),
-            default=docs[0],
-        )
-        title = f"Key updates in {label}"
-        detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240]
-    return Insight(
-        category=label,
-        title=title,
-        detail=detail[:240],
-        evidence=evidence,
-    )
-
-
 # Minimum average relevance score to generate insights for a theme
 MIN_RELEVANCE_THRESHOLD = 0.55
 
@@ -578,6 +466,12 @@ def _derive_label(scores: dict[str, float]) -> str:
     if positive >= 0.5:
         return "Positive Momentum"
     return "Mixed Sentiment"
+
+
+def _build_query(request: SnapshotRequest) -> str:
+    """Build a search query for semantic reranking."""
+    focus = " ".join(request.focus_areas or ["civic updates"])
+    return f"Baguio City {focus} {request.time_window}"
 
 
 summary_chain = RunnableLambda(
