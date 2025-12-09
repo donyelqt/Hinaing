@@ -5,6 +5,7 @@ import json
 import logging
 import warnings
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools import Tool
@@ -21,6 +22,35 @@ logging.getLogger("langchain_core.callbacks.manager").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+def _get_time_search_suffix(time_window: str | None) -> str:
+    """Generate search operator suffix for time-based filtering.
+    
+    Uses Google-style 'after:' operator to prioritize recent content.
+    """
+    if not time_window:
+        return ""
+    
+    now = datetime.now(timezone.utc)
+    
+    if time_window == "6h":
+        date_str = now.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "24h":
+        yesterday = now - timedelta(days=1)
+        date_str = yesterday.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "3d":
+        cutoff = now - timedelta(days=3)
+        date_str = cutoff.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "7d":
+        cutoff = now - timedelta(days=7)
+        date_str = cutoff.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    
+    return ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -275,11 +305,11 @@ class QueryOrchestratorAgent:
             steps = result.get("intermediate_steps", [])
             logger.info(f"[query_orchestrator] ReAct completed in {len(steps)} steps")
             
-            plan = self._parse_output(final_output, focus_values, steps)
+            plan = self._parse_output(final_output, focus_values, steps, time_window)
             
         except Exception as exc:
             logger.warning("[query_orchestrator] ReAct failed, using fallback: %s", exc)
-            plan = self._fallback_plan(focus_values)
+            plan = self._fallback_plan(focus_values, time_window)
 
         logger.info(
             "[query_orchestrator] Optimized query ready",
@@ -287,8 +317,10 @@ class QueryOrchestratorAgent:
         )
         return plan
 
-    def _parse_output(self, output: str, focus_values: list[str], steps: list | None = None) -> QueryPlan:
+    def _parse_output(self, output: str, focus_values: list[str], steps: list | None = None, time_window: str | None = None) -> QueryPlan:
         """Parse ReAct output into QueryPlan."""
+        time_suffix = _get_time_search_suffix(time_window)
+        
         try:
             # Extract JSON from output
             if "```json" in output:
@@ -302,7 +334,7 @@ class QueryOrchestratorAgent:
                     json_str = output[start:end]
                 else:
                     if steps:
-                        return self._extract_from_steps(steps, focus_values)
+                        return self._extract_from_steps(steps, focus_values, time_window)
                     raise ValueError("No JSON found")
 
             data = json.loads(json_str)
@@ -311,13 +343,17 @@ class QueryOrchestratorAgent:
             for idx, q in enumerate(data.get("queries", [])):
                 query_text = q if isinstance(q, str) else q.get("query", "")
                 if query_text:
-                    queries.append(QueryTask(query=query_text, intent="targeted", priority=idx + 1))
+                    # Append time suffix to each query
+                    query_with_time = f"{query_text}{time_suffix}"
+                    queries.append(QueryTask(query=query_with_time, intent="targeted", priority=idx + 1))
 
             if not queries:
                 if steps:
-                    return self._extract_from_steps(steps, focus_values)
-                return self._fallback_plan(focus_values)
+                    return self._extract_from_steps(steps, focus_values, time_window)
+                return self._fallback_plan(focus_values, time_window)
 
+            logger.info("[query_orchestrator] Added time suffix to queries: %s", time_suffix or "(none)")
+            
             return QueryPlan(
                 strategy=data.get("strategy", f"Optimized query for {', '.join(focus_values)}"),
                 queries=queries[:self.max_queries],
@@ -327,11 +363,13 @@ class QueryOrchestratorAgent:
         except (json.JSONDecodeError, ValueError) as exc:
             logger.warning("[query_orchestrator] Parse failed: %s", exc)
             if steps:
-                return self._extract_from_steps(steps, focus_values)
-            return self._fallback_plan(focus_values)
+                return self._extract_from_steps(steps, focus_values, time_window)
+            return self._fallback_plan(focus_values, time_window)
 
-    def _extract_from_steps(self, steps: list, focus_values: list[str]) -> QueryPlan:
+    def _extract_from_steps(self, steps: list, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
         """Extract query from intermediate steps."""
+        time_suffix = _get_time_search_suffix(time_window)
+        
         for step in reversed(steps):
             if len(step) >= 2:
                 action, observation = step[0], step[1]
@@ -339,17 +377,21 @@ class QueryOrchestratorAgent:
                     try:
                         result = json.loads(observation) if isinstance(observation, str) else observation
                         if isinstance(result, dict) and result.get("query"):
+                            query_with_time = f"{result['query']}{time_suffix}"
+                            logger.info("[query_orchestrator] Added time suffix: %s", time_suffix or "(none)")
                             return QueryPlan(
                                 strategy=f"Optimized query with {result.get('keyword_count', 0)} keywords",
-                                queries=[QueryTask(query=result["query"], intent="targeted", priority=1)],
+                                queries=[QueryTask(query=query_with_time, intent="targeted", priority=1)],
                                 expected_results=[f"Results for {', '.join(focus_values)} concerns"],
                             )
                     except (json.JSONDecodeError, TypeError):
                         continue
-        return self._fallback_plan(focus_values)
+        return self._fallback_plan(focus_values, time_window)
 
-    def _fallback_plan(self, focus_values: list[str]) -> QueryPlan:
+    def _fallback_plan(self, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
         """Direct fallback using ALL concern keywords."""
+        time_suffix = _get_time_search_suffix(time_window)
+        
         all_keywords: list[str] = []
         for area in focus_values:
             keywords = FOCUS_CONCERN_KEYWORDS.get(area.lower(), [])
@@ -359,11 +401,13 @@ class QueryOrchestratorAgent:
         
         if unique:
             or_terms = " OR ".join(f'"{kw}"' for kw in unique)
-            query = f"({or_terms})"
+            query = f"({or_terms}){time_suffix}"
             strategy = f"Fallback: {len(unique)} keywords for {', '.join(focus_values)}"
         else:
-            query = f"Baguio City {' '.join(focus_values)} problem OR concern"
+            query = f"Baguio City {' '.join(focus_values)} problem OR concern{time_suffix}"
             strategy = f"Fallback: Generic query for {', '.join(focus_values)}"
+        
+        logger.info("[query_orchestrator] Fallback with time suffix: %s", time_suffix or "(none)")
         
         return QueryPlan(
             strategy=strategy,

@@ -14,6 +14,37 @@ from ..langsearch import LangSearchClient
 
 logger = logging.getLogger(__name__)
 
+
+def _get_time_search_suffix(time_window: str | None) -> str:
+    """Generate search operator suffix for time-based filtering.
+    
+    Uses Google-style 'after:' operator to prioritize recent content.
+    """
+    if not time_window:
+        return ""
+    
+    now = datetime.now(timezone.utc)
+    
+    if time_window == "6h":
+        # For 6h, use today's date to get freshest content
+        date_str = now.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "24h":
+        # For 24h, use yesterday's date
+        yesterday = now - timedelta(days=1)
+        date_str = yesterday.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "3d":
+        cutoff = now - timedelta(days=3)
+        date_str = cutoff.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    elif time_window == "7d":
+        cutoff = now - timedelta(days=7)
+        date_str = cutoff.strftime("%Y-%m-%d")
+        return f" after:{date_str}"
+    
+    return ""
+
 # Baguio-specific location terms for filtering
 BAGUIO_LOCATION_TERMS = {
     "baguio", "benguet", "cordillera", "session road", "burnham park",
@@ -66,7 +97,14 @@ FOCUS_CONCERN_KEYWORDS: dict[str, list[str]] = {
 
 
 def build_focus_query(request: SnapshotRequest) -> str:
-    """Construct a search query based on selected focus areas."""
+    """Construct a search query based on selected focus areas.
+    
+    Includes time-based search operators (after:YYYY-MM-DD) to prioritize
+    recent content based on the requested time_window.
+    """
+    # Get time suffix for freshness (e.g., " after:2024-12-09")
+    time_suffix = _get_time_search_suffix(request.time_window)
+    
     if request.focus_areas:
         all_terms: list[str] = []
         for area in request.focus_areas:
@@ -79,8 +117,13 @@ def build_focus_query(request: SnapshotRequest) -> str:
                 all_terms.append(f"Baguio {area} concern")
         unique_terms = list(dict.fromkeys(all_terms))
         terms_query = " OR ".join(f'"{term}"' for term in unique_terms[:6])
-        return f"({terms_query})"
-    return '"Baguio City" AND (problem OR issue OR concern)'
+        base_query = f"({terms_query})"
+        logger.info("[build_focus_query] Query with time filter: %s%s", base_query[:80], time_suffix)
+        return f"{base_query}{time_suffix}"
+    
+    base_query = '"Baguio City" AND (problem OR issue OR concern)'
+    logger.info("[build_focus_query] Default query with time filter: %s%s", base_query, time_suffix)
+    return f"{base_query}{time_suffix}"
 
 
 def get_window_timedelta(time_window: str | None) -> timedelta | None:
