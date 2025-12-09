@@ -32,7 +32,11 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 9. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
 10. **Per-agent telemetry** logs runtime + doc counts inside `backend/app/services/insights/graph.py` for observability.
 
-## Latest Updates (Dec 4, 2025)
+## Latest Updates (Dec 9, 2025)
+- **Time-Based Search Operators**: Added Google-style `after:YYYY-MM-DD` operators to search queries for fresher content retrieval. Queries now include time suffixes based on requested time window (6h/24h/3d/7d).
+- **Multi-Layer Freshness Filtering**: Three-tier approach: (1) Query-level time operators, (2) API-level freshness hints to LangSearch, (3) Client-side `published_at` filtering.
+
+## Previous Updates (Dec 4, 2025)
 - **Narrative Generation Optimization**: Switched from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for narrative generation (~5x faster response times while maintaining quality).
 - **Agent Tools Consolidation**: Migrated tool definitions to centralized `agent_tools.py`, removed redundant `tools.py`.
 - **Baguio-Specific Search Enhancement**: Added local keywords (BGH, Kennon Road, Session Road, etc.) to `context_agent.py` for improved local search relevance.

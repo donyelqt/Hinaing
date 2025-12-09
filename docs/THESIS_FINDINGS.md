@@ -146,7 +146,46 @@ The Retrieval Agent fans out to both; adding more connectors (e.g., Reddit, X) r
 ### 5. RAG Pipeline Enhances Context
 Context Augmentation Agent uses semantic chunking + vector search to provide relevant context to theme agents.
 
-## Latest Evidence (Dec 4, 2025)
+### 6. Time-Based Search Filtering (Dec 9, 2025)
+
+**Problem**: Search results were returning stale content (articles from 2012-2022) instead of fresh content within the requested time window (6h/24h).
+
+**Root Cause Analysis**:
+1. LangSearch API's `freshness` parameter only supports coarse granularity (oneDay/oneWeek)
+2. Many web results lack `datePublished` metadata, making client-side filtering ineffective
+3. Search engines prioritize relevance over recency by default
+
+**Solution**: Multi-layer freshness filtering:
+
+| Layer | Implementation | Example |
+|-------|----------------|---------|
+| Query-Level | `after:YYYY-MM-DD` suffix | `("Baguio hospital") after:2025-12-09` |
+| API-Level | `freshness` parameter | `oneDay` for 6h/24h requests |
+| Client-Side | `published_at` filtering | Filter docs older than cutoff |
+
+**Time Window Mapping**:
+```python
+time_window → search_suffix
+"6h"  → f" after:{today}"      # e.g., after:2025-12-09
+"24h" → f" after:{yesterday}"  # e.g., after:2025-12-08
+"3d"  → f" after:{3_days_ago}" # e.g., after:2025-12-06
+"7d"  → f" after:{7_days_ago}" # e.g., after:2025-12-02
+```
+
+**Files Modified**:
+- `query_orchestrator.py` - Time suffix in ReAct-generated queries
+- `agent_tools.py` - Time suffix in direct queries + `_get_time_search_suffix()` helper
+- `langsearch.py` - API freshness parameter mapping
+
+## Latest Evidence (Dec 9, 2025)
+- **Time-Based Search Operators**: Implemented multi-layer freshness filtering to prioritize recent content:
+  - **Query-Level**: Google-style `after:YYYY-MM-DD` operators appended to search queries
+  - **API-Level**: LangSearch `freshness` parameter (oneDay/oneWeek)
+  - **Client-Side**: Post-retrieval filtering by `published_at` timestamp
+- **Time Window Mapping**: 6h → today's date, 24h → yesterday, 3d/7d → calculated cutoff dates
+- **Files Updated**: `query_orchestrator.py` (ReAct queries), `agent_tools.py` (direct queries), `langsearch.py` (API hints)
+
+## Previous Evidence (Dec 4, 2025)
 - **Narrative Generation Optimization**: Switched `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for ~5x faster response times while maintaining output quality.
 - **Agent Tools Consolidation**: Centralized tool definitions in `agent_tools.py`, eliminating code duplication from redundant `tools.py`.
 - **Baguio-Specific Search Enhancement**: Added local keywords (BGH, Kennon Road, Session Road, Burnham Park, etc.) to `context_agent.py` for improved local search relevance.

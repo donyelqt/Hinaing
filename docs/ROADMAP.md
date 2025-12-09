@@ -23,7 +23,15 @@ This document tracks what has been delivered so far and the remaining work neede
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
 - Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
 
-## 🔄 Latest Updates (Dec 4, 2025)
+## 🔄 Latest Updates (Dec 9, 2025)
+
+### Time-Based Search Enhancement
+- **Query-Level Time Operators**: Added Google-style `after:YYYY-MM-DD` suffixes to search queries
+- **Time Window Mapping**: 6h → today, 24h → yesterday, 3d/7d → calculated dates
+- **Multi-Layer Freshness**: Query operators + API freshness hints + client-side filtering
+- **Files Updated**: `query_orchestrator.py`, `agent_tools.py`, `langsearch.py`
+
+## Previous Updates (Dec 4, 2025)
 
 ### Performance Optimization: Narrative Generation
 - **Model Switch**: Changed `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for narrative generation
