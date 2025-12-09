@@ -219,7 +219,7 @@ graph LR
 
 ```
 SnapshotRequest
-    → Query Planning (ReAct)
+    → Query Planning (ReAct) + Time-Based Search Operators
     → Document Retrieval (LangSearch + Facebook)
     → Sentiment Analysis (RoBERTa + Gemini Ensemble)
     → Theme Routing (6 categories)
@@ -228,6 +228,33 @@ SnapshotRequest
     → Narrative Generation
     → SnapshotResponse
 ```
+
+## Time-Based Search Filtering
+
+The system uses a multi-layer approach to prioritize fresh content:
+
+### 1. Query-Level Time Operators
+Search queries include Google-style `after:YYYY-MM-DD` operators based on the requested time window:
+
+| Time Window | Search Suffix | Example |
+|-------------|---------------|---------|
+| 6h | `after:{today}` | `after:2025-12-09` |
+| 24h | `after:{yesterday}` | `after:2025-12-08` |
+| 3d | `after:{3 days ago}` | `after:2025-12-06` |
+| 7d | `after:{7 days ago}` | `after:2025-12-02` |
+
+### 2. API-Level Freshness Hints
+LangSearch API receives a `freshness` parameter:
+- `6h` / `24h` → `oneDay`
+- `3d` / `7d` → `oneWeek`
+
+### 3. Client-Side Time Filtering
+Documents are filtered by `published_at` timestamp after retrieval to enforce strict time boundaries.
+
+**Implementation Files:**
+- `backend/app/services/agents/query_orchestrator.py` - Time suffix in ReAct queries
+- `backend/app/services/insights/agent_tools.py` - Time suffix in direct queries + client-side filtering
+- `backend/app/services/langsearch.py` - API freshness parameter mapping
 
 ## Tech Stack
 
