@@ -66,82 +66,61 @@ THEME_GROUPS = {
         "label": "Infrastructure",
         "focus_values": {"infrastructure"},
         "keywords": {
-            "road",
-            "traffic",
-            "water",
-            "power",
-            "infrastructure",
-            "bridge",
-            "construction",
+            # Core infrastructure terms
+            "road", "traffic", "water", "power", "infrastructure", "bridge", "construction",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "kennon", "session road", "bgh", "building", "outage", "substandard",
         },
     },
     "health": {
         "label": "Health & Wellness",
         "focus_values": {"health"},
         "keywords": {
-            "hospital",
-            "clinic",
-            "health",
-            "dengue",
-            "covid",
-            "medicine",
-            "vaccine",
-            "wellness",
+            # Core health terms
+            "hospital", "clinic", "health", "dengue", "covid", "medicine", "vaccine", "wellness",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "bgh", "baguio general", "disease", "medical", "patient",
         },
     },
     "safety": {
         "label": "Public Safety",
         "focus_values": {"safety"},
         "keywords": {
-            "crime",
-            "police",
-            "fire",
-            "landslide",
-            "safety",
-            "accident",
-            "emergency",
-            "security",
+            # Core safety terms
+            "crime", "police", "fire", "landslide", "safety", "accident", "emergency", "security",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "flood", "walkout", "protest", "rally", "incident", "student walkout", "youth rally",
         },
     },
     "tourism": {
         "label": "Tourism & Events",
         "focus_values": {"tourism"},
         "keywords": {
-            "tourism",
-            "tourist",
-            "hotel",
-            "festival",
-            "event",
-            "panagbenga",
-            "visitor",
+            # Core tourism terms
+            "tourism", "tourist", "hotel", "festival", "event", "panagbenga", "visitor",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "burnham", "overcrowding", "mines view", "camp john hay", "wright park",
         },
     },
     "economy": {
         "label": "Business & Economy",
         "focus_values": {"economy", "business"},
         "keywords": {
-            "market",
-            "vendor",
-            "livelihood",
-            "economy",
-            "business",
-            "investment",
-            "mallification",
-            "sm prime",
-            "price",
+            # Core economy terms
+            "market", "vendor", "livelihood", "economy", "business", "investment", "price",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "mallification", "sm prime", "public market", "redevelopment", "displacement",
+            "walkout", "protest", "students protest", "youth protest", "schools walkout",
         },
     },
     "environment": {
         "label": "Environment",
         "focus_values": {"environment"},
         "keywords": {
-            "garbage",
-            "pollution",
-            "environment",
-            "rain",
-            "waste",
-            "tree",
-            "green",
+            # Core environment terms
+            "garbage", "pollution", "environment", "rain", "waste", "tree", "green",
+            # Baguio-specific from FOCUS_CONCERN_KEYWORDS
+            "air quality", "flooding", "climate",
             "climate",
         },
     },
@@ -231,7 +210,7 @@ async def augment_context(state: SnapshotState) -> SnapshotState:
                 documents=docs,
                 theme=label,
                 time_window=request.time_window,
-                top_k=10,
+                top_k=25,
             )
             augmented[theme_key] = context
         except Exception as exc:

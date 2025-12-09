@@ -261,7 +261,7 @@ Return JSON array with sentiment AND confidence for each:
                 prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.1,
-                    max_output_tokens=3000,
+                    max_output_tokens=8192,
                 ),
                 safety_settings=SAFETY_SETTINGS,
             )

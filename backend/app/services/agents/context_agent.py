@@ -99,49 +99,36 @@ class ContextAugmentationAgent:
         )
     
     def _build_theme_query(self, theme: str) -> str:
-        """Build search query optimized for theme with Baguio-specific keywords.
+        """Build search query using FOCUS_CONCERN_KEYWORDS for better semantic matching.
         
         Args:
             theme: Theme label
             
         Returns:
-            Optimized search query with local context
+            Optimized search query using actual concern keywords
         """
-        # Theme-specific query templates with Baguio-specific terms
-        theme_queries = {
-            "Health & Wellness": (
-                "Baguio hospital health disease clinic medical sanitation "
-                "Baguio General Hospital BGH wellness hygiene outbreak "
-                "BGH substandard construction building defect hospital facility"
-            ),
-            "Public Safety": (
-                "Baguio crime police fire accident emergency landslide flood "
-                "Kennon Road accident safety disaster rescue security "
-                "student walkout protest rally school incident demonstration"
-            ),
-            "Infrastructure": (
-                "Baguio road traffic water power pothole Session Road "
-                "Kennon Road Marcos Highway jeepney garbage infrastructure "
-                "construction utility building BENECO water district"
-            ),
-            "Environment": (
-                "Baguio pollution air quality waste flooding landslide "
-                "environmental drainage climate pine trees deforestation"
-            ),
-            "Tourism & Events": (
-                "Baguio tourist Panagbenga Burnham Park Camp John Hay "
-                "Mines View Wright Park overcrowding hotel festival "
-                "Summer Capital City of Pines tourism visitor"
-            ),
-            "Business & Economy": (
-                "Baguio vendor market business livelihood employment "
-                "public market mallification SM Prime redevelopment PPP "
-                "vendor displacement economy trade commerce "
-                "student walkout protest mallification anti-mall"
-            ),
+        from ..insights.agent_tools import FOCUS_CONCERN_KEYWORDS
+        
+        # Map theme labels to focus area keys
+        theme_to_focus = {
+            "Health & Wellness": "health",
+            "Public Safety": "safety",
+            "Infrastructure": "infrastructure",
+            "Environment": "environment",
+            "Tourism & Events": "tourism",
+            "Business & Economy": "economy",
         }
         
-        return theme_queries.get(theme, f"Baguio City {theme} news updates issues concerns")
+        focus_key = theme_to_focus.get(theme)
+        
+        if focus_key and focus_key in FOCUS_CONCERN_KEYWORDS:
+            # Use actual concern keywords for better semantic matching
+            keywords = FOCUS_CONCERN_KEYWORDS[focus_key]
+            # Join all keywords for comprehensive query
+            return " ".join(keywords)
+        
+        # Fallback for unknown themes
+        return f"Baguio City {theme} news updates issues concerns"
     
     def _get_temporal_range(
         self, 

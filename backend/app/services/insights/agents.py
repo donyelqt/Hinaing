@@ -14,8 +14,12 @@ from .agent_tools import (
     assign_sentiment,
     score_credibility,
     route_documents_by_theme,
+    deduplicate_documents,
 )
 from ..agents.sentiment_agent import get_sentiment_agent
+
+# Maximum documents to process (controls cost and latency)
+MAX_DOCUMENTS = 30
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +52,7 @@ class RetrievalAgent:
                 # Execute queries sequentially with delay to avoid rate limits
                 for idx, task in enumerate(query_plan.queries):
                     if idx > 0:
-                        await asyncio.sleep(0.5)  # 500ms delay between queries
+                        await asyncio.sleep(1.5)  # 1.5s delay between queries to avoid 429
                     tasks.append(
                         asyncio.create_task(
                             search_web_documents(
@@ -76,7 +80,22 @@ class RetrievalAgent:
                 continue
             documents.extend(result)
 
-        logger.info("[retrieval_agent] collected %d documents", len(documents))
+        # Global deduplication across all query results
+        before_dedup = len(documents)
+        documents = deduplicate_documents(documents)
+        
+        # Cap total documents to control cost/latency
+        if len(documents) > MAX_DOCUMENTS:
+            logger.info(
+                "[retrieval_agent] capping documents: %d -> %d",
+                len(documents), MAX_DOCUMENTS
+            )
+            documents = documents[:MAX_DOCUMENTS]
+
+        logger.info(
+            "[retrieval_agent] collected %d documents (before dedup: %d)",
+            len(documents), before_dedup
+        )
         return documents
 
 
