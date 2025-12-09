@@ -49,6 +49,13 @@ COPY --from=builder /app/.venv /app/.venv
 
 COPY app ./app
 
+# Pre-download models during build to avoid startup timeout
+RUN python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
+    AutoModelForSequenceClassification.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
+    AutoTokenizer.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest')" && \
+    python -c "from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 EXPOSE 8000
 
 # Health check for Railway/container orchestration
