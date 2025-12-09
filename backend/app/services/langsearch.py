@@ -16,8 +16,8 @@ from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
 _RERANK_MODEL = "langsearch-reranker-v1"
-_RERANK_MAX_RETRIES = 3
-_RERANK_RETRY_DELAY = 1.0  # seconds, will be multiplied by attempt number
+_MAX_RETRIES = 3
+_RETRY_DELAY = 1.5  # seconds, will be multiplied by attempt number for exponential backoff
 
 
 class LangSearchClient:
@@ -58,9 +58,30 @@ class LangSearchClient:
         }
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(self._base_url, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
+            # Retry with exponential backoff for rate limits (429)
+            data = None
+            for attempt in range(1, _MAX_RETRIES + 1):
+                response = await client.post(self._base_url, json=payload, headers=headers)
+                
+                if response.status_code == 429:
+                    if attempt < _MAX_RETRIES:
+                        delay = _RETRY_DELAY * (2 ** (attempt - 1))  # Exponential: 1.5s, 3s, 6s
+                        logger.warning(
+                            "LangSearch rate limited (429), retrying in %.1fs (attempt %d/%d)",
+                            delay, attempt, _MAX_RETRIES
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        logger.error("LangSearch rate limited, max retries exceeded for query: %s", query[:50])
+                        return []
+                
+                response.raise_for_status()
+                data = response.json()
+                break
+            
+            if data is None:
+                return []
 
             documents: list[WebDocument] = []
             for item in self._extract_web_results(data):
@@ -172,15 +193,15 @@ class LangSearchClient:
 
         # Retry with exponential backoff for rate limits (429)
         data = None
-        for attempt in range(1, _RERANK_MAX_RETRIES + 1):
+        for attempt in range(1, _MAX_RETRIES + 1):
             response = await client.post(self._rerank_url, json=payload, headers=headers)
             
             if response.status_code == 429:
-                if attempt < _RERANK_MAX_RETRIES:
-                    delay = _RERANK_RETRY_DELAY * attempt
+                if attempt < _MAX_RETRIES:
+                    delay = _RETRY_DELAY * (2 ** (attempt - 1))
                     logger.warning(
                         "Rerank rate limited (429), retrying in %.1fs (attempt %d/%d)",
-                        delay, attempt, _RERANK_MAX_RETRIES
+                        delay, attempt, _MAX_RETRIES
                     )
                     await asyncio.sleep(delay)
                     continue

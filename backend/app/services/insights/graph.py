@@ -291,7 +291,8 @@ def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
 
 
 # Minimum average relevance score to generate insights for a theme
-MIN_RELEVANCE_THRESHOLD = 0.55
+# Lowered from 0.55 to 0.40 to allow more results through RAG filtering
+MIN_RELEVANCE_THRESHOLD = 0.40
 
 
 def _synthesize_single_theme(

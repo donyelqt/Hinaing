@@ -15,6 +15,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from ...core.config import get_settings
 from ...schemas.snapshot import SnapshotRequest
 from ...schemas.query import QueryPlan, QueryTask
+from ...services.insights.agent_tools import FOCUS_CONCERN_KEYWORDS
 
 # Suppress the StdOutCallbackHandler warning
 warnings.filterwarnings("ignore", message="Error in StdOutCallbackHandler")
@@ -52,29 +53,28 @@ def analyze_focus_areas(input_str: str) -> str:
             "coverage": "general"
         })
 
-    # Analyze each focus area for query strategy
+    # Analyze each focus area for query strategy using FOCUS_CONCERN_KEYWORDS
     analysis_results = []
     for area in focus_areas:
         area_lower = area.lower()
         
+        # Get specific concern keywords from agent_tools
+        concern_keywords = FOCUS_CONCERN_KEYWORDS.get(area_lower, [])
+        
         # Determine query characteristics based on focus area
         if area_lower in ("health", "safety"):
             query_type = "urgent"
-            keywords = ["alert", "incident", "update", "report"]
         elif area_lower in ("infrastructure", "environment"):
             query_type = "monitoring"
-            keywords = ["status", "project", "development", "issue"]
         elif area_lower in ("tourism", "economy"):
             query_type = "trend"
-            keywords = ["trend", "growth", "activity", "business"]
         else:
             query_type = "general"
-            keywords = ["news", "update", "latest"]
         
         analysis_results.append({
             "area": area,
             "query_type": query_type,
-            "suggested_keywords": keywords,
+            "concern_queries": concern_keywords[:6],  # Top 6 specific queries
             "priority": "high" if query_type == "urgent" else "medium"
         })
 
@@ -82,7 +82,7 @@ def analyze_focus_areas(input_str: str) -> str:
         "analysis": f"Analyzed {len(focus_areas)} focus areas",
         "time_window": time_window,
         "areas": analysis_results,
-        "recommendation": "Generate targeted queries for each area plus one broad query"
+        "recommendation": "Use the concern_queries directly as search queries - they are pre-optimized for Baguio City civic monitoring"
     })
 
 
@@ -90,7 +90,7 @@ def generate_query(input_str: str) -> str:
     """Generate an optimized search query for Baguio City civic monitoring.
     
     Args:
-        input_str: JSON with 'focus_area', 'query_type', 'time_window', 'keywords'
+        input_str: JSON with 'focus_area', 'query_type', 'time_window', 'keywords', 'concern_query'
     
     Returns:
         Optimized query string
@@ -101,27 +101,37 @@ def generate_query(input_str: str) -> str:
         query_type = data.get("query_type", "broad")
         time_window = data.get("time_window", "24h")
         keywords = data.get("keywords", [])
+        concern_query = data.get("concern_query", "")  # Pre-built concern query
     except json.JSONDecodeError:
         return "Error: Invalid JSON input"
+
+    # If a specific concern_query is provided, use it directly (highest priority)
+    if concern_query:
+        return json.dumps({
+            "query": concern_query,
+            "type": "targeted",
+            "focus_area": focus_area,
+            "estimated_relevance": 0.9
+        })
 
     # Build query based on type
     base = "Baguio City"
     
     if query_type == "urgent":
-        query = f"{base} {focus_area} alert incident report {time_window}"
+        query = f"{base} {focus_area} alert incident report"
     elif query_type == "monitoring":
-        query = f"{base} {focus_area} status update development {time_window}"
+        query = f"{base} {focus_area} status update development"
     elif query_type == "trend":
-        query = f"{base} {focus_area} trend news latest {time_window}"
+        query = f"{base} {focus_area} trend news latest"
     elif query_type == "risk":
-        query = f"{base} {focus_area} emergency warning crisis {time_window}"
+        query = f"{base} {focus_area} emergency warning crisis"
     else:
         # Broad query
         if keywords:
             keyword_str = " ".join(keywords[:3])
-            query = f"{base} {focus_area} {keyword_str} {time_window}"
+            query = f"{base} {focus_area} {keyword_str}"
         else:
-            query = f"{base} {focus_area} civic updates {time_window}"
+            query = f"{base} {focus_area} civic updates"
 
     return json.dumps({
         "query": query,
@@ -219,8 +229,10 @@ Final Answer: {{"strategy": "...", "queries": [...], "expected_results": [...]}}
 RULES:
 1. You MUST say "Final Answer:" before outputting JSON
 2. Do NOT output JSON without "Final Answer:" prefix
-3. After 3 tool calls, you MUST output Final Answer
+3. After 3-4 tool calls, you MUST output Final Answer
 4. Generate 3-6 queries covering: broad, targeted, and risk
+5. IMPORTANT: When analyze_focus_areas returns "concern_queries", use them directly with generate_query by passing the concern_query parameter. These are pre-optimized queries like "Baguio mallification", "SM Prime Baguio protest", "Baguio vendor displacement" etc.
+6. Example: generate_query with {{"focus_area": "economy", "concern_query": "Baguio mallification"}}
 
 Begin!
 
@@ -265,7 +277,8 @@ class QueryOrchestratorAgent:
                 func=generate_query,
                 description=(
                     "Generate an optimized search query. "
-                    "Input: JSON with 'focus_area', 'query_type', 'time_window', 'keywords'. "
+                    "Input: JSON with 'focus_area', 'query_type', 'time_window', 'keywords', 'concern_query'. "
+                    "IMPORTANT: If you have a concern_query from analyze_focus_areas, pass it directly - it will be used as-is for best results. "
                     "Returns the generated query with metadata."
                 ),
             ),

@@ -45,7 +45,10 @@ class RetrievalAgent:
                     "[retrieval_agent] executing orchestrated web queries",
                     extra={"count": len(query_plan.queries)},
                 )
-                for task in query_plan.queries:
+                # Execute queries sequentially with delay to avoid rate limits
+                for idx, task in enumerate(query_plan.queries):
+                    if idx > 0:
+                        await asyncio.sleep(0.5)  # 500ms delay between queries
                     tasks.append(
                         asyncio.create_task(
                             search_web_documents(
