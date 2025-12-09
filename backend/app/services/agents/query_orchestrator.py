@@ -57,8 +57,8 @@ def _get_time_search_suffix(time_window: str | None) -> str:
 # Tool Functions
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_concern_keywords(input_str: str) -> str:
-    """Get ALL curated concern keywords for the specified focus areas.
+def analyze_focus_areas(input_str: str) -> str:
+    """Analyze focus areas and retrieve ALL curated concern keywords.
     
     Args:
         input_str: JSON with 'focus_areas' list
@@ -95,8 +95,8 @@ def get_concern_keywords(input_str: str) -> str:
     })
 
 
-def craft_search_query(input_str: str) -> str:
-    """Craft an optimized search query from keywords.
+def generate_query(input_str: str) -> str:
+    """Generate an optimized search query from keywords.
     
     Args:
         input_str: JSON with 'keywords' list and optional 'strategy'
@@ -129,7 +129,7 @@ def craft_search_query(input_str: str) -> str:
     })
 
 
-def evaluate_query_coverage(input_str: str) -> str:
+def evaluate_query(input_str: str) -> str:
     """Evaluate if the query covers all important concerns.
     
     Args:
@@ -199,9 +199,9 @@ Thought: I have crafted an optimized query.
 Final Answer: [JSON with strategy and query]
 
 WORKFLOW:
-1. Use get_concern_keywords to retrieve ALL keywords for the focus areas
-2. Use craft_search_query to build an optimized OR query with ALL keywords
-3. Optionally use evaluate_query_coverage to verify completeness
+1. Use analyze_focus_areas to retrieve ALL keywords for the focus areas
+2. Use generate_query to build an optimized OR query with ALL keywords
+3. Optionally use evaluate_query to verify completeness
 4. Output Final Answer with the optimized query
 
 Final Answer JSON format:
@@ -237,26 +237,26 @@ class QueryOrchestratorAgent:
     def _get_tools(self) -> list[Tool]:
         return [
             Tool(
-                name="get_concern_keywords",
-                func=get_concern_keywords,
+                name="analyze_focus_areas",
+                func=analyze_focus_areas,
                 description=(
-                    "Get ALL curated concern keywords for focus areas. "
+                    "Analyze focus areas and retrieve ALL curated concern keywords. "
                     "Input: JSON with 'focus_areas' list. "
                     "Returns all keywords to include in the search query."
                 ),
             ),
             Tool(
-                name="craft_search_query",
-                func=craft_search_query,
+                name="generate_query",
+                func=generate_query,
                 description=(
-                    "Craft an optimized search query from keywords. "
+                    "Generate an optimized search query from keywords. "
                     "Input: JSON with 'keywords' list. "
                     "Returns an OR-combined query string."
                 ),
             ),
             Tool(
-                name="evaluate_query_coverage",
-                func=evaluate_query_coverage,
+                name="evaluate_query",
+                func=evaluate_query,
                 description=(
                     "Evaluate if query covers all concerns. "
                     "Input: JSON with 'query' and 'focus_areas'. "
@@ -373,7 +373,7 @@ class QueryOrchestratorAgent:
         for step in reversed(steps):
             if len(step) >= 2:
                 action, observation = step[0], step[1]
-                if hasattr(action, 'tool') and action.tool == "craft_search_query":
+                if hasattr(action, 'tool') and action.tool == "generate_query":
                     try:
                         result = json.loads(observation) if isinstance(observation, str) else observation
                         if isinstance(result, dict) and result.get("query"):
