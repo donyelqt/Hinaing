@@ -26,6 +26,7 @@ import { PlatformSelector } from "./PlatformSelector";
 import { TimeWindowSelector } from "./TimeWindowSelector";
 import { FocusAreaSelector } from "./FocusAreaSelector";
 import { MobileFilters } from "./MobileFilters";
+import { VerificationBadge } from "./VerificationBadge";
 import { PRESET_OPTIONS, GENERATOR_STEPS } from "../constants";
 
 type SentimentGeneratorPageProps = {
@@ -74,8 +75,9 @@ type DisplayInsight = {
 };
 
 type CredibilityBreakdown = {
-  legitPercent: number;
-  misinfoPercent: number;
+  highCredibility: number;    // High + Medium tier
+  lowCredibility: number;     // Low + Very Low tier
+  avgScore: number;           // Average credibility score
   hasData: boolean;
 };
 
@@ -124,44 +126,48 @@ const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => 
 
 const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | null): CredibilityBreakdown => {
   if (!sources || sources.length === 0) {
-    return { legitPercent: 78, misinfoPercent: 22, hasData: false };
+    return { highCredibility: 0, lowCredibility: 0, avgScore: 0, hasData: false };
   }
 
-  let legit = 0;
-  let suspect = 0;
+  let highCount = 0;  // High + Medium credibility
+  let lowCount = 0;   // Low + Very Low credibility
+  let totalScore = 0;
+  let scoredCount = 0;
 
   sources.forEach((source) => {
     const metadata = source.metadata ?? {};
-    const credibility = typeof metadata.credibility === "string" ? metadata.credibility.toLowerCase() : undefined;
-    const verification = typeof metadata.verification_status === "string" ? metadata.verification_status.toLowerCase() : undefined;
-    const isVerified = metadata.is_verified === true || (verification && verification.includes("verified"));
-    const flaggedAsFake = Boolean(
-      (credibility && ["fake", "hoax", "misinfo", "misinformation", "rumor"].some((flag) => credibility.includes(flag))) ||
-      (verification && ["fake", "misinfo", "unverified", "rumor"].some((flag) => verification.includes(flag))),
-    );
-
-    if (flaggedAsFake) {
-      suspect += 1;
-      return;
+    const score = typeof metadata.credibility_score === "number" ? metadata.credibility_score : null;
+    const tier = typeof metadata.credibility_tier === "string" ? metadata.credibility_tier.toLowerCase() : null;
+    
+    if (score !== null) {
+      totalScore += score;
+      scoredCount += 1;
+      
+      // High/Medium (≥0.55) vs Low/Very Low (<0.55) - matches 6-signal thresholds
+      if (score >= 0.55 || tier === "high" || tier === "medium") {
+        highCount += 1;
+      } else {
+        lowCount += 1;
+      }
+    } else if (tier) {
+      // Fallback to tier only
+      if (tier === "high" || tier === "medium") {
+        highCount += 1;
+      } else {
+        lowCount += 1;
+      }
     }
-
-    if (isVerified || credibility === "legit" || credibility === "credible") {
-      legit += 1;
-      return;
-    }
-
-    // If metadata is ambiguous, assume legit if there are no red flags
-    legit += 1;
   });
 
-  const total = legit + suspect;
+  const total = highCount + lowCount;
   if (!total) {
-    return { legitPercent: 78, misinfoPercent: 22, hasData: false };
+    return { highCredibility: 0, lowCredibility: 0, avgScore: 0, hasData: false };
   }
 
   return {
-    legitPercent: Math.max(0, Math.min(100, Math.round((legit / total) * 100))),
-    misinfoPercent: Math.max(0, Math.min(100, Math.round((suspect / total) * 100))),
+    highCredibility: Math.round((highCount / total) * 100),
+    lowCredibility: Math.round((lowCount / total) * 100),
+    avgScore: scoredCount > 0 ? Math.round((totalScore / scoredCount) * 100) : 0,
     hasData: true,
   };
 };
@@ -627,19 +633,26 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-center text-sm">
-                          <div className="rounded-lg bg-white/80 p-3 shadow-inner">
-                            <strong className="block text-lg font-semibold text-emerald-700">{credibilityBreakdown.legitPercent}%</strong>
-                            <span className="text-2xs uppercase tracking-wide text-slate-500">Legit Sources</span>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              {credibilityBreakdown.hasData ? 'Verified or trusted outlets in this pull.' : 'Estimated share based on prior pulls.'}
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
+                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                            <strong className="block text-base sm:text-lg font-semibold text-slate-700">{credibilityBreakdown.avgScore}%</strong>
+                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
+                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                              {credibilityBreakdown.hasData ? '6-signal analysis' : 'No data yet'}
                             </p>
                           </div>
-                          <div className="rounded-lg bg-white/80 p-3 shadow-inner">
-                            <strong className="block text-lg font-semibold text-amber-600">{credibilityBreakdown.misinfoPercent}%</strong>
-                            <span className="text-2xs uppercase tracking-wide text-slate-500">Potential Fake News</span>
-                            <p className="mt-1 text-[11px] text-slate-500">
-                              {credibilityBreakdown.hasData ? 'Flagged for manual review.' : 'Estimate until verification labels arrive.'}
+                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                            <strong className="block text-base sm:text-lg font-semibold text-emerald-600">{credibilityBreakdown.highCredibility}%</strong>
+                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
+                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                              {credibilityBreakdown.hasData ? 'Low risk' : 'Score ≥55%'}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                            <strong className="block text-base sm:text-lg font-semibold text-rose-600">{credibilityBreakdown.lowCredibility}%</strong>
+                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Misinfo</span>
+                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                              {credibilityBreakdown.hasData ? 'Review needed' : 'Score <55%'}
                             </p>
                           </div>
                         </div>
@@ -660,18 +673,32 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             <h3 className="text-lg font-semibold text-slate-900">
                               Supporting Conversations ({snapshot.sources.length})
                             </h3>
-                            <div className="space-y-4 max-h-96 overflow-y-auto">
-                              {snapshot.sources.map((source, index) => (
-                                <div key={index} className="border border-slate-100 rounded-lg bg-white p-4 shadow-sm">
-                                  <div className="space-y-2">
-                                    <h4 className="font-medium text-slate-900 leading-tight">
-                                      {source.title}
-                                    </h4>
-                                    <p className="text-sm text-slate-600 leading-relaxed">
-                                      {source.snippet}
-                                    </p>
-                                    <div className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center gap-2">
+                            <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                              {snapshot.sources.map((source, index) => {
+                                const meta = source.metadata ?? {};
+                                return (
+                                  <div key={index} className="border border-slate-100 rounded-lg bg-white p-4 shadow-sm">
+                                    <div className="space-y-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <h4 className="font-medium text-slate-900 leading-tight flex-1">
+                                          {source.title}
+                                        </h4>
+                                        {source.url && (
+                                          <a
+                                            href={source.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-hinaing-blue-600 hover:text-hinaing-blue-500 font-medium text-xs flex-shrink-0"
+                                          >
+                                            View Source
+                                            <ExternalLink className="h-3 w-3" />
+                                          </a>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-slate-600 leading-relaxed">
+                                        {source.snippet}
+                                      </p>
+                                      <div className="flex items-center gap-2 flex-wrap text-xs">
                                         {source.sentiment && (
                                           <span className={clsx(
                                             "px-2 py-1 rounded-full font-medium",
@@ -688,21 +715,24 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                           </span>
                                         )}
                                       </div>
-                                      {source.url && (
-                                        <a
-                                          href={source.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1 text-hinaing-blue-600 hover:text-hinaing-blue-500 font-medium"
-                                        >
-                                          View Source
-                                          <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                      )}
+                                      
+                                      {/* Verification Badge Component */}
+                                      <VerificationBadge
+                                        credibilityScore={typeof meta.credibility_score === 'number' ? meta.credibility_score : null}
+                                        credibilityTier={typeof meta.credibility_tier === 'string' ? meta.credibility_tier : null}
+                                        misinfoRisk={typeof meta.misinfo_risk === 'string' ? meta.misinfo_risk : null}
+                                        corroboratingSources={typeof meta.corroborating_sources === 'number' ? meta.corroborating_sources : 0}
+                                        tavilyVerifiedSources={Array.isArray(meta.tavily_verified_sources) ? meta.tavily_verified_sources : []}
+                                        tavilyVerificationStatus={typeof meta.tavily_verification_status === 'string' ? meta.tavily_verification_status : null}
+                                        redFlags={Array.isArray(meta.red_flags) ? meta.red_flags as string[] : []}
+                                        factCheckRating={typeof meta.fact_check_rating === 'string' ? meta.fact_check_rating : null}
+                                        llmReasoning={typeof meta.llm_reasoning === 'string' ? meta.llm_reasoning : ''}
+                                        credibilityBreakdown={typeof meta.credibility_breakdown === 'object' && meta.credibility_breakdown !== null ? meta.credibility_breakdown as Record<string, number> : {}}
+                                      />
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         </Card>
@@ -784,11 +814,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             </div>
                           ))}
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-center text-xs">
-                          {['Legit Sources', 'Potential Fake News'].map((label) => (
-                            <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-xs">
+                          {['Credibility', 'Verified', 'Misinfo Risk'].map((label) => (
+                            <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-2 sm:p-3">
                               <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
-                              <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
+                              <span className="text-[9px] sm:text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
                             </div>
                           ))}
                         </div>

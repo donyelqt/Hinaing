@@ -240,11 +240,25 @@ async def analyze_enriched(state: SnapshotState) -> SnapshotState:
         logger.info("[snapshot] analyze_enriched skipped (no docs)")
         return state
 
-    credibility_task = asyncio.to_thread(credibility_agent_node.run, docs)
+    # Run credibility (async) and theme routing (sync) in parallel
+    # Credibility agent now returns enriched documents with metadata
+    credibility_task = credibility_agent_node.run(docs)
     theme_task = asyncio.to_thread(theme_router_agent.run, docs, request)
-    credibility_notes, theme_docs = await asyncio.gather(credibility_task, theme_task)
+    
+    enriched_docs, theme_docs = await asyncio.gather(credibility_task, theme_task)
+    
+    # Extract credibility notes from enriched documents for backward compatibility
+    credibility_notes = {}
+    for doc in enriched_docs:
+        domain = doc.metadata.get("source_domain", "unknown") if doc.metadata else "unknown"
+        score = doc.metadata.get("credibility_score", 0.5) if doc.metadata else 0.5
+        credibility_notes[domain] = score
+    
+    # Update enriched docs with credibility metadata
+    state["enriched"] = enriched_docs
     state["credibility_notes"] = credibility_notes
     state["theme_documents"] = theme_docs
+    
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info(
         "[snapshot] analyze_enriched processed %d docs in %.1f ms",

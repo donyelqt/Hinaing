@@ -121,11 +121,44 @@ class SentimentAgent:
 
 @dataclass
 class CredibilityAgent:
-    """Agent that scores domain credibility."""
+    """Agent that scores domain credibility.
+    
+    Now uses EnhancedCredibilityAgent with:
+    - Domain trust tiers
+    - Google Fact Check API
+    - Gemini LLM analysis
+    - Content quality signals
+    """
+    
+    use_enhanced: bool = True
 
-    def run(self, documents: Sequence[WebDocument]) -> dict[str, float]:
+    async def run(self, documents: Sequence[WebDocument]) -> list[WebDocument]:
+        """Score credibility and return enriched documents."""
         logger.info("[credibility_agent] scoring %d documents", len(documents))
-        return score_credibility(list(documents))
+        
+        if self.use_enhanced:
+            try:
+                from ..agents.credibility_agent import get_credibility_agent
+                agent = get_credibility_agent()
+                return await agent.run(list(documents))
+            except Exception as exc:
+                logger.warning("[credibility_agent] Enhanced failed, using fallback: %s", exc)
+        
+        # Fallback to simple heuristic scoring
+        scored = score_credibility(list(documents))
+        # Enrich documents with basic scores
+        enriched = []
+        for doc in documents:
+            domain = doc.url.host if doc.url else "unknown"
+            score = scored.get(domain, 0.5)
+            enriched.append(doc.model_copy(update={
+                "metadata": {
+                    **(doc.metadata or {}),
+                    "credibility_score": score,
+                    "credibility_tier": "high" if score >= 0.8 else "medium" if score >= 0.6 else "low",
+                }
+            }))
+        return enriched
 
 
 @dataclass

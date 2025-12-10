@@ -34,6 +34,12 @@ class Settings(BaseSettings):
 
     langsmith_api_key: str | None = None
     langsmith_project: str = "pr-scholarly-mesenchyme-11"
+    
+    # Google Fact Check API (uses same Google Cloud project as Gemini)
+    google_fact_check_api_key: str | None = None
+    
+    # Tavily API for claim verification
+    tavily_api_key: str | None = None
     ingestion_interval_seconds: int = 120
     ingestion_region_keywords: list[str] = [
         "baguio",
