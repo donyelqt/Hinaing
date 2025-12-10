@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
-from .routers import agent, health, snapshot
+from .routers import agent, health, snapshot, chat
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(snapshot.router)
+    app.include_router(chat.router)
     app.include_router(agent.router)
     return app
 

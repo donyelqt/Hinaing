@@ -31,7 +31,7 @@ def sanitize_text(text: str | None) -> str:
 class GeminiClient:
     """Thin wrapper around the Gemini GenerativeModel."""
 
-    def __init__(self, *, model_name: str = "gemini-2.0-flash-exp") -> None:
+    def __init__(self, *, model_name: str = "gemini-2.5-pro") -> None:
         settings = get_settings()
         self._api_key = settings.gemini_api_key
         self._model_name = model_name
@@ -103,7 +103,12 @@ class GeminiClient:
         focus_areas: list[str],
         documents: list[dict[str, Any]],
     ) -> tuple[str | None, list[dict[str, Any]]]:
-        plan_prompt = self._build_plan_prompt(window=window, focus_areas=focus_areas, documents=documents)
+        # Single-shot analysis without separate planning step for speed
+        analysis_prompt = self._build_prompt(
+            window=window,
+            focus_areas=focus_areas,
+            documents=documents,
+        )
 
         from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -120,19 +125,6 @@ class GeminiClient:
                 safety_settings=safety_settings,
             )
             return response.text or ""
-
-        try:
-            plan_text = await asyncio.to_thread(lambda: _invoke(lambda: plan_prompt))
-        except Exception:  # pragma: no cover - network/SDK failures
-            logger.exception("Gemini generation failed")
-            return None, []
-
-        analysis_prompt = self._build_prompt(
-            window=window,
-            focus_areas=focus_areas,
-            documents=documents,
-            plan=plan_text,
-        )
 
         try:
             raw_text = await asyncio.to_thread(lambda: _invoke(lambda: analysis_prompt))
@@ -154,11 +146,10 @@ class GeminiClient:
         window: str,
         focus_areas: list[str],
         documents: list[dict[str, Any]],
-        plan: str | None,
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         doc_lines = []
-        for idx, doc in enumerate(documents[:10], start=1):
+        for idx, doc in enumerate(documents[:15], start=1):
             title = sanitize_text(doc.get('title'))
             snippet = sanitize_text(doc.get('snippet'))
             sentiment = doc.get('sentiment', 'neutral')
@@ -166,13 +157,14 @@ class GeminiClient:
                 f"{idx}. Title: {title} | Snippet: {snippet} | Sentiment: {sentiment}"
             )
         context_block = "\n".join(doc_lines) or "No documents available."
-        plan_section = plan.strip() if plan else "1. Review documents\n2. Extract key signals\n3. Draft JSON summary"
 
         return (
             "You are an analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n"
-            "Start by following this reasoning plan (update it if needed):\n"
-            f"{plan_section}\n"
+            "Steps:\n"
+            "1. Review the provided documents.\n"
+            "2. Identify key risks, emerging trends, and sentiment drivers.\n"
+            "3. Draft a JSON summary.\n\n"
             "Return a JSON object with keys:\n"
             "summary: string narrative (<= 2 sentences)\n"
             "insights: list of up to 3 items, each {category, title, detail, evidence? (array of concise bullets)}.\n"

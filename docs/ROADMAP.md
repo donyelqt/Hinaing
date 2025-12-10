@@ -23,7 +23,16 @@ This document tracks what has been delivered so far and the remaining work neede
 - Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
 - Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
 
-## 🔄 Latest Updates (Dec 9, 2025)
+## 🔄 Latest Updates (Dec 10, 2025)
+
+### Reddit Platform Integration
+- **PRAW Integration**: Connected Reddit ingestion service to retrieval pipeline
+- **New Tool**: `fetch_reddit_documents()` in `agent_tools.py` fetches from r/Baguio, r/Philippines, r/CordilleraAdministrativeRegion
+- **Dual Fetch Strategy**: Search by query + fetch recent posts from r/Baguio
+- **Time Window Mapping**: Maps 6h/24h → "day", 3d/7d → "week" for Reddit API
+- **Files Updated**: `agent_tools.py`, `agents.py`
+
+## Previous Updates (Dec 9, 2025)
 
 ### Time-Based Search Enhancement
 - **Query-Level Time Operators**: Added Google-style `after:YYYY-MM-DD` suffixes to search queries

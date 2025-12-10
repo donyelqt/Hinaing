@@ -162,8 +162,10 @@ class EnsembleSentimentAgent:
         
         # Run RoBERTa and Gemini in PARALLEL for speed
         logger.info("[EnsembleSentimentAgent] Running RoBERTa + Gemini in parallel...")
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # Run RoBERTa in one thread (it's fast/local)
             roberta_future = executor.submit(self.roberta.predict_batch_with_probs, texts)
+            # Run Gemini batches in parallel threads
             gemini_future = executor.submit(self._gemini_analyze_all, documents)
             
             roberta_probs = roberta_future.result()
@@ -219,13 +221,19 @@ class EnsembleSentimentAgent:
         return enriched
     
     def _gemini_analyze_all(self, documents: list[WebDocument]) -> list[dict[str, float]]:
-        """Get Gemini probability distributions for all documents."""
+        """Get Gemini probability distributions for all documents in PARALLEL."""
+        batches = [documents[i:i + self.batch_size] for i in range(0, len(documents), self.batch_size)]
+
         all_probs: list[dict[str, float]] = []
         
-        for i in range(0, len(documents), self.batch_size):
-            batch = documents[i:i + self.batch_size]
-            batch_probs = self._gemini_batch_with_probs(batch)
-            all_probs.extend(batch_probs)
+        # Execute batches in parallel using existing executor pattern
+        # Note: We use a new executor here to avoid deadlocks with the parent 
+        # (though parent waits on this, so it's safe, but cleaner to separate)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(self._gemini_batch_with_probs, batches))
+        
+        for res in results:
+            all_probs.extend(res)
         
         return all_probs
     

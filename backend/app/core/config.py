@@ -23,9 +23,9 @@ class Settings(BaseSettings):
     facebook_app_secret: str
     facebook_access_token: str
 
-    reddit_client_id: str
-    reddit_client_secret: str
-    reddit_user_agent: str = "baguio-public-sentiment/0.1"
+    reddit_client_id: str | None = None
+    reddit_client_secret: str | None = None
+    reddit_user_agent: str = "Hinaing/1.0 (Academic Research)"
 
     # LangSearch
     langsearch_api_key: str | None = None

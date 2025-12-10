@@ -5,15 +5,22 @@ type PlatformSelectorProps = {
   platforms: string[];
   onToggle: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   setPlatforms: (updater: (prev: string[]) => string[]) => void;
+  error?: string;
 };
 
-export function PlatformSelector({ platforms, onToggle, setPlatforms }: PlatformSelectorProps) {
+export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: PlatformSelectorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 1 · Select channels</span>
+        <span className={clsx(
+          "text-xs font-semibold uppercase tracking-wide",
+          error ? "text-rose-500" : "text-slate-400"
+        )}>Step 1 · Select channels</span>
         <span className="text-[11px] text-slate-400">Choose where the agent listens</span>
       </div>
+      {error && (
+        <p className="text-xs text-rose-500 font-medium">{error}</p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORM_OPTIONS.map((option) => {
           const isActive = platforms.includes(option.value);

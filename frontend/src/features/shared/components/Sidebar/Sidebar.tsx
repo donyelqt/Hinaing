@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, Settings, Save, PieChart, LogOut, Menu, X } from "lucide-react";
+import { BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 
 type SidebarProps = {
@@ -101,7 +101,7 @@ export function Sidebar({
             <div>
               <p>Sentiment Generator</p>
               <p className={`text-xs ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
-                Live monitoring for Baguio City
+                Live monitoring (Hinaing Multi-Agent System)
               </p>
             </div>
           </button>
@@ -120,6 +120,24 @@ export function Sidebar({
               <p>Dashboard</p>
               <p className={`text-xs ${activePage === 'dashboard' ? 'text-white/80' : 'text-slate-500'}`}>
                 Real-time insights & trends
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNavClick('chat')}
+            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
+              }`}
+            aria-current={activePage === 'chat' ? 'page' : undefined}
+          >
+            <Sparkles className="h-5 w-5" aria-hidden="true" />
+            <div>
+              <p>AI Assistant</p>
+              <p className={`text-xs ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
+                Conversational insights (ChatGPT/Perplexity-style)
               </p>
             </div>
           </button>

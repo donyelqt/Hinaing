@@ -1,6 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS, PRESET_OPTIONS } from '../constants';
 import type { SentimentState, SentimentActions } from '../types';
+
+export type ValidationErrors = {
+  platforms?: string;
+  timeWindow?: string;
+  focusAreas?: string;
+};
 
 export function useSentimentGenerator() {
   // State
@@ -11,6 +17,7 @@ export function useSentimentGenerator() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   // Computed values
   const platformSummary = useMemo(
@@ -49,6 +56,36 @@ export function useSentimentGenerator() {
     }
     return labels.join(" • ");
   }, [platformSummary]);
+
+  // Validation
+  const validate = useCallback((): ValidationErrors => {
+    const errors: ValidationErrors = {};
+    
+    // Step 1: Platform validation
+    if (platforms.length === 0) {
+      errors.platforms = "Please select at least one data source";
+    }
+    
+    // Step 2: Time window validation
+    if (!timeWindow) {
+      errors.timeWindow = "Please select a time window";
+    }
+    
+    // Step 3: Focus areas validation
+    if (focusAreas.length === 0) {
+      errors.focusAreas = "Please select at least one focus area";
+    }
+    
+    return errors;
+  }, [platforms, timeWindow, focusAreas]);
+
+  const isValid = useMemo(() => {
+    return platforms.length > 0 && timeWindow !== "" && focusAreas.length > 0;
+  }, [platforms, timeWindow, focusAreas]);
+
+  const clearValidationErrors = useCallback(() => {
+    setValidationErrors({});
+  }, []);
 
   // Actions
   const toggleSelection = (
@@ -102,9 +139,18 @@ export function useSentimentGenerator() {
     platformSummaryLabel,
   };
 
+  const validation = {
+    errors: validationErrors,
+    setErrors: setValidationErrors,
+    validate,
+    isValid,
+    clearErrors: clearValidationErrors,
+  };
+
   return {
     state,
     actions,
     computed,
+    validation,
   };
 }

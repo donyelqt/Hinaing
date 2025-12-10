@@ -8,4 +8,4 @@ export type NavigationItem = {
   isDisabled?: boolean;
 };
 
-export type ActivePage = 'sentiment' | 'dashboard' | 'reports';
+export type ActivePage = 'sentiment' | 'dashboard' | 'reports' | 'chat';

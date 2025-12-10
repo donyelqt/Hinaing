@@ -11,6 +11,7 @@ from ...schemas.query import QueryPlan, QueryTask
 from .agent_tools import (
     search_web_documents,
     fetch_facebook_documents,
+    fetch_reddit_documents,
     assign_sentiment,
     score_credibility,
     route_documents_by_theme,
@@ -68,6 +69,17 @@ class RetrievalAgent:
         if "facebook" in request.platforms:
             logger.info("[retrieval_agent] invoking Facebook tool")
             tasks.append(asyncio.create_task(fetch_facebook_documents(request)))
+
+        if "reddit" in request.platforms:
+            # Pass query_plan to Reddit so it uses orchestrated queries
+            if query_plan and query_plan.queries:
+                logger.info("[retrieval_agent] invoking Reddit tool with orchestrated query")
+                tasks.append(asyncio.create_task(
+                    fetch_reddit_documents(request, query_plan=query_plan)
+                ))
+            else:
+                logger.info("[retrieval_agent] invoking Reddit tool (baseline)")
+                tasks.append(asyncio.create_task(fetch_reddit_documents(request)))
 
         if not tasks:
             return []

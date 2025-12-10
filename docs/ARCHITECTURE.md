@@ -191,11 +191,12 @@ graph LR
         TRA[Theme Router]
         CTA[Context Agent]
         THA[Theme Agents x6]
+        CHAT[Chat Agent<br/>(Baseline Control)]
     end
 
-    LS --> RTA
+    LS --> RTA & CHAT
     FB --> RTA
-    GEMINI --> QOA & SNA & THA
+    GEMINI --> QOA & SNA & THA & CHAT
     ROBERTA --> SNA
     MINILM --> CTA
     QDRANT --> CTA
@@ -270,3 +271,31 @@ Documents are filtered by `published_at` timestamp after retrieval to enforce st
 | Search | LangSearch API |
 | Database | Supabase |
 | Observability | LangSmith |
+
+## 6. Hybrid Architectures (Control vs Novel)
+
+The system implements two distinct architectural patterns to demonstrate thesis novelty:
+
+### A. The Chat Agent (Control Group)
+*   **Pattern:** Agentic RAG (ReAct Loop)
+*   **Goal:** Single-turn, atomic question answering.
+*   **Stack:** Gemini 2.0 Flash + LangSearch.
+*   **Behavior:** Reactive. Waiting for user input.
+
+### B. The Sentiment Generator (Novel Contribution)
+*   **Pattern:** Hierarchical Graph-Based Multi-Agent System
+*   **Goal:** Holistic, proactive landscape analysis.
+*   **Stack:** LangGraph + 6-Agent Swarm + Ensemble Sentiment via RoBERTa/Gemini.
+*   **Behavior:** Proactive. Scans the environment to surface risks.
+
+## 7. The 5-Layer Credibility Framework
+
+Unlike standard white-list approaches, the `CredibilityAgent` employs a **Multi-Signal Verification Strategy**:
+
+1.  **Domain Reputation (25%)**: Tiered scoring of known sources (gov.ph = 0.95, blogs = 0.40).
+2.  **Semantic Cross-Referencing (20%)**: Uses **MiniLM Vector Embeddings** to compute Cosine Similarity between documents. If Source A's story vector matches Source B's, capability increases (Automated Triangulation).
+3.  **Google Fact Check API (15%)**: Real-time query against Google's repository of debunked claims.
+4.  **LLM Pattern Recognition (20%)**: Gemini 2.0 analyzes content for patterns of "Clickbait", "Fear-mongering", or "Conspiracy Framing".
+5.  **Live Web Verification (20%)**: Uses **Tavily** to perform a real-time search of the claim to find corroborating external evidence.
+
+This ensures that "Fake News" on a "Trusted Domain" can still be flagged if the content patterns or external evidence contradict it.

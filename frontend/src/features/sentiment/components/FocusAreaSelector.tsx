@@ -5,15 +5,22 @@ type FocusAreaSelectorProps = {
   focusAreas: string[];
   onToggle: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   setFocusAreas: (updater: (prev: string[]) => string[]) => void;
+  error?: string;
 };
 
-export function FocusAreaSelector({ focusAreas, onToggle, setFocusAreas }: FocusAreaSelectorProps) {
+export function FocusAreaSelector({ focusAreas, onToggle, setFocusAreas, error }: FocusAreaSelectorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 3 · Prioritize themes</span>
+        <span className={clsx(
+          "text-xs font-semibold uppercase tracking-wide",
+          error ? "text-rose-500" : "text-slate-400"
+        )}>Step 3 · Prioritize themes</span>
         <span className="text-[11px] text-slate-400">Highlight topics for summarization</span>
       </div>
+      {error && (
+        <p className="text-xs text-rose-500 font-medium">{error}</p>
+      )}
       <div className="flex flex-wrap gap-2 sm:gap-3">
         {FOCUS_OPTIONS.map((option) => {
           const isActive = focusAreas.includes(option.value);

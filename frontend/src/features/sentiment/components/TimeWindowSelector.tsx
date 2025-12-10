@@ -4,15 +4,22 @@ import { TIME_WINDOW_OPTIONS } from '../constants';
 type TimeWindowSelectorProps = {
   timeWindow: string;
   setTimeWindow: (value: string) => void;
+  error?: string;
 };
 
-export function TimeWindowSelector({ timeWindow, setTimeWindow }: TimeWindowSelectorProps) {
+export function TimeWindowSelector({ timeWindow, setTimeWindow, error }: TimeWindowSelectorProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 2 · Monitoring window</span>
+        <span className={clsx(
+          "text-xs font-semibold uppercase tracking-wide",
+          error ? "text-rose-500" : "text-slate-400"
+        )}>Step 2 · Monitoring window</span>
         <span className="text-[11px] text-slate-400">Align with your reporting cadence</span>
       </div>
+      {error && (
+        <p className="text-xs text-rose-500 font-medium">{error}</p>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {TIME_WINDOW_OPTIONS.map((option) => {
           const isActive = timeWindow === option.value;

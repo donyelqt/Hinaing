@@ -8,8 +8,9 @@ from urllib.parse import urlparse
 
 from ...schemas.snapshot import SnapshotRequest, WebDocument
 from ...schemas.social import RawSocialPost
+from ...schemas.query import QueryPlan
 from ..ingestion.facebook import ApifyRunError, fetch_public_posts
-from ..ingestion.reddit import fetch_public_posts as fetch_reddit_posts
+from ..ingestion.reddit import fetch_reddit_posts as fetch_reddit_posts_praw, fetch_subreddit_posts
 from ..langsearch import LangSearchClient
 
 logger = logging.getLogger(__name__)
@@ -264,6 +265,156 @@ async def fetch_facebook_documents(request: SnapshotRequest) -> list[WebDocument
     docs = filter_by_time_window(docs, request.time_window)
     docs = deduplicate_documents(docs)
     return docs
+
+
+# Maximum Reddit documents to return (consistent with LangSearch limit)
+MAX_REDDIT_DOCUMENTS = 25
+
+
+def _map_time_window_to_reddit_filter(time_window: str | None) -> str:
+    """Map time window to Reddit's time_filter parameter."""
+    if not time_window:
+        return "week"
+    mapping = {
+        "6h": "day",    # Reddit doesn't have 6h, use day
+        "24h": "day",
+        "3d": "week",   # Reddit doesn't have 3d, use week
+        "7d": "week",
+    }
+    return mapping.get(time_window, "week")
+
+
+async def fetch_reddit_documents(
+    request: SnapshotRequest,
+    query_plan: QueryPlan | None = None,
+) -> list[WebDocument]:
+    """Fetch Reddit posts about Baguio using targeted subreddit searches.
+    
+    Strategy:
+    1. Extract keywords from query_plan (orchestrator output)
+    2. Search r/baguio and r/Philippines with those keywords
+    3. Apply Baguio location filter to remove irrelevant posts
+    4. Deduplicate and cap at MAX_REDDIT_DOCUMENTS
+    """
+    import re
+    
+    time_filter = _map_time_window_to_reddit_filter(request.time_window)
+    all_docs: list[WebDocument] = []
+    focus_areas = request.focus_areas or []
+    
+    # Target subreddits with Baguio content
+    target_subreddits = ["baguio", "Philippines", "CasualPH"]
+    
+    # Build queries from orchestrator output
+    queries_to_run: list[str] = []
+    
+    # PRIORITY 1: Extract queries from query_plan (orchestrator output)
+    if query_plan and query_plan.queries:
+        for task in query_plan.queries[:2]:  # Use first 2 query tasks
+            # Extract quoted phrases from orchestrator query
+            # e.g., ("Baguio mallification" OR "SM Prime Baguio") -> ["Baguio mallification", "SM Prime Baguio"]
+            phrases = re.findall(r'"([^"]+)"', task.query)
+            for phrase in phrases[:4]:  # Limit phrases per task
+                # Clean phrase for Reddit search
+                clean_phrase = phrase.strip()
+                if clean_phrase and clean_phrase not in queries_to_run:
+                    queries_to_run.append(clean_phrase)
+        
+        logger.info("[reddit_tool] Extracted %d queries from orchestrator: %s", 
+                    len(queries_to_run), queries_to_run[:5])
+    
+    # PRIORITY 2: Fallback to focus-area queries if orchestrator gave nothing useful
+    if len(queries_to_run) < 2:
+        focus_queries = {
+            "economy": ["Baguio market", "Baguio vendor", "SM Baguio", "public market"],
+            "safety": ["Baguio crime", "Baguio accident", "Baguio landslide"],
+            "health": ["Baguio hospital", "BGH Baguio", "Baguio health"],
+            "infrastructure": ["Baguio traffic", "Session Road", "Kennon Road"],
+            "tourism": ["Baguio travel", "Burnham Park", "Baguio tourist"],
+            "environment": ["Baguio pollution", "Baguio trees", "Baguio environment"],
+        }
+        
+        for area in focus_areas:
+            area_lower = area.lower()
+            if area_lower in focus_queries:
+                for q in focus_queries[area_lower][:2]:
+                    if q not in queries_to_run:
+                        queries_to_run.append(q)
+    
+    # Always include base Baguio query as fallback
+    if not queries_to_run:
+        queries_to_run.append("Baguio")
+    
+    # Limit total queries to avoid rate limits
+    queries_to_run = queries_to_run[:6]
+    
+    logger.info("[reddit_tool] Running %d queries in %d subreddits: %s", 
+                len(queries_to_run), len(target_subreddits), queries_to_run)
+    
+    # Calculate per-query limit
+    per_query_limit = max(10, MAX_REDDIT_DOCUMENTS // max(1, len(queries_to_run)))
+    
+    # Search targeted subreddits (not Reddit-wide to avoid irrelevant results)
+    for query in queries_to_run:
+        logger.info("[reddit_tool] Searching subreddits for: %s (limit=%d)", query, per_query_limit)
+        
+        try:
+            docs = await fetch_reddit_posts_praw(
+                query=query,
+                subreddits=target_subreddits,  # Search specific subreddits
+                limit=per_query_limit,
+                time_filter=time_filter,
+            )
+            all_docs.extend(docs)
+        except Exception as e:
+            logger.warning("[reddit_tool] Query '%s' failed: %s", query, e)
+    
+    # If no results from subreddits, try Reddit-wide with strict Baguio filter
+    if not all_docs:
+        logger.info("[reddit_tool] No subreddit results, trying Reddit-wide with Baguio filter")
+        
+        try:
+            docs = await fetch_reddit_posts_praw(
+                query="Baguio",
+                subreddits=None,  # Reddit-wide
+                limit=50,  # Fetch more to filter
+                time_filter=time_filter,
+            )
+            all_docs.extend(docs)
+        except Exception as e:
+            logger.warning("[reddit_tool] Reddit-wide search failed: %s", e)
+    
+    # CRITICAL: Filter to only Baguio-related posts
+    before_filter = len(all_docs)
+    all_docs = filter_by_location(all_docs)
+    logger.info("[reddit_tool] Location filter: %d -> %d docs", before_filter, len(all_docs))
+    
+    # Deduplicate
+    all_docs = deduplicate_documents(all_docs)
+    
+    # Apply time filter if we have enough docs
+    if len(all_docs) > 10:
+        all_docs = filter_by_time_window(all_docs, request.time_window)
+    
+    # Rerank by semantic relevance (like LangSearch) before capping
+    if len(all_docs) > MAX_REDDIT_DOCUMENTS:
+        try:
+            rerank_query = f"Baguio {' '.join(focus_areas)}" if focus_areas else "Baguio"
+            client = LangSearchClient()
+            all_docs = await client.rerank(query=rerank_query, documents=all_docs)
+            logger.info("[reddit_tool] Reranked %d docs by relevance", len(all_docs))
+        except Exception as e:
+            logger.warning("[reddit_tool] Rerank failed, using original order: %s", e)
+        
+        # Cap at MAX_REDDIT_DOCUMENTS
+        logger.info("[reddit_tool] Capping results: %d -> %d", len(all_docs), MAX_REDDIT_DOCUMENTS)
+        all_docs = all_docs[:MAX_REDDIT_DOCUMENTS]
+    
+    logger.info("[reddit_tool] Fetched %d Reddit documents", len(all_docs))
+    return all_docs
+
+
+
 
 
 def assign_sentiment(documents: list[WebDocument]) -> list[WebDocument]:

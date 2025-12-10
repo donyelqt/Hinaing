@@ -138,11 +138,11 @@ const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | nul
     const metadata = source.metadata ?? {};
     const score = typeof metadata.credibility_score === "number" ? metadata.credibility_score : null;
     const tier = typeof metadata.credibility_tier === "string" ? metadata.credibility_tier.toLowerCase() : null;
-    
+
     if (score !== null) {
       totalScore += score;
       scoredCount += 1;
-      
+
       // High/Medium (≥0.55) vs Low/Very Low (<0.55) - matches 6-signal thresholds
       if (score >= 0.55 || tier === "high" || tier === "medium") {
         highCount += 1;
@@ -254,7 +254,7 @@ function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; in
 }
 
 export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }: SentimentGeneratorPageProps = {}) {
-  const { state, actions, computed } = useSentimentGenerator();
+  const { state, actions, computed, validation } = useSentimentGenerator();
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [snapshot, setSnapshot] = React.useState<SnapshotResponse | null>(null);
@@ -346,7 +346,18 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const credibilityBreakdown = React.useMemo(() => computeCredibilityBreakdown(snapshot?.sources), [snapshot?.sources]);
 
   const handleGenerate = async () => {
-    if (state.platforms.length === 0 || state.isGenerating) return;
+    // Validate all steps before generating
+    const errors = validation.validate();
+
+    if (Object.keys(errors).length > 0) {
+      validation.setErrors(errors);
+      return;
+    }
+
+    // Clear any previous validation errors
+    validation.clearErrors();
+
+    if (state.isGenerating) return;
 
     actions.setIsGenerating(true);
     setSnapshotError(null);
@@ -432,84 +443,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   </div>
                 </header>
 
-                {/* Coverage context card (no explicit step number to avoid confusion with main steps) */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-5" role="region" aria-labelledby="coverage-heading">
-                  <p className="text-[11px] font-semibold text-hinaing-blue-600">Review coverage</p>
-                  <h3 id="coverage-heading" className="mt-1 text-lg font-semibold text-slate-900">Barangay & keyword context</h3>
-                  <p className="text-sm font-medium text-slate-700">Baguio City, Philippines</p>
-                  <p className="text-sm text-slate-500">Adjust geographic filters in settings to include nearby municipalities when needed.</p>
-
-                  <dl className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Population</dt>
-                      <dd className="mt-2 text-lg font-semibold text-slate-900">~366k residents</dd>
-                    </div>
-                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Priority Barangays</dt>
-                      <dd className="mt-2 text-sm text-slate-700">Session Road, Aurora Hill, Irisan</dd>
-                    </div>
-                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Languages</dt>
-                      <dd className="mt-2 text-sm text-slate-700">Ilocano, Ibaloi, Filipino, English</dd>
-                    </div>
-                    <div className="rounded-xl border border-slate-100 bg-white/80 p-4 shadow-sm">
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Monitoring Tags</dt>
-                      <dd className="mt-2 text-sm text-slate-700">#traffic, #water, #safety, #tourism</dd>
-                    </div>
-                  </dl>
-                </div>
-
                 {/* Configuration Sections */}
                 <div className="space-y-6">
-                  {/* Quick Start Presets */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wide text-violet-600">Quick start</span>
-                      <span className="text-xs text-slate-400">Choose a preset to auto-fill filters</span>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      {PRESET_OPTIONS.map((preset) => {
-                        const isActive =
-                          preset.platforms.every((platform) => state.platforms.includes(platform)) &&
-                          preset.focusAreas.every((focus) => state.focusAreas.includes(focus)) &&
-                          preset.window === state.timeWindow;
-                        return (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => actions.applyPreset(preset.id)}
-                            className={clsx(
-                              "group relative flex flex-col rounded-2xl border p-5 text-left transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 hover:-translate-y-1 hover:shadow-md",
-                              isActive
-                                ? "border-transparent bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-violet-200 hover:bg-violet-50/30",
-                            )}
-                            aria-pressed={isActive}
-                            aria-describedby={`preset-${preset.id}-desc`}
-                          >
-                            <span className="flex items-center justify-between text-sm font-bold">
-                              {preset.name}
-                              {isActive && (
-                                <span className="absolute top-4 right-4 flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                                </span>
-                              )}
-                            </span>
-                            <p
-                              id={`preset-${preset.id}-desc`}
-                              className={clsx(
-                                "mt-3 text-xs leading-relaxed",
-                                isActive ? "text-white/80" : "text-slate-500 group-hover:text-slate-600",
-                              )}
-                            >
-                              {preset.description}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
 
                   <div className="space-y-5 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
                     <div className="space-y-5">
@@ -517,12 +452,14 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         platforms={state.platforms}
                         onToggle={actions.toggleSelection}
                         setPlatforms={actions.setPlatforms}
+                        error={validation.errors.platforms}
                       />
                     </div>
                     <div className="space-y-5">
                       <TimeWindowSelector
                         timeWindow={state.timeWindow}
                         setTimeWindow={actions.setTimeWindow}
+                        error={validation.errors.timeWindow}
                       />
                     </div>
                   </div>
@@ -532,6 +469,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       focusAreas={state.focusAreas}
                       onToggle={actions.toggleSelection}
                       setFocusAreas={actions.setFocusAreas}
+                      error={validation.errors.focusAreas}
                     />
 
                     {/* Alert Preferences */}
@@ -567,20 +505,27 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <Save className="h-4 w-4" aria-hidden="true" />
                     Save Preset
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleGenerate}
-                    disabled={state.isGenerating || state.platforms.length === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
-                    aria-label="Generate new sentiment report with current settings"
-                  >
-                    {state.isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                  <div className="flex flex-col items-end gap-2">
+                    {Object.keys(validation.errors).length > 0 && (
+                      <p className="text-xs text-rose-500 font-medium">
+                        Please complete all required steps before generating
+                      </p>
                     )}
-                    {state.isGenerating ? 'Generating Report...' : 'Generate Sentiment Report'}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={state.isGenerating}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                      aria-label="Generate new sentiment report with current settings"
+                    >
+                      {state.isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                      )}
+                      {state.isGenerating ? 'Generating Report...' : 'Generate Sentiment Report'}
+                    </button>
+                  </div>
                 </div>
               </Card>
 
@@ -715,7 +660,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                           </span>
                                         )}
                                       </div>
-                                      
+
                                       {/* Verification Badge Component */}
                                       <VerificationBadge
                                         credibilityScore={typeof meta.credibility_score === 'number' ? meta.credibility_score : null}

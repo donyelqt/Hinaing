@@ -1,20 +1,14 @@
-"""Multi-Signal Credibility & Misinformation Detection Agent for Thesis.
+"""Multi-Signal Credibility & Source Quality Assessment Agent for Thesis.
 
-7-Signal Ensemble for Misinformation Risk Detection:
-1. Domain Trust (20%) - Source reputation based on known domains
-2. Cross-Reference (15%) - SEMANTIC corroboration using MiniLM embeddings
+5-Signal Ensemble for Source Quality Filtering:
+1. Domain Trust (25%) - Source reputation based on known domains
+2. Internal Cross-Reference (20%) - SEMANTIC corroboration using MiniLM embeddings
 3. Google Fact Check API (15%) - External fact-checker verification
-4. LLM Analysis (20%) - AI content quality + misinformation pattern detection
-5. Content Signals (10%) - Clickbait/quality heuristics + author attribution
-6. Recency (5%) - Freshness scoring
-7. Tavily Claim Verification (15%) - Real-time web search for claim corroboration
+4. LLM Analysis (20%) - AI content quality assessment (Gemini)
+5. External Cross-Reference (20%) - Real-time web verification via Tavily
 
-Misinformation Detection Features:
-- Detects common misinformation patterns (emotional manipulation, false urgency)
-- Identifies unverified claims and sensationalist language
-- Flags content lacking corroboration from independent sources
-- Verifies claims against authoritative web sources via Tavily
-- Provides explainable risk assessment with specific red flags
+Note: This is a source quality filtering mechanism, not a misinformation detector.
+Validation requires labeled ground truth data (documented as thesis limitation).
 
 Each signal is independently measurable for thesis ablation studies.
 """
@@ -24,6 +18,7 @@ import asyncio
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -40,22 +35,34 @@ from ..rag.embeddings import get_embedding_service
 
 logger = logging.getLogger(__name__)
 
-SAFETY_SETTINGS = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
+# Safety settings for Gemini 2.5 Pro - use enum types
+SAFETY_SETTINGS = [
+    {
+        "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
+        "threshold": HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        "threshold": HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        "threshold": HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        "threshold": HarmBlockThreshold.BLOCK_NONE,
+    },
+]
 
-# 7-Signal Weights (sum = 1.0)
+# 5-Signal Weights (sum = 1.0) - Simplified for thesis clarity
+# Removed: content_signals (heuristic overlap with LLM), recency (weak signal)
 WEIGHTS = {
-    "domain": 0.20,           # Source reputation
-    "cross_reference": 0.15,  # Multi-source corroboration
-    "fact_check": 0.15,       # External verification (Google)
-    "llm": 0.20,              # AI content analysis
-    "content_signals": 0.10,  # Quality heuristics
-    "recency": 0.05,          # Freshness
-    "tavily": 0.15,           # Claim verification via web search
+    "domain": 0.25,           # Source reputation
+    "cross_reference": 0.20,  # Internal semantic corroboration
+    "fact_check": 0.15,       # External verification (Google Fact Check API)
+    "llm": 0.20,              # AI content analysis (Gemini)
+    "tavily": 0.20,           # External cross-reference via web search
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -264,16 +271,26 @@ class LLMCredibilityAnalyzer:
     def __init__(self):
         settings = get_settings()
         genai.configure(api_key=settings.gemini_api_key)
-        # Use Gemini 2.5 Pro for better misinformation detection and reasoning
-        self.model = genai.GenerativeModel("gemini-2.5-pro-preview-06-05")
-        self.batch_size = 8
+        # Use Gemini 2.0 Flash for speed and efficiency
+        self.model = genai.GenerativeModel(
+            "gemini-2.0-flash-exp",
+            safety_settings=SAFETY_SETTINGS,
+        )
+        self.batch_size = 12
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
-        """Analyze all documents in batches."""
+        """Analyze all documents in batches in PARALLEL."""
+        # Create batches
+        batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
+        
         results = []
-        for i in range(0, len(docs), self.batch_size):
-            batch = docs[i:i + self.batch_size]
-            results.extend(self._analyze_batch(batch))
+        # Execute batches in parallel threads
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            batch_results = list(executor.map(self._analyze_batch, batches))
+            
+        for res in batch_results:
+            results.extend(res)
+            
         return results
     
     def _analyze_batch(self, batch: list[WebDocument]) -> list[dict]:
@@ -317,11 +334,10 @@ Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential 
                     temperature=0.1,
                     max_output_tokens=1500,
                 ),
-                safety_settings=SAFETY_SETTINGS,
             )
             return self._parse_response(resp.text, len(batch))
         except Exception as e:
-            logger.warning(f"[llm_credibility] Error: {e}")
+            logger.warning(f"[llm_credibility] Gemini 2.0 Flash error: {e}")
             return [{"score": 0.50, "reasoning": "Analysis unavailable", "red_flags": []}] * len(batch)
     
     def _parse_response(self, text: str, count: int) -> list[dict]:
@@ -691,6 +707,9 @@ def tavily_search_sync(query: str, api_key: str, search_type: str = "claim") -> 
         return {}
     except Exception as e:
         logger.warning(f"[tavily] Search error: {e}")
+        # Re-raise rate limit errors so the caller can fail fast
+        if "429" in str(e) or "limit" in str(e).lower() or "exceeds your plan" in str(e).lower():
+            raise e
         return {}
 
 
@@ -813,21 +832,19 @@ def score_tavily_verification(tavily_result: dict, original_domain: str) -> tupl
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Enhanced Credibility Agent (7 Signals)
+# Enhanced Credibility Agent (5 Signals)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @dataclass
 class EnhancedCredibilityAgent:
-    """7-Signal Credibility Assessment for Misinformation Risk Detection.
+    """5-Signal Source Quality Assessment Agent.
     
     Signals:
-    1. Domain Trust (20%) - Known source reputation
-    2. Cross-Reference (15%) - Multi-source corroboration
+    1. Domain Trust (25%) - Known source reputation
+    2. Internal Cross-Reference (20%) - Semantic corroboration within results
     3. Fact Check API (15%) - External verification (Google)
-    4. LLM Analysis (20%) - AI content assessment
-    5. Content Signals (10%) - Quality heuristics
-    6. Recency (5%) - Freshness scoring
-    7. Tavily Verification (15%) - Real-time claim verification
+    4. LLM Analysis (20%) - AI content assessment (Gemini)
+    5. External Cross-Reference (20%) - Real-time web verification (Tavily)
     """
     
     _llm: LLMCredibilityAnalyzer | None = field(default=None, init=False)
@@ -880,19 +897,7 @@ class EnhancedCredibilityAgent:
         # ─── Signal 4: LLM Analysis (sync, batched) ───
         llm_results = self._llm.analyze_batch(documents)
         
-        # ─── Signal 5: Content Signals with Misinformation Detection (sync, fast) ───
-        content_results = [
-            score_content_signals(d.title or "", d.snippet or "")
-            for d in documents
-        ]
-        content_scores = [r[0] for r in content_results]
-        has_author_flags = [r[1] for r in content_results]
-        content_red_flags = [r[2] for r in content_results]
-        
-        # ─── Signal 6: Recency (sync, fast) ───
-        recency_scores = [score_recency(d.published_at) for d in documents]
-        
-        # ─── Signal 7: Tavily Claim Verification (async) ───
+        # ─── Signal 5: Tavily External Cross-Reference (async) ───
         tavily_results = await self._batch_tavily_verify(documents, domains)
         tavily_scores = [r[0] for r in tavily_results]
         tavily_sources = [r[1] for r in tavily_results]
@@ -904,14 +909,12 @@ class EnhancedCredibilityAgent:
             fact_score, fact_rating = fact_results[i]
             llm_data = llm_results[i]
             
-            # Weighted combination (7 signals)
+            # Weighted combination (5 signals)
             final_score = (
                 WEIGHTS["domain"] * domain_scores[i] +
                 WEIGHTS["cross_reference"] * cross_ref_scores[i] +
                 WEIGHTS["fact_check"] * fact_score +
                 WEIGHTS["llm"] * llm_data["score"] +
-                WEIGHTS["content_signals"] * content_scores[i] +
-                WEIGHTS["recency"] * recency_scores[i] +
                 WEIGHTS["tavily"] * tavily_scores[i]
             )
             
@@ -925,18 +928,15 @@ class EnhancedCredibilityAgent:
             else:
                 tier = "very_low"
             
-            # Combine red flags from content analysis and LLM
-            all_red_flags = list(set(content_red_flags[i] + llm_data.get("red_flags", [])))
+            # Red flags from LLM analysis
+            all_red_flags = llm_data.get("red_flags", [])
             
-            # Determine misinformation risk level
+            # Determine quality tier based on score
             llm_misinfo = llm_data.get("misinfo_risk", "unknown")
-            if all_red_flags or llm_misinfo in ["medium", "high"]:
-                if len(all_red_flags) >= 3 or llm_misinfo == "high":
-                    misinfo_risk = "high"
-                elif len(all_red_flags) >= 1 or llm_misinfo == "medium":
-                    misinfo_risk = "medium"
-                else:
-                    misinfo_risk = "low"
+            if llm_misinfo == "high" or len(all_red_flags) >= 2:
+                misinfo_risk = "high"
+            elif llm_misinfo == "medium" or len(all_red_flags) >= 1:
+                misinfo_risk = "medium"
             else:
                 misinfo_risk = "low" if final_score >= 0.55 else "medium"
             
@@ -951,14 +951,11 @@ class EnhancedCredibilityAgent:
                         "cross_reference": round(cross_ref_scores[i], 3),
                         "fact_check": round(fact_score, 3),
                         "llm": round(llm_data["score"], 3),
-                        "content_signals": round(content_scores[i], 3),
-                        "recency": round(recency_scores[i], 3),
                         "tavily": round(tavily_scores[i], 3),
                     },
                     "tavily_verified_sources": tavily_sources[i],
                     "tavily_verification_status": tavily_statuses[i],
                     "corroborating_sources": corroborator_counts[i],
-                    "has_author_attribution": has_author_flags[i],
                     "fact_check_rating": fact_rating,
                     "llm_reasoning": llm_data.get("reasoning", ""),
                     "red_flags": all_red_flags,
@@ -986,12 +983,20 @@ class EnhancedCredibilityAgent:
             # Return neutral scores if Tavily not configured
             return [(0.50, [], "disabled") for _ in docs]
         
-        semaphore = asyncio.Semaphore(3)  # Max 3 concurrent requests
+        semaphore = asyncio.Semaphore(5)  # Max 5 concurrent requests
+        limit_reached = False
         
         async def verify_one(doc: WebDocument, domain: str, idx: int) -> tuple[float, list[str], str]:
+            nonlocal limit_reached
+            if limit_reached:
+                return 0.50, [], "skipped_limit"
+
             async with semaphore:
+                if limit_reached: # Double check after acquiring semaphore
+                     return 0.50, [], "skipped_limit"
+
                 if idx > 0:
-                    await asyncio.sleep(0.5)  # Rate limiting (be nice to free tier)
+                    await asyncio.sleep(0.1)  # Minimal rate limiting
                 
                 title = doc.title or ""
                 snippet = doc.snippet or ""
@@ -1008,8 +1013,28 @@ class EnhancedCredibilityAgent:
                 
                 # Search for the primary claim (most important)
                 primary_claim = claims[0]
-                result = await tavily_search(primary_claim, self._tavily_api_key, "claim")
                 
+                try:
+                    result = await tavily_search(primary_claim, self._tavily_api_key, "claim")
+                    
+                    # Check for rate limit error in result (if it returns a dict with error)
+                    # Note: tavily_search currently catches exceptions and returns {}, 
+                    # but we might want to catch it here if we change that behavior.
+                    # Current tavily_search logs error and returns {}.
+                    
+                    if not result and "exceeds your plan" in str(primary_claim): # This check is tricky without changing tavily_search to return error info.
+                        # Assuming tavily_search returns empty dict on error. 
+                        # We can't detect rate limit specifically from empty dict easily without modifying tavily_search.
+                        # However, for now, we will rely on fast execution.
+                        pass
+
+                except Exception as e:
+                     if "429" in str(e) or "limit" in str(e).lower():
+                         limit_reached = True
+                         logger.warning("[tavily] Rate limit reached, skipping remaining items")
+                         return 0.50, [], "rate_limit"
+                     return 0.50, [], "error"
+
                 # Analyze results
                 score, sources, status = analyze_tavily_results(result, domain, title)
                 
@@ -1025,7 +1050,7 @@ class EnhancedCredibilityAgent:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         final = []
-        stats = {"verified": 0, "contradicted": 0, "unverified": 0, "errors": 0}
+        stats = {"verified": 0, "contradicted": 0, "unverified": 0, "skipped": 0, "errors": 0}
         
         for i, r in enumerate(results):
             if isinstance(r, Exception):
@@ -1039,13 +1064,15 @@ class EnhancedCredibilityAgent:
                     stats["verified"] += 1
                 elif status in ["contradicted", "disputed"]:
                     stats["contradicted"] += 1
+                elif status in ["skipped_limit", "rate_limit"]:
+                    stats["skipped"] += 1
                 else:
                     stats["unverified"] += 1
         
         logger.info(
             f"[tavily] Results: verified={stats['verified']}, "
             f"contradicted={stats['contradicted']}, unverified={stats['unverified']}, "
-            f"errors={stats['errors']}"
+            f"skipped={stats['skipped']}, errors={stats['errors']}"
         )
         return final
     
@@ -1056,12 +1083,14 @@ class EnhancedCredibilityAgent:
         """Run fact checks with rate limiting."""
         global _fact_check_api_warned
         
-        semaphore = asyncio.Semaphore(2)
+        semaphore = asyncio.Semaphore(10)
         
         async def check_one(doc: WebDocument, idx: int) -> tuple[float, str | None]:
             async with semaphore:
+                # No sleep needed with higher concurrency unless strict rate limits exist
                 if idx > 0:
-                    await asyncio.sleep(0.2)
+                    # Minimal yield to let event loop breathe but not wait
+                    await asyncio.sleep(0)
                 query = (doc.title or "")[:100]
                 claims = await search_fact_checks(query, self._api_key)
                 return parse_fact_check(claims)

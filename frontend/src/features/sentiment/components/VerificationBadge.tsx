@@ -54,8 +54,9 @@ export function VerificationBadge({
   const hasRedFlags = redFlags.length > 0;
 
   // Determine claim verification status
+  // Priority: External verification > Internal signals > Red flags
   const getVerificationStatus = () => {
-    // CONTRADICTED - Tavily found contradicting sources (highest priority)
+    // 1. CONTRADICTED - Tavily found contradicting sources (highest priority)
     if (tavilyVerificationStatus === 'contradicted' || tavilyVerificationStatus === 'disputed') {
       return {
         status: 'contradicted',
@@ -70,28 +71,14 @@ export function VerificationBadge({
       };
     }
 
-    // MISINFORMATION - High risk or very low credibility with red flags
-    if (misinfoRisk === 'high' || (tier === 'very_low' && hasRedFlags)) {
-      return {
-        status: 'misinfo',
-        icon: ShieldX,
-        label: 'Potential Misinformation',
-        description: 'This source shows signs of misinformation. Verify before sharing.',
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-300',
-        textColor: 'text-red-800',
-        iconColor: 'text-red-600',
-        badgeColor: 'bg-red-100 text-red-700',
-      };
-    }
-
-    // VERIFIED - Tavily confirmed OR high credibility with external verification
-    if (tavilyVerificationStatus === 'verified' || (tier === 'high' && (hasTavilyVerification || corroboratingSources >= 2))) {
+    // 2. VERIFIED - External verification takes priority over red flags
+    // If Tavily verified the claim with trusted sources, it's verified regardless of source bias
+    if (tavilyVerificationStatus === 'verified' || (hasTavilyVerification && corroboratingSources >= 2)) {
       return {
         status: 'verified',
         icon: ShieldCheck,
-        label: 'Verified Claim',
-        description: 'This claim has been corroborated by multiple trusted sources.',
+        label: 'Verified Event',
+        description: 'This event has been corroborated by trusted news sources.',
         bgColor: 'bg-emerald-50',
         borderColor: 'border-emerald-300',
         textColor: 'text-emerald-800',
@@ -100,13 +87,15 @@ export function VerificationBadge({
       };
     }
 
-    // LIKELY ACCURATE - Medium-high credibility with some verification
-    if ((tier === 'high' || tier === 'medium') && (hasTavilyVerification || corroboratingSources >= 1 || tavilyVerificationStatus === 'partial')) {
+    // 3. LIKELY ACCURATE - Good corroboration even with some red flags
+    if ((hasTavilyVerification || corroboratingSources >= 1) && tier !== 'very_low') {
       return {
         status: 'likely_accurate',
         icon: CheckCircle,
         label: 'Likely Accurate',
-        description: 'This claim appears credible based on source reputation and corroboration.',
+        description: hasRedFlags 
+          ? 'Event verified, but source may have bias. Cross-reference recommended.'
+          : 'This claim appears credible based on source reputation and corroboration.',
         bgColor: 'bg-blue-50',
         borderColor: 'border-blue-300',
         textColor: 'text-blue-800',
@@ -115,8 +104,23 @@ export function VerificationBadge({
       };
     }
 
-    // NEEDS VERIFICATION - Low credibility or no corroboration
-    if (tier === 'low' || hasRedFlags) {
+    // 4. POTENTIAL MISINFORMATION - Only if NO external verification AND high risk
+    if ((misinfoRisk === 'high' || tier === 'very_low') && !hasTavilyVerification && corroboratingSources === 0) {
+      return {
+        status: 'misinfo',
+        icon: ShieldX,
+        label: 'Potential Misinformation',
+        description: 'This source shows signs of misinformation and lacks external verification.',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-300',
+        textColor: 'text-red-800',
+        iconColor: 'text-red-600',
+        badgeColor: 'bg-red-100 text-red-700',
+      };
+    }
+
+    // 5. NEEDS VERIFICATION - Low credibility or red flags without corroboration
+    if (tier === 'low' || (hasRedFlags && !hasTavilyVerification)) {
       return {
         status: 'needs_verification',
         icon: AlertCircle,
@@ -207,61 +211,47 @@ export function VerificationBadge({
       {/* Expanded Details */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-slate-200 space-y-4">
-          {/* Signal Breakdown */}
+          {/* Signal Breakdown - Compact */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
-              7-Signal Analysis
+              5-Signal Analysis
             </p>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2">
-              {Object.entries(credibilityBreakdown).map(([signal, score]) => {
-                // Full signal name mapping
-                const signalNames: Record<string, string> = {
-                  domain: 'Domain Trust',
-                  cross_reference: 'Internal Cross-Ref',
-                  fact_check: 'Fact Check API',
-                  llm: 'AI Analysis',
-                  content_signals: 'Content Signals',
-                  recency: 'Recency',
-                  tavily: 'External Cross-Ref',
-                };
-                const displayName = signalNames[signal] || signal.replace(/_/g, ' ');
-                const percentage = Math.round((score || 0) * 100);
+            <div className="space-y-1.5">
+              {Object.entries(credibilityBreakdown)
+                .filter(([signal]) => !['content_signals', 'recency'].includes(signal))
+                .map(([signal, score]) => {
+                  const signalNames: Record<string, string> = {
+                    domain: 'Domain Trust',
+                    cross_reference: 'Internal Cross-Ref',
+                    fact_check: 'Fact Check API',
+                    llm: 'AI Analysis',
+                    tavily: 'External Cross-Ref',
+                  };
+                  const displayName = signalNames[signal] || signal.replace(/_/g, ' ');
+                  const percentage = Math.round((score || 0) * 100);
 
-                // Determine color based on score
-                let colorClass = "bg-slate-500";
-                let textClass = "text-slate-700";
+                  let barColor = "bg-slate-400";
+                  if ((score || 0) >= 0.7) barColor = "bg-emerald-500";
+                  else if ((score || 0) >= 0.45) barColor = "bg-amber-500";
+                  else barColor = "bg-rose-500";
 
-                if ((score || 0) >= 0.7) {
-                  colorClass = "bg-emerald-500";
-                  textClass = "text-emerald-700";
-                } else if ((score || 0) >= 0.45) {
-                  colorClass = "bg-amber-500";
-                  textClass = "text-amber-700";
-                } else {
-                  colorClass = "bg-rose-500";
-                  textClass = "text-rose-700";
-                }
-
-                return (
-                  <div key={signal} className="group flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
-                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight" title={displayName}>
+                  return (
+                    <div key={signal} className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-600 w-24 truncate" title={displayName}>
                         {displayName}
                       </span>
-                      <span className={clsx("text-xs font-black tabular-nums flex-shrink-0", textClass)}>
+                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={clsx("h-full rounded-full", barColor)}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-700 w-8 text-right">
                         {percentage}%
                       </span>
                     </div>
-
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200/50">
-                      <div
-                        className={clsx("h-full rounded-full transition-all duration-500 ease-out", colorClass)}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
 
@@ -396,8 +386,8 @@ export function VerificationBadge({
           {/* Verification Info Footer */}
           <div className="pt-2 border-t border-slate-200">
             <p className="text-[9px] text-slate-400 leading-relaxed">
-              Verification powered by 7-signal ensemble: Domain Trust, Semantic Cross-Reference,
-              Google Fact Check API, Gemini AI Analysis, Content Signals, Recency, and Tavily Web Search.
+              Verification powered by 5-signal ensemble: Domain Trust, Internal Cross-Reference,
+              Google Fact Check API, Gemini AI Analysis, and Tavily External Cross-Reference.
             </p>
           </div>
         </div>
