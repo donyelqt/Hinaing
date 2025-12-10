@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from contextlib import asynccontextmanager
@@ -11,12 +12,9 @@ from .routers import agent, health, snapshot, chat
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Preload heavy models at startup to avoid OOM during requests."""
-    logger.info("[startup] Preloading ML models...")
-    
-    # Preload RoBERTa sentiment model (prevents OOM on first request)
+def _load_models_sync():
+    """Load ML models synchronously (called from background task)."""
+    # Preload RoBERTa sentiment model
     try:
         from .services.agents.sentiment_agent import get_sentiment_model
         get_sentiment_model()
@@ -33,6 +31,18 @@ async def lifespan(app: FastAPI):
         logger.warning(f"[startup] Failed to preload embedding model: {e}")
     
     logger.info("[startup] Model preloading complete")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start server immediately, load models in background."""
+    logger.info("[startup] Application starting - health check ready")
+    
+    # Start model loading in background (non-blocking)
+    # This allows the server to respond to health checks immediately
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _load_models_sync)
+    
     yield
     logger.info("[shutdown] Application shutting down")
 
