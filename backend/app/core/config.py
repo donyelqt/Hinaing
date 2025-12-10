@@ -9,19 +9,19 @@ class Settings(BaseSettings):
     environment: str = "development"
     frontend_origin: str = "http://localhost:3000"
 
-    # External services
-    supabase_url: str
-    supabase_service_role_key: str
-    supabase_anon_key: str
+    # External services (all optional with defaults to prevent startup crash)
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_anon_key: str = ""
 
-    qdrant_url: str
+    qdrant_url: str = ""
     qdrant_api_key: str | None = None
 
-    gemini_api_key: str
+    gemini_api_key: str = ""
 
-    facebook_app_id: str
-    facebook_app_secret: str
-    facebook_access_token: str
+    facebook_app_id: str = ""
+    facebook_app_secret: str = ""
+    facebook_access_token: str = ""
 
     reddit_client_id: str | None = None
     reddit_client_secret: str | None = None

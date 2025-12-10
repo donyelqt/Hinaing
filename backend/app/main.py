@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from contextlib import asynccontextmanager
@@ -40,10 +39,13 @@ async def lifespan(app: FastAPI):
     
     # Start model loading in background (non-blocking)
     # This allows the server to respond to health checks immediately
-    loop = asyncio.get_event_loop()
-    loop.run_in_executor(None, _load_models_sync)
+    import concurrent.futures
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    executor.submit(_load_models_sync)
     
     yield
+    
+    executor.shutdown(wait=False)
     logger.info("[shutdown] Application shutting down")
 
 
