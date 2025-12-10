@@ -49,7 +49,7 @@ You have built two systems to prove your point.
 ### Q: "Is your architecture strictly novel?"
 **A:** "It is novel in **System Application**. We are among the first to implement a **Parallelized Hierarchical Multi-Agent Graph** specifically for *Hyper-Local* Civic Sentiment Analysis. While the components (RAG, LLMs) exist, the **Specialized Orchestration** of 6 domain agents working in parallel is a state-of-the-art design pattern (2024/2025)."
 
-### Q: "Why is 'Swarm' (Parallelism) better?"
+### Q: "Why is Parallelism better?"
 **A:** "Speed and Depth. A single agent analyzing 100 posts sequentially takes minutes. Our parallel agents analyze Health, Safety, and Transport sectors **simultaneously**, providing a holistic view in seconds."
 
 ---
