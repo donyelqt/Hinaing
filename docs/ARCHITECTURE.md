@@ -285,7 +285,7 @@ The system implements two distinct architectural patterns to demonstrate thesis 
 ### B. The Sentiment Generator (Novel Contribution)
 *   **Pattern:** Hierarchical Graph-Based Multi-Agent System
 *   **Goal:** Holistic, proactive landscape analysis.
-*   **Stack:** LangGraph + 6-Agent Swarm + Ensemble Sentiment via RoBERTa/Gemini.
+*   **Stack:** LangGraph + 6-Agents + Ensemble Sentiment via RoBERTa/Gemini.
 *   **Behavior:** Proactive. Scans the environment to surface risks.
 
 ## 7. The 5-Layer Credibility Framework
