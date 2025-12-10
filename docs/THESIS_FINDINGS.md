@@ -240,7 +240,7 @@ To scientifically validate the efficacy of the Hinaing system, we implemented a 
 | Feature | **Chat Agent (Control / Baseline)** | **Sentiment Generator (Hinaing Novelty)** |
 | :--- | :--- | :--- |
 | **Architecture** | **Agentic RAG** (Standard ReAct) | **Hierarchical Multi-Agent Graph** |
-| **Execution** | **Serial** (Step-by-step generic search) | **Parallelized Swarm** (6 simultaneous domain analysts) |
+| **Execution** | **Serial** (Step-by-step generic search) | **Parallelized** (6 simultaneous domain analysts) |
 | **Data Scope** | **Atomic** (~5 search results per query) | **Holistic** (Batch processing of 50+ documents) |
 | **Output Type** | **Unstructured Text** (Conversational) | **Structured Intelligence** (Quantitative Metrics, Charts) |
 
