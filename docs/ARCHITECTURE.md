@@ -191,7 +191,7 @@ graph LR
         TRA[Theme Router]
         CTA[Context Agent]
         THA[Theme Agents x6]
-        CHAT[Chat Agent<br/>(Baseline Control)]
+        CHAT["Chat Agent<br/>(Baseline Control)"]
     end
 
     LS --> RTA & CHAT
