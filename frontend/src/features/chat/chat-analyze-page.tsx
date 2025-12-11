@@ -547,7 +547,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         }]);
 
         try {
-            const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+            const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
             // Build conversation history for context
             const history = messages.map(m => ({
