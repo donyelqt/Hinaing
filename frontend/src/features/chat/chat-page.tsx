@@ -46,27 +46,27 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
     ];
 
     return (
-        <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-4 animate-in fade-in zoom-in-95 duration-500">
-            <div className="mb-8 relative">
+        <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
+            <div className="mb-5 sm:mb-8 relative">
                 <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
-                <HLogo className="h-16 w-16 text-2xl relative z-10 shadow-xl" />
+                <HLogo className="h-12 w-12 sm:h-16 sm:w-16 text-xl sm:text-2xl relative z-10 shadow-xl" />
             </div>
 
-            <h2 className="text-2xl font-semibold text-slate-800 mb-2 text-center">
+            <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
                 {greeting}, Baguio.
             </h2>
-            <p className="text-slate-500 text-center mb-8 max-w-md">
+            <p className="text-sm sm:text-base text-slate-500 text-center mb-5 sm:mb-8 max-w-md px-2">
                 I'm your Baguio-specific AI analyst. Ask me anything about local civic updates, sentiment trends, or real-time news.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
                 {suggestions.map((prompt, i) => (
                     <button
                         key={i}
                         onClick={() => onPromptSelect(prompt)}
-                        className="text-left p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-md transition-all group"
+                        className="text-left p-3 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-md active:scale-[0.98] transition-all group"
                     >
-                        <p className="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
+                        <p className="text-xs sm:text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors">
                             {prompt}
                         </p>
                     </button>
@@ -80,21 +80,21 @@ function MessageBubble({ msg }: { msg: Message }) {
     const isUser = msg.role === "user";
 
     return (
-        <div className={clsx("flex gap-4 w-full max-w-3xl mx-auto mb-6", isUser ? "justify-end" : "justify-start")}>
+        <div className={clsx("flex gap-2 sm:gap-4 w-full max-w-3xl mx-auto mb-4 sm:mb-6", isUser ? "justify-end" : "justify-start")}>
 
             {/* AI Avatar */}
             {!isUser && (
-                <div className="mt-1">
-                    <HLogo className="h-8 w-8 text-xs" />
+                <div className="mt-1 shrink-0">
+                    <HLogo className="h-7 w-7 sm:h-8 sm:w-8 text-[10px] sm:text-xs" />
                 </div>
             )}
 
             <div
                 className={clsx(
-                    "flex flex-col gap-2 rounded-2xl p-4 text-sm shadow-sm transition-all",
+                    "flex flex-col gap-2 rounded-2xl p-3 sm:p-4 text-sm shadow-sm transition-all overflow-hidden",
                     isUser
-                        ? "bg-slate-900 text-slate-50 rounded-tr-none ml-12"
-                        : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-12 shadow-sm"
+                        ? "bg-slate-900 text-slate-50 rounded-tr-none ml-8 sm:ml-12 max-w-[85%] sm:max-w-[75%]"
+                        : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-8 sm:mr-12 max-w-[85%] sm:max-w-[75%] shadow-sm"
                 )}
             >
                 <div className="leading-relaxed text-sm space-y-1">
@@ -146,19 +146,19 @@ function MessageBubble({ msg }: { msg: Message }) {
 
                 {/* Sources Footer */}
                 {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-100/50">
-                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sources</p>
-                        <div className="flex flex-wrap gap-2">
-                            {msg.sources.map((source, idx) => (
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100/50">
+                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sources</p>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                            {msg.sources.slice(0, 4).map((source, idx) => (
                                 <a
                                     key={idx}
                                     href={source.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 border border-slate-200"
+                                    className="flex items-center gap-1 sm:gap-1.5 rounded-md bg-slate-50 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 border border-slate-200 active:scale-95"
                                 >
-                                    <span className="truncate max-w-[150px]">{source.title}</span>
-                                    <ArrowRight className="h-3 w-3 opacity-50" />
+                                    <span className="truncate max-w-[100px] sm:max-w-[150px]">{source.title}</span>
+                                    <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-50 shrink-0" />
                                 </a>
                             ))}
                         </div>
@@ -166,10 +166,10 @@ function MessageBubble({ msg }: { msg: Message }) {
                 )}
             </div>
 
-            {/* User Avatar (Optional, placeholder) */}
+            {/* User Avatar */}
             {isUser && (
-                <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-500 shrink-0">
-                    <User className="h-4 w-4" />
+                <div className="mt-1 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-slate-200 text-slate-500 shrink-0">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
             )}
         </div>
@@ -245,23 +245,23 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
 
     return (
         <>
-            {/* Mobile Hamburger (Mirrors SentimentGeneratorPage logic) */}
+            {/* Mobile Hamburger - Safe area aware */}
             <button
                 type="button"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+                className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-2.5 sm:p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
                 aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
                 aria-expanded={isSidebarOpen}
             >
                 {isSidebarOpen ? (
-                    <X className="h-6 w-6" aria-hidden="true" />
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
                 ) : (
-                    <Menu className="h-6 w-6" aria-hidden="true" />
+                    <Menu className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
                 )}
             </button>
 
-            <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100">
-                <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
+            <div className="min-h-[100dvh] bg-slate-50 font-sans selection:bg-blue-100">
+                <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
                     <Sidebar
                         activePage="chat"
@@ -271,29 +271,29 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                         onOpenMobileFilters={() => setIsSidebarOpen(true)}
                     />
 
-                    {/* Main Content Area (Matches Dashboard Layout) */}
-                    <main className="order-1 flex w-full min-w-0 flex-col gap-4 lg:order-2 lg:flex-1 lg:gap-6 xl:gap-8 lg:h-[calc(100vh-4rem)] h-[85vh] relative">
+                    {/* Main Content Area - Dynamic viewport height for mobile */}
+                    <main className="order-1 flex w-full min-w-0 flex-col gap-3 sm:gap-4 lg:order-2 lg:flex-1 lg:gap-6 xl:gap-8 lg:h-[calc(100vh-4rem)] h-[calc(100dvh-env(safe-area-inset-bottom))] sm:h-[90vh] relative">
 
-                        {/* Chat Container - Card-like appearance to sit nicely in the layout */}
-                        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden relative">
+                        {/* Chat Container */}
+                        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm sm:rounded-3xl border-0 sm:border border-slate-200/60 shadow-sm overflow-hidden relative">
 
                             {/* Scrollable Messages */}
-                            <div className="flex-1 overflow-y-auto w-full scroll-smooth p-4 sm:p-6">
+                            <div className="flex-1 overflow-y-auto w-full scroll-smooth p-3 sm:p-4 md:p-6 overscroll-contain">
                                 {messages.length === 0 ? (
                                     <WelcomeScreen onPromptSelect={handlePromptSelect} />
                                 ) : (
-                                    <div className="w-full max-w-4xl mx-auto pb-4 pt-4">
+                                    <div className="w-full max-w-4xl mx-auto pb-2 sm:pb-4 pt-2 sm:pt-4">
                                         {messages.map((msg, i) => (
                                             <MessageBubble key={i} msg={msg} />
                                         ))}
 
                                         {isLoading && (
-                                            <div className="flex gap-4 w-full max-w-3xl mx-auto mb-6">
-                                                <div className="mt-1">
-                                                    <HLogo className="h-8 w-8 text-xs animate-pulse" />
+                                            <div className="flex gap-2 sm:gap-4 w-full max-w-3xl mx-auto mb-4 sm:mb-6">
+                                                <div className="mt-1 shrink-0">
+                                                    <HLogo className="h-7 w-7 sm:h-8 sm:w-8 text-[10px] sm:text-xs animate-pulse" />
                                                 </div>
-                                                <div className="flex items-center gap-2 text-slate-400 text-sm italic pt-2">
-                                                    <Sparkles className="h-4 w-4 animate-spin text-blue-400" />
+                                                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-xs sm:text-sm italic pt-2">
+                                                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-blue-400" />
                                                     <span>Thinking...</span>
                                                 </div>
                                             </div>
@@ -303,43 +303,43 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                 )}
                             </div>
 
-                            {/* Input Area (Pinned to bottom of the card) */}
-                            <div className="p-4 sm:p-6 bg-white/80 border-t border-slate-100 z-10">
+                            {/* Input Area - Safe area padding for mobile */}
+                            <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto relative group">
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-300 via-violet-300 to-blue-300 rounded-2xl opacity-20 group-hover:opacity-40 transition blur duration-500"></div>
+                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-300 via-violet-300 to-blue-300 rounded-xl sm:rounded-2xl opacity-20 group-hover:opacity-40 transition blur duration-500"></div>
                                     <form
                                         onSubmit={handleSubmit}
-                                        className="relative flex items-center bg-white rounded-xl shadow-lg border border-slate-100 p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
+                                        className="relative flex items-center bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-100 p-1.5 sm:p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                                     >
-                                        <div className="pl-3 pr-2 text-slate-400">
-                                            <Sparkles className="h-5 w-5" />
+                                        <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-400">
+                                            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
                                         <input
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
-                                            placeholder="Ask about Baguio civic data..."
-                                            className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-10 px-2"
+                                            placeholder="Ask about Baguio..."
+                                            className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
                                             disabled={isLoading}
                                         />
                                         <button
                                             type="submit"
                                             disabled={!input.trim() || isLoading}
                                             className={clsx(
-                                                "p-2 rounded-lg transition-all duration-200",
+                                                "p-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95",
                                                 input.trim() && !isLoading
-                                                    ? "bg-blue-600 text-white shadow-md hover:bg-blue-700 hover:scale-105"
+                                                    ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
                                                     : "bg-slate-100 text-slate-300 cursor-not-allowed"
                                             )}
                                         >
                                             {isLoading ? (
-                                                <RefreshCw className="h-5 w-5 animate-spin" />
+                                                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                                             ) : (
-                                                <Send className="h-5 w-5" />
+                                                <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                                             )}
                                         </button>
                                     </form>
-                                    <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
-                                        Hinaing AI can make mistakes. Verify important civic information.
+                                    <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
+                                        Verify important civic information.
                                     </p>
                                 </div>
                             </div>
