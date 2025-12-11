@@ -9,8 +9,10 @@ Hinaing provides two distinct chat interfaces with different architectural patte
 | **Purpose** | Deep sentiment analysis | Quick Q&A |
 | **Endpoint** | `POST /chat/analyze` | `POST /chat/` |
 | **Response** | Streaming (SSE) | Sync JSON |
-| **Pipeline** | 6-agent multi-agent system | Single LLM + tool call |
-| **Latency** | 15-45 seconds | 2-5 seconds |
+| **Pipeline** | 12-agent system (6 core + 6 theme) | Single LLM + tool call |
+| **Latency** | 15-30 seconds | 2-5 seconds |
+
+> **Agent Count**: 6 core agents (Query Orchestrator, Retrieval, Sentiment, Credibility, Context, Theme Router) + 6 theme sub-agents = **12 total**. Three agents (Sentiment, Credibility, Theme Router) run in parallel for optimization.
 
 ---
 
@@ -20,7 +22,7 @@ Hinaing provides two distinct chat interfaces with different architectural patte
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Chat Analyze Page]
-        Progress[Progress Indicator<br/>6 Stages]
+        Progress[Progress Indicator<br/>5 Stages]
         Results[Analysis Result Card]
         Sources[Supporting Conversations]
     end
@@ -45,27 +47,24 @@ flowchart TB
                 LS & RD --> Docs[WebDocuments]
             end
 
-            subgraph Stage3["3. Sentiment Agent (45%)"]
-                RB[RoBERTa 40%]
-                GM[Gemini 60%]
-                RB & GM --> WV[Weighted Voting]
+            subgraph Stage3["3. Parallel Analysis (55%)"]
+                direction TB
+                subgraph ParallelOps["asyncio.gather"]
+                    SA[Sentiment<br/>RoBERTa + Gemini]
+                    CA[Credibility<br/>domain + fact-check]
+                    TR[Theme Router<br/>6 buckets]
+                end
+                SA & CA & TR --> ED[Enriched Docs]
             end
 
-            subgraph Stage4["4. Credibility Agent (60%)"]
-                DT[Domain Trust Tier]
-                FC[Fact Check API]
-                CQ[Content Quality]
-                DT & FC & CQ --> CS[Credibility Score]
-            end
-
-            subgraph Stage5["5. Context Agent (75%)"]
+            subgraph Stage4["4. Context Agent (75%)"]
                 CH[Semantic Chunker]
                 EM[MiniLM-L6 Embeddings]
                 VS[Vector Search]
                 CH --> EM --> VS
             end
 
-            subgraph Stage6["6. Theme Agents (90%)"]
+            subgraph Stage5["5. Theme Agents (90%)"]
                 T1[Infrastructure]
                 T2[Health]
                 T3[Safety]
@@ -74,7 +73,7 @@ flowchart TB
                 T6[Environment]
             end
 
-            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5 --> Stage6
+            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5
         end
 
         subgraph Simple["Simple Q&A Path"]
@@ -125,8 +124,7 @@ sequenceDiagram
     participant ID as Intent Detector
     participant QO as Query Orchestrator
     participant RA as Retrieval Agent
-    participant SA as Sentiment Agent
-    participant CA as Credibility Agent
+    participant ANALYZE as Parallel Analysis
     participant CTX as Context Agent
     participant TA as Theme Agents
     participant GC as Gemini Narrative
@@ -152,19 +150,14 @@ sequenceDiagram
         RA->>RA: Diversity Merge (round-robin)
         API-->>Client: SSE: {stage: "retrieval", progress: 0.25}
         
-        API->>SA: label_sentiment(docs)
-        par Ensemble
-            SA->>SA: RoBERTa (40%)
-            SA->>SA: Gemini (60%)
+        Note over ANALYZE: OPTIMIZED: Single node runs all 3 in parallel
+        API->>ANALYZE: label_sentiment_and_analyze(docs)
+        par asyncio.gather
+            ANALYZE->>ANALYZE: Sentiment (RoBERTa 40% + Gemini 60%)
+            ANALYZE->>ANALYZE: Credibility (domain + fact-check)
+            ANALYZE->>ANALYZE: Theme Routing (6 buckets)
         end
-        API-->>Client: SSE: {stage: "sentiment", progress: 0.45}
-        
-        API->>CA: analyze_enriched(docs)
-        par Parallel
-            CA->>CA: Credibility Scoring
-            CA->>CA: Theme Routing
-        end
-        API-->>Client: SSE: {stage: "credibility", progress: 0.6}
+        API-->>Client: SSE: {stage: "analyze", progress: 0.55}
         
         API->>CTX: augment_context(theme_docs)
         CTX->>CTX: Chunk → Embed → Vector Search
@@ -180,7 +173,7 @@ sequenceDiagram
         API-->>Client: SSE: {stage: "themes", progress: 0.9}
         
         API->>GC: build_snapshot()
-        GC->>GC: Narrative (3-5 sentences)
+        GC->>GC: Narrative (Gemini 2.5 Pro)
         GC->>GC: Insights (up to 5)
         
         API-->>Client: SSE: {type: "result", data: AnalysisData}
@@ -351,8 +344,8 @@ sequenceDiagram
     Server->>Client: {type: "progress", stage: "start", progress: 0.0}
     Server->>Client: {type: "progress", stage: "query_orchestrator", progress: 0.1}
     Server->>Client: {type: "progress", stage: "retrieval", progress: 0.25}
-    Server->>Client: {type: "progress", stage: "sentiment", progress: 0.45}
-    Server->>Client: {type: "progress", stage: "credibility", progress: 0.6}
+    Server->>Client: {type: "progress", stage: "analyze", progress: 0.55}
+    Note right of Server: Combined: sentiment + credibility + themes
     Server->>Client: {type: "progress", stage: "context", progress: 0.75}
     Server->>Client: {type: "progress", stage: "themes", progress: 0.9}
     Server->>Client: {type: "result", stage: "complete", progress: 1.0, data: {...}}
@@ -397,7 +390,12 @@ graph LR
     ROBERTA --> CA_SA
     MINILM --> CA_CTX
 
-    CA_ID --> CA_QO --> CA_RA --> CA_SA --> CA_CR --> CA_CTX --> CA_TA --> CA_NR
+    CA_ID --> CA_QO --> CA_RA --> CA_SA
+    CA_SA --> CA_CR
+    CA_SA --> CA_CTX
+    CA_CR --> CA_CTX
+    CA_CTX --> CA_TA --> CA_NR
+    Note right of CA_SA: Parallel: SA + CR + Theme Routing
 ```
 
 ---
@@ -430,7 +428,7 @@ backend/
 frontend/
 ├── src/features/chat/
 │   ├── chat-analyze-page.tsx    # Chat Analyzer UI
-│   │   ├── ProgressIndicator    # 6-stage progress
+│   │   ├── ProgressIndicator    # 5-stage progress (optimized)
 │   │   ├── AnalysisResultCard   # Rich results display
 │   │   └── WelcomeScreen        # Suggestions
 │   └── chat-page.tsx            # AI Assistant UI
@@ -444,14 +442,15 @@ frontend/
 
 | Metric | Chat Analyzer | AI Assistant |
 |--------|---------------|--------------|
-| Avg Latency | 20-40s | 2-5s |
+| Avg Latency | 15-30s (optimized) | 2-5s |
 | Documents Processed | Up to 50 | Up to 5 |
-| LLM Calls | 8-12 | 1-2 |
+| LLM Calls | 6-10 | 1-2 |
 | Streaming | Yes (SSE) | No |
 | Session Cache | Yes | No |
 | Sentiment Scoring | Yes (per-doc) | No |
 | Credibility Scoring | Yes (5-signal) | No |
 | Structured Output | Yes | Text + Sources |
+| Parallelization | Sentiment+Credibility+Themes | None |
 
 ---
 

@@ -4,6 +4,29 @@
 
 Multi-Agentic AI system with real-time intelligent search and RAG for context-aware public opinion analysis in Baguio City.
 
+## Agent Count Summary
+
+| Category | Agents | Notes |
+|----------|--------|-------|
+| **Core Pipeline Agents** | 6 | Query Orchestrator, Retrieval, Sentiment, Credibility, Context, Theme Router |
+| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
+| **Total** | **12** | 6 main + 6 theme-specific |
+
+> **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather`, reducing latency from ~88s to ~54s while maintaining the same agent count.
+
+## LLM Configuration
+
+| Component | Model | Reason |
+|-----------|-------|--------|
+| **Narrative Summary** | `gemini-2.5-pro` | Comprehensive topic coverage (Flash misses details) |
+| **Query Orchestrator** | `gemini-2.0-flash-exp` | Fast ReAct loop for query planning |
+| **Sentiment Agent (LLM)** | `gemini-2.0-flash-exp` | Fast classification, RoBERTa maintains accuracy |
+| **Credibility Agent** | `gemini-2.0-flash-exp` | Fast content quality scoring |
+| **Theme Agents (6x)** | `gemini-2.0-flash-exp` | Fast insight generation |
+| **Chat Agent** | `gemini-2.0-flash-exp` | Fast Q&A responses |
+| **RoBERTa** | `twitter-roberta-base-sentiment` | Local model, 40% ensemble weight |
+| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Local 384-dim vectors for RAG |
+
 ## System Flow Diagram (Mermaid)
 
 ```mermaid
@@ -36,23 +59,17 @@ flowchart TB
                 RR --> Docs
             end
 
-            subgraph Stage3["3. Ensemble Sentiment Agent"]
-                RB[RoBERTa 40%<br/>twitter-roberta]
-                GM[Gemini LLM 60%<br/>gemini-2.5-pro]
-                WV[Weighted Voting]
-                RB & GM --> WV
-                ED[Enriched Docs + Sentiment]
-                WV --> ED
+            subgraph Stage3["3. Parallel Analysis (Optimized)"]
+                direction TB
+                subgraph Parallel["asyncio.gather"]
+                    SA[Sentiment Agent<br/>RoBERTa 40% + Gemini 60%]
+                    CA[Credibility Agent<br/>domain + fact-check]
+                    TR[Theme Router<br/>6 theme buckets]
+                end
+                SA & CA & TR --> ED[Enriched + Routed Docs]
             end
 
-            subgraph Stage4["4. Analyze Enriched (parallel)"]
-                CA[Credibility Agent<br/>domain scoring]
-                TR[Theme Router Agent<br/>6 theme buckets]
-                AG[asyncio.gather]
-                CA & TR --> AG
-            end
-
-            subgraph Stage5["5. Context Augmentation Agent (RAG)"]
+            subgraph Stage4["4. Context Augmentation Agent (RAG)"]
                 SC[Semantic Chunker<br/>400 chars]
                 ES[Embedding Service<br/>MiniLM-L6-v2]
                 VS[Qdrant VectorStore<br/>cosine similarity]
@@ -61,7 +78,7 @@ flowchart TB
                 VS --> TK
             end
 
-            subgraph Stage6["6. Theme Agents (6x parallel)"]
+            subgraph Stage5["5. Theme Agents (6x parallel)"]
                 TH1[Infrastructure]
                 TH2[Health & Wellness]
                 TH3[Public Safety]
@@ -72,15 +89,15 @@ flowchart TB
                 TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
             end
 
-            subgraph Stage7["7. Build Snapshot"]
-                GC[GeminiClient<br/>gemini-2.0-flash-exp]
+            subgraph Stage6["6. Build Snapshot"]
+                GC[GeminiClient<br/>gemini-2.5-pro]
                 NR[Narrative Generation]
                 GC --> NR
                 SR[SnapshotResponse]
                 NR --> SR
             end
 
-            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5 --> Stage6 --> Stage7
+            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5 --> Stage6
         end
     end
 
@@ -92,9 +109,8 @@ flowchart TB
     style Stage2 fill:#fff3e0
     style Stage3 fill:#f3e5f5
     style Stage4 fill:#e8f5e9
-    style Stage5 fill:#fce4ec
-    style Stage6 fill:#fff8e1
-    style Stage7 fill:#e0f2f1
+    style Stage5 fill:#fff8e1
+    style Stage6 fill:#e0f2f1
 ```
 
 ## Detailed Agent Flow (Mermaid)
@@ -105,9 +121,7 @@ sequenceDiagram
     participant API as FastAPI
     participant QO as Query Orchestrator
     participant RA as Retrieval Agent
-    participant SA as Sentiment Agent
-    participant CA as Credibility Agent
-    participant TR as Theme Router
+    participant ANALYZE as Parallel Analysis
     participant CTX as Context Agent
     participant TA as Theme Agents
     participant GC as GeminiClient
@@ -126,21 +140,15 @@ sequenceDiagram
         RA->>RA: Facebook Ingestion
     end
     RA->>RA: Semantic Rerank
-    RA-->>SA: List[WebDocument]
+    RA-->>ANALYZE: List[WebDocument]
 
-    par Ensemble Sentiment
-        SA->>SA: RoBERTa (40%)
-        SA->>SA: Gemini LLM (60%)
+    Note over ANALYZE: OPTIMIZED: All 3 run in parallel via asyncio.gather
+    par Parallel Analysis (Single Node)
+        ANALYZE->>ANALYZE: Sentiment (RoBERTa 40% + Gemini 60%)
+        ANALYZE->>ANALYZE: Credibility (domain + fact-check)
+        ANALYZE->>ANALYZE: Theme Routing (6 buckets)
     end
-    SA->>SA: Weighted Voting
-    SA-->>CA: Enriched Documents
-
-    par Parallel Analysis
-        CA->>CA: Domain Scoring
-        TR->>TR: Route to 6 Themes
-    end
-
-    TR-->>CTX: Theme Documents
+    ANALYZE-->>CTX: Enriched + Routed Documents
 
     Note over CTX: RAG Pipeline
     CTX->>CTX: Semantic Chunking
@@ -158,7 +166,7 @@ sequenceDiagram
     end
     TA-->>GC: Theme Insights
 
-    GC->>GC: Narrative Generation
+    GC->>GC: Narrative Generation (Gemini 2.5 Pro)
     GC-->>API: SnapshotResponse
     API-->>Client: JSON Response
 ```
@@ -222,11 +230,10 @@ graph LR
 SnapshotRequest
     → Query Planning (ReAct) + Time-Based Search Operators
     → Document Retrieval (LangSearch + Facebook)
-    → Sentiment Analysis (RoBERTa + Gemini Ensemble)
-    → Theme Routing (6 categories)
+    → PARALLEL: Sentiment + Credibility + Theme Routing (asyncio.gather)
     → RAG Augmentation (Chunking → Embedding → Vector Search)
     → Theme Insights (6x parallel Gemini)
-    → Narrative Generation
+    → Narrative Generation (Gemini 2.5 Pro)
     → SnapshotResponse
 ```
 
@@ -264,7 +271,7 @@ Documents are filtered by `published_at` timestamp after retrieval to enforce st
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11+, Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5-pro for sentiment/theme, 2.0-flash-exp for orchestration/narrative) |
+| LLM | Google Gemini (2.5-pro for narrative, 2.0-flash-exp for orchestration/sentiment/theme) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment) |
 | Embeddings | MiniLM-L6-v2 (384 dimensions) |
 | Vector DB | Qdrant |

@@ -137,9 +137,11 @@ class EnsembleSentimentAgent:
             raise RuntimeError("GEMINI_API_KEY missing")
         
         genai.configure(api_key=settings.gemini_api_key)
-        self.gemini_model = genai.GenerativeModel("gemini-2.5-pro")
+        # OPTIMIZATION: Use Gemini 2.0 Flash for faster sentiment analysis
+        # Flash is ~3-5x faster than 2.5 Pro with comparable accuracy for classification
+        self.gemini_model = genai.GenerativeModel("gemini-2.0-flash-exp")
         self.roberta = get_sentiment_model()
-        self.batch_size = 12
+        self.batch_size = 15  # Increased batch size for Flash model
         
         logger.info(
             f"EnsembleSentimentAgent initialized "

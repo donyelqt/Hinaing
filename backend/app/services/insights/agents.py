@@ -55,35 +55,49 @@ class RetrievalAgent:
 
         if "web" in request.platforms:
             if query_plan and query_plan.queries:
+                # Use all queries from orchestrator (typically 6) for full topic diversity
+                # Speed is maintained through parallel batching
+                queries_to_run = query_plan.queries
+                
                 logger.info(
-                    "[retrieval_agent] executing %d diverse web queries SEQUENTIALLY (rate limit safe)",
-                    len(query_plan.queries),
+                    "[retrieval_agent] executing %d diverse web queries with PARALLEL batching",
+                    len(queries_to_run),
                 )
                 
-                # Sequential execution with delays to avoid rate limits
-                for idx, task in enumerate(query_plan.queries):
+                # OPTIMIZATION: Run queries in parallel batches of 2 with minimal delay
+                async def fetch_query(task, idx):
                     topic = task.topic or f"topic_{idx}"
-                    
-                    # Add delay between queries to avoid rate limiting
-                    if idx > 0:
-                        await asyncio.sleep(2.0)  # 2s delay for rate limit safety
-                    
-                    logger.info("[retrieval_agent] query %d/%d: topic='%s'", 
-                               idx+1, len(query_plan.queries), topic)
-                    
                     try:
                         docs = await search_web_documents(
                             request,
                             custom_query=task.query,
                             limit=10,
                         )
-                        # Tag documents with their source topic
                         for doc in docs:
                             doc.metadata = {**(doc.metadata or {}), "_source_topic": topic}
-                        topic_results.setdefault(topic, []).extend(docs)
                         logger.info("[retrieval_agent] query '%s' returned %d docs", topic, len(docs))
+                        return topic, docs
                     except Exception as exc:
                         logger.warning("[retrieval_agent] query '%s' failed: %s", topic, exc)
+                        return topic, []
+                
+                # Run in parallel batches of 3 to respect rate limits while being fast
+                batch_size = 3
+                for batch_start in range(0, len(queries_to_run), batch_size):
+                    batch = queries_to_run[batch_start:batch_start + batch_size]
+                    
+                    # Add small delay between batches (not between individual queries)
+                    if batch_start > 0:
+                        await asyncio.sleep(1.5)  # Brief pause between batches for rate limits
+                    
+                    # Run batch in parallel
+                    tasks = [fetch_query(task, batch_start + i) for i, task in enumerate(batch)]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    
+                    for result in results:
+                        if isinstance(result, tuple):
+                            topic, docs = result
+                            topic_results.setdefault(topic, []).extend(docs)
             else:
                 logger.info("[retrieval_agent] invoking LangSearch tool (baseline)")
                 try:

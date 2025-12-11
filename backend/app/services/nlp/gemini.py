@@ -32,6 +32,11 @@ class GeminiClient:
     """Thin wrapper around the Gemini GenerativeModel."""
 
     def __init__(self, *, model_name: str = "gemini-2.5-pro") -> None:
+        """Initialize Gemini client.
+        
+        Uses Gemini 2.5 Pro for narrative generation to ensure comprehensive
+        coverage of all topics. Flash models miss important details in summaries.
+        """
         settings = get_settings()
         self._api_key = settings.gemini_api_key
         self._model_name = model_name

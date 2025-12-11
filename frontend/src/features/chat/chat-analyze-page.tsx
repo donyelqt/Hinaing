@@ -87,12 +87,12 @@ function HLogo({ className }: { className?: string }) {
 }
 
 function ProgressIndicator({ stage, progress, message }: { stage: string; progress: number; message?: string }) {
+    // Stages aligned with backend graph.py progress_callback stages
     const stages = [
         { id: "start", label: "Start", icon: <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" /> },
         { id: "query_orchestrator", label: "Query", icon: <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> },
         { id: "retrieval", label: "Fetch", icon: <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" /> },
-        { id: "sentiment", label: "Analyze", icon: <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" /> },
-        { id: "credibility", label: "Verify", icon: <Shield className="h-3 w-3 sm:h-4 sm:w-4" /> },
+        { id: "analyze", label: "Analyze", icon: <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" /> },  // Combined: sentiment + credibility + themes routing
         { id: "context", label: "Context", icon: <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> },
         { id: "themes", label: "Insights", icon: <FileText className="h-3 w-3 sm:h-4 sm:w-4" /> },
     ];

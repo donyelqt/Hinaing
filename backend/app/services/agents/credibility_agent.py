@@ -1082,21 +1082,23 @@ class EnhancedCredibilityAgent:
         self, 
         docs: list[WebDocument]
     ) -> list[tuple[float, str | None]]:
-        """Run fact checks with rate limiting."""
+        """Run fact checks with high concurrency.
+        
+        OPTIMIZATION: Increased concurrency to 15 and removed delays.
+        Google Fact Check API has generous rate limits.
+        """
         global _fact_check_api_warned
         
-        semaphore = asyncio.Semaphore(10)
+        # OPTIMIZATION: Higher concurrency for faster parallel execution
+        semaphore = asyncio.Semaphore(15)
         
         async def check_one(doc: WebDocument, idx: int) -> tuple[float, str | None]:
             async with semaphore:
-                # No sleep needed with higher concurrency unless strict rate limits exist
-                if idx > 0:
-                    # Minimal yield to let event loop breathe but not wait
-                    await asyncio.sleep(0)
                 query = (doc.title or "")[:100]
                 claims = await search_fact_checks(query, self._api_key)
                 return parse_fact_check(claims)
         
+        # Run all fact checks in parallel
         tasks = [check_one(d, i) for i, d in enumerate(docs)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         

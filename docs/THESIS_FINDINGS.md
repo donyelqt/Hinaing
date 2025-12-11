@@ -261,17 +261,10 @@ To scientifically validate the efficacy of the Hinaing system, we implemented a 
 
 2.  **Hybrid Sentiment Ensemble**: A weighted voting mechanism combining **RoBERTa** (fast, social-native) and **Gemini** (context-aware), achieving higher accuracy on Philippine English/Taglish than either model alone.
 
-3.  **Tri-Modal Architecture**: The successful integration of three interfaces in a single unified platform:
-    - **AI Assistant** (quick Q&A) - Standard Agentic RAG for rapid responses
-    - **Chat Analyzer** (conversational analysis) - Full 6-agent pipeline with streaming SSE progress
-    - **Sentiment Generator** (proactive dashboard) - Scheduled monitoring with charts and metrics
+3.  **Dual-Mode Architecture**: The successful integration of a **Reactive Chat Interface** (for drill-down) and a **Proactive Dashboard** (for discovery) in a single unified platform.
 
-4.  **Interface-Agnostic Pipeline**: The same 6-agent pipeline (Query Orchestrator → Retrieval → Sentiment → Credibility → Context → Theme Agents) powers both Chat Analyzer and Sentiment Generator, proving architectural reusability across different UX paradigms.
+4.  **Domain-Specific Grounding**: Application of Agentic AI specifically for **Baguio City**, demonstrating how generic LLMs can be constrained to hyper-local contexts through RAG and prompt engineering.
 
-5.  **Domain-Specific Grounding**: Application of Agentic AI specifically for **Baguio City**, demonstrating how generic LLMs can be constrained to hyper-local contexts through RAG and prompt engineering.
-
-6.  **Multi-Signal Credibility Framework**: Implementation of a **5-Layer Verification System** that triangulates credibility using Domain Reputation, internal Semantic Cross-Referencing (MiniLM), Google Fact Check API, LLM Pattern Recognition, and Live Web Verification (Tavily).
-
-7.  **Real-Time Progress Streaming**: Implementation of Server-Sent Events (SSE) for live progress updates through the 6-agent pipeline, providing transparency into AI reasoning for end users.
+5.  **Multi-Signal Credibility Framework**: Implementation of a **5-Layer Verification System** that triangulates credibility using Domain Reputation, internal Semantic Cross-Referencing (MiniLM), Google Fact Check API, LLM Pattern Recognition, and Live Web Verification (Tavily).
 
 Keeping this doc updated will make it easier to demonstrate thesis impact during defenses and publications.

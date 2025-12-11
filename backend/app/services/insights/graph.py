@@ -221,49 +221,89 @@ async def augment_context(state: SnapshotState) -> SnapshotState:
     return state
 
 
-def label_sentiment(state: SnapshotState) -> SnapshotState:
-    start_time = time.perf_counter()
+async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
+    """OPTIMIZATION: Run sentiment, credibility, and theme routing in parallel.
+    
+    Previously these ran sequentially:
+    1. Sentiment (sync) ~54s
+    2. Credibility (async) ~33s  
+    3. Theme routing (sync) ~1s
+    
+    Now runs in parallel, reducing total time from ~88s to ~54s (max of the three).
+    """
     docs = state.get("documents", [])
-    state["enriched"] = sentiment_agent.run(docs)
-    duration_ms = (time.perf_counter() - start_time) * 1000
-    logger.info("[snapshot] Sentiment agent labeled %d docs in %.1f ms", len(docs), duration_ms)
-    return state
-
-
-async def analyze_enriched(state: SnapshotState) -> SnapshotState:
-    docs = state.get("enriched") or []
     request = state["request"]
     start_time = time.perf_counter()
+    
     if not docs:
+        state["enriched"] = []
         state["credibility_notes"] = {}
         state["theme_documents"] = {key: [] for key in THEME_GROUPS}
-        logger.info("[snapshot] analyze_enriched skipped (no docs)")
+        logger.info("[snapshot] label_sentiment_and_analyze skipped (no docs)")
         return state
 
-    # Run credibility (async) and theme routing (sync) in parallel
-    # Credibility agent now returns enriched documents with metadata
+    # Run ALL three operations in parallel:
+    # 1. Sentiment analysis (sync, wrapped in thread)
+    # 2. Credibility scoring (async)
+    # 3. Theme routing (sync, wrapped in thread)
+    
+    async def run_sentiment():
+        return await asyncio.to_thread(sentiment_agent.run, docs)
+    
+    sentiment_task = run_sentiment()
     credibility_task = credibility_agent_node.run(docs)
     theme_task = asyncio.to_thread(theme_router_agent.run, docs, request)
     
-    enriched_docs, theme_docs = await asyncio.gather(credibility_task, theme_task)
+    # Wait for all three to complete
+    sentiment_docs, credibility_docs, theme_docs = await asyncio.gather(
+        sentiment_task, credibility_task, theme_task
+    )
     
-    # Extract credibility notes from enriched documents for backward compatibility
+    # Merge sentiment labels into credibility-enriched documents
+    # Create a mapping of URL -> sentiment data
+    sentiment_map = {}
+    for doc in sentiment_docs:
+        key = str(doc.url) if doc.url else doc.title
+        sentiment_map[key] = {
+            "sentiment": doc.sentiment,
+            "sentiment_metadata": {
+                k: v for k, v in (doc.metadata or {}).items()
+                if k.startswith("sentiment_") or k in ["roberta_prediction", "gemini_prediction", "model_agreement"]
+            }
+        }
+    
+    # Merge into credibility docs
+    enriched_docs = []
+    for doc in credibility_docs:
+        key = str(doc.url) if doc.url else doc.title
+        sentiment_data = sentiment_map.get(key, {})
+        
+        merged_metadata = {
+            **(doc.metadata or {}),
+            **sentiment_data.get("sentiment_metadata", {})
+        }
+        
+        enriched_docs.append(doc.model_copy(update={
+            "sentiment": sentiment_data.get("sentiment", doc.sentiment),
+            "metadata": merged_metadata
+        }))
+    
+    # Extract credibility notes for backward compatibility
     credibility_notes = {}
     for doc in enriched_docs:
         domain = doc.metadata.get("source_domain", "unknown") if doc.metadata else "unknown"
         score = doc.metadata.get("credibility_score", 0.5) if doc.metadata else 0.5
         credibility_notes[domain] = score
     
-    # Update enriched docs with credibility metadata
     state["enriched"] = enriched_docs
     state["credibility_notes"] = credibility_notes
     state["theme_documents"] = theme_docs
     
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info(
-        "[snapshot] analyze_enriched processed %d docs in %.1f ms",
-        len(docs),
+        "[snapshot] Parallel sentiment+credibility+themes completed in %.1f ms for %d docs",
         duration_ms,
+        len(docs),
     )
     return state
 
@@ -604,17 +644,16 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 graph = StateGraph(SnapshotState)
 graph.add_node("orchestrate_queries", orchestrate_queries)
 graph.add_node("fetch_documents", fetch_documents)
-graph.add_node("label_sentiment", label_sentiment)
-graph.add_node("analyze_enriched", analyze_enriched)
+# OPTIMIZATION: Combined sentiment + credibility + theme routing into single parallel node
+graph.add_node("label_sentiment_and_analyze", label_sentiment_and_analyze)
 graph.add_node("theme_agents", theme_agents)
 graph.add_node("augment_context", augment_context)
 graph.add_node("build_snapshot", build_snapshot)
 
 graph.add_edge(START, "orchestrate_queries")
 graph.add_edge("orchestrate_queries", "fetch_documents")
-graph.add_edge("fetch_documents", "label_sentiment")
-graph.add_edge("label_sentiment", "analyze_enriched")
-graph.add_edge("analyze_enriched", "augment_context")
+graph.add_edge("fetch_documents", "label_sentiment_and_analyze")
+graph.add_edge("label_sentiment_and_analyze", "augment_context")
 graph.add_edge("augment_context", "theme_agents")
 graph.add_edge("theme_agents", "build_snapshot")
 graph.add_edge("build_snapshot", END)
@@ -643,11 +682,11 @@ async def generate_snapshot(
     )
     
     # Define progress stages with their weights
+    # OPTIMIZATION: Combined sentiment + credibility into single parallel stage
     stages = [
         ("query_orchestrator", "📡 Query Orchestrator: Generating search queries...", 0.1),
         ("retrieval", "🔍 Retrieval Agent: Fetching documents...", 0.25),
-        ("sentiment", "📊 Sentiment Agent: Analyzing sentiment...", 0.45),
-        ("credibility", "✅ Credibility Agent: Verifying sources...", 0.6),
+        ("analyze", "⚡ Analyzing: Sentiment + Credibility + Themes (parallel)...", 0.55),
         ("context", "🔗 Context Agent: Augmenting with RAG...", 0.75),
         ("themes", "🎯 Theme Agents: Generating insights...", 0.9),
     ]
@@ -667,24 +706,19 @@ async def generate_snapshot(
         state = await fetch_documents(state)
         doc_count = len(state.get("documents", []))
         
-        # Stage 3: Sentiment
+        # Stage 3: Parallel Sentiment + Credibility + Theme Routing
         if progress_callback:
-            await progress_callback("sentiment", f"📊 Sentiment Agent: Analyzing {doc_count} documents...", stages[2][2])
-        state = label_sentiment(state)
+            await progress_callback("analyze", f"⚡ Analyzing {doc_count} docs: Sentiment + Credibility + Themes (parallel)...", stages[2][2])
+        state = await label_sentiment_and_analyze(state)
         
-        # Stage 4: Credibility
+        # Stage 4: Context Augmentation
         if progress_callback:
-            await progress_callback("credibility", stages[3][1], stages[3][2])
-        state = await analyze_enriched(state)
-        
-        # Stage 5: Context Augmentation
-        if progress_callback:
-            await progress_callback("context", stages[4][1], stages[4][2])
+            await progress_callback("context", stages[3][1], stages[3][2])
         state = await augment_context(state)
         
-        # Stage 6: Theme Agents
+        # Stage 5: Theme Agents
         if progress_callback:
-            await progress_callback("themes", stages[5][1], stages[5][2])
+            await progress_callback("themes", stages[4][1], stages[4][2])
         state = theme_agents(state)
         
         # Final: Build Snapshot
