@@ -267,8 +267,8 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                 )}
             </button>
 
-            <div className="min-h-[100dvh] bg-slate-50 font-sans selection:bg-blue-100">
-                <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
+            <div className="h-[100dvh] bg-slate-50 font-sans selection:bg-blue-100 overflow-hidden fixed inset-0">
+                <div className="mx-auto flex w-full h-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
                     <Sidebar
                         activePage="chat"
@@ -278,8 +278,8 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                         onOpenMobileFilters={() => setIsSidebarOpen(true)}
                     />
 
-                    {/* Main Content Area - Dynamic viewport height for mobile */}
-                    <main className="order-1 flex w-full min-w-0 flex-col gap-3 sm:gap-4 lg:order-2 lg:flex-1 lg:gap-6 xl:gap-8 lg:h-[calc(100vh-4rem)] h-[calc(100dvh-env(safe-area-inset-bottom))] sm:h-[90vh] relative">
+                    {/* Main Content Area - Fixed height, no page scroll */}
+                    <main className="order-1 flex w-full min-w-0 flex-col lg:order-2 flex-1 lg:h-full h-full relative">
 
                         {/* Chat Container */}
                         <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm sm:rounded-3xl border-0 sm:border border-slate-200/60 shadow-sm overflow-hidden relative">
