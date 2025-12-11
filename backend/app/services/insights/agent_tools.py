@@ -63,36 +63,46 @@ EXCLUDED_DOMAINS = {
 }
 
 # Focus area concern keywords for query building
+# Organized by priority (most searchable terms first), no duplicates across categories
 FOCUS_CONCERN_KEYWORDS: dict[str, list[str]] = {
     "infrastructure": [
-        "Baguio road problem", "Baguio traffic issue", "Baguio water problem",
-        "Baguio power outage", "Kennon Road problem", "Session Road traffic",
-        "BGH substandard construction", "Baguio building construction issue",
+        "Baguio traffic congestion", "Baguio road repair", "Baguio water shortage",
+        "Baguio power outage", "Baguio internet problem", "Kennon Road closure",
+        "Session Road rehabilitation", "Baguio parking problem", "Baguio drainage issue",
+        "Baguio construction delay", "Baguio jeepney modernization", "Baguio public transport",
     ],
     "health": [
-        "Baguio hospital problem", "Baguio health concern", "Baguio disease issue",
-        "Baguio General Hospital substandard", "BGH construction issue",
-        "BGH building problem", "Baguio hospital construction",
+        "Baguio hospital issue", "BGH Baguio problem", "Baguio healthcare concern",
+        "Baguio dengue outbreak", "Baguio COVID update", "Baguio mental health",
+        "Baguio medical services", "Baguio health center", "Baguio medicine shortage",
+        "Baguio doctor shortage", "Baguio emergency room", "Baguio vaccination",
+        "BGH substandard construction", "BGH construction issue", "Baguio General Hospital problem",
     ],
     "safety": [
-        "Baguio crime problem", "Baguio landslide issue", "Baguio flood concern",
-        "Baguio accident concern", "Baguio safety issue",
-        "Baguio student walkout", "Baguio protest", "Baguio rally",
-        "Baguio school incident", "Baguio student protest",
-        "Baguio schools walkout mallification", "Baguio youth rally",
+        "Baguio crime incident", "Baguio landslide warning", "Baguio earthquake drill",
+        "Baguio fire incident", "Baguio accident report", "Baguio theft problem",
+        "Baguio road accident", "Baguio emergency response", "Baguio disaster preparedness",
+        "Baguio missing person", "Baguio police operation", "Baguio evacuation",
+        "Baguio flood control", "Baguio corruption issue", "Baguio flood control corruption",
+        "Baguio students walkout", "Baguio student protest", "Baguio youth rally",
     ],
     "tourism": [
-        "Baguio tourist complaint", "Baguio overcrowding problem", "Burnham Park issue",
+        "Baguio tourist complaint", "Baguio overcrowding", "Burnham Park problem",
+        "Baguio hotel issue", "Baguio scam tourist", "Baguio travel advisory",
+        "Baguio tourist trap", "Session Road crowd", "Baguio weekend traffic",
+        "Baguio accommodation problem", "Baguio tour package complaint", "Panagbenga issue",
     ],
     "economy": [
-        "Baguio vendor problem", "Baguio market issue", "Baguio business concern",
-        "Baguio mallification", "Baguio public market redevelopment",
-        "Baguio student walkout mallification", "Baguio students protest market",
-        "SM Prime Baguio protest", "Baguio vendor displacement",
-        "Baguio schools walkout", "Baguio youth protest market",
+        "Baguio vendor issue", "Baguio market problem", "Baguio business closure",
+        "Baguio mallification protest", "SM Baguio expansion", "Baguio public market",
+        "Baguio unemployment", "Baguio cost of living", "Baguio livelihood program",
+        "Baguio student protest market", "Baguio vendor displacement", "Baguio job hiring",
     ],
     "environment": [
-        "Baguio pollution problem", "Baguio air quality concern", "Baguio flooding problem",
+        "Baguio tree cutting", "Baguio air pollution", "Baguio flooding",
+        "Baguio waste management", "Baguio urban development", "Baguio green space",
+        "Baguio climate change", "Baguio pine trees", "Baguio environmental concern",
+        "Baguio garbage problem", "Baguio illegal dumping", "Baguio water pollution",
     ],
 }
 
@@ -117,7 +127,7 @@ def build_focus_query(request: SnapshotRequest) -> str:
                 all_terms.append(f"Baguio {area} problem")
                 all_terms.append(f"Baguio {area} concern")
         unique_terms = list(dict.fromkeys(all_terms))
-        terms_query = " OR ".join(f'"{term}"' for term in unique_terms[:6])
+        terms_query = " OR ".join(f'"{term}"' for term in unique_terms[:8])
         base_query = f"({terms_query})"
         logger.info("[build_focus_query] Query with time filter: %s%s", base_query[:80], time_suffix)
         return f"{base_query}{time_suffix}"

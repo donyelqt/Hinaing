@@ -97,11 +97,11 @@ async def run_chat_agent(
                     for doc in docs[:5]:
                         title = doc.title or "Untitled"
                         snippet = doc.snippet or "No snippet"
-                        url = doc.url or "No URL"
+                        url = str(doc.url) if doc.url else "No URL"
                         formatted_docs.append(f"Source: {title}\nURL: {url}\nSnippet: {snippet}\n")
                         
-                        # Collect for UI return
-                        sources.append({"title": title, "url": url})
+                        # Collect for UI return (ensure url is string)
+                        sources.append({"title": str(title), "url": str(url) if url else None})
                         
                     return "\n".join(formatted_docs)
                 except Exception as e:

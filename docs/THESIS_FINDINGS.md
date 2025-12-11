@@ -177,7 +177,15 @@ time_window → search_suffix
 - `agent_tools.py` - Time suffix in direct queries + `_get_time_search_suffix()` helper
 - `langsearch.py` - API freshness parameter mapping
 
-## Latest Evidence (Dec 9, 2025)
+## Latest Evidence (Dec 11, 2025)
+- **Chat Analyzer System**: New conversational interface (`/chat/analyze`) with streaming SSE progress through 6-agent pipeline
+- **Intent-Based Routing**: `detect_intent()` routes to `analyze` (full pipeline), `simple` (quick Q&A), or `followup` (cached RAG)
+- **Real-Time Progress Streaming**: Frontend displays 6-stage progress via `progress_callback` mechanism
+- **Facebook Page Integration**: LangSearch queries enriched with `site:facebook.com/BaguioCityPIO` etc.
+- **Enhanced Narrative Generation**: Gemini processes 50 docs (was 5-15), generates 3-5 sentences (was 2), up to 5 insights (was 3)
+- **Increased Context Limits**: RAG uses top 50 chunks per theme (was 25), insight details 500 chars (was 240)
+
+## Previous Evidence (Dec 9, 2025)
 - **Time-Based Search Operators**: Implemented multi-layer freshness filtering to prioritize recent content:
   - **Query-Level**: Google-style `after:YYYY-MM-DD` operators appended to search queries
   - **API-Level**: LangSearch `freshness` parameter (oneDay/oneWeek)
@@ -201,12 +209,13 @@ time_window → search_suffix
 
 ## Gaps & Next Steps
 - ✅ ~~Integrate AI-based sentiment model~~ (Completed: Ensemble RoBERTa + Gemini)
+- ✅ ~~Document end-to-end agent flow in architecture diagram~~ (Completed: `ARCHITECTURE.md` + `CHAT_ARCHITECTURE.md`)
+- ✅ ~~Add conversational interface for analysis~~ (Completed: Chat Analyzer with streaming SSE)
 - Tune ensemble weights based on validation set performance
 - Integrate fine-tuned credibility models to replace heuristic scoring
 - Add the planned RAG Solutions agent backed by Qdrant
 - Switch Qdrant from in-memory to persistent storage for production
 - Export per-agent telemetry to dashboards for thesis evaluation
-- Document end-to-end agent flow in architecture diagram
 - Add Reddit integration (code exists but not wired)
 
 ## Architecture Flow
@@ -252,10 +261,17 @@ To scientifically validate the efficacy of the Hinaing system, we implemented a 
 
 2.  **Hybrid Sentiment Ensemble**: A weighted voting mechanism combining **RoBERTa** (fast, social-native) and **Gemini** (context-aware), achieving higher accuracy on Philippine English/Taglish than either model alone.
 
-3.  **Dual-Mode Architecture**: The successful integration of a **Reactive Chat Interface** (for drill-down) and a **Proactive Dashboard** (for discovery) in a single unified platform.
+3.  **Tri-Modal Architecture**: The successful integration of three interfaces in a single unified platform:
+    - **AI Assistant** (quick Q&A) - Standard Agentic RAG for rapid responses
+    - **Chat Analyzer** (conversational analysis) - Full 6-agent pipeline with streaming SSE progress
+    - **Sentiment Generator** (proactive dashboard) - Scheduled monitoring with charts and metrics
 
-4.  **Domain-Specific Grounding**: Application of Agentic AI specifically for **Baguio City**, demonstrating how generic LLMs can be constrained to hyper-local contexts through RAG and prompt engineering.
+4.  **Interface-Agnostic Pipeline**: The same 6-agent pipeline (Query Orchestrator → Retrieval → Sentiment → Credibility → Context → Theme Agents) powers both Chat Analyzer and Sentiment Generator, proving architectural reusability across different UX paradigms.
 
-5.  **Multi-Signal Credibility Framework**: Implementation of a **5-Layer Verification System** that triangulates credibility using Domain Reputation, internal Semantic Cross-Referencing (MiniLM), Google Fact Check API, LLM Pattern Recognition, and Live Web Verification (Tavily).
+5.  **Domain-Specific Grounding**: Application of Agentic AI specifically for **Baguio City**, demonstrating how generic LLMs can be constrained to hyper-local contexts through RAG and prompt engineering.
+
+6.  **Multi-Signal Credibility Framework**: Implementation of a **5-Layer Verification System** that triangulates credibility using Domain Reputation, internal Semantic Cross-Referencing (MiniLM), Google Fact Check API, LLM Pattern Recognition, and Live Web Verification (Tavily).
+
+7.  **Real-Time Progress Streaming**: Implementation of Server-Sent Events (SSE) for live progress updates through the 6-agent pipeline, providing transparency into AI reasoning for end users.
 
 Keeping this doc updated will make it easier to demonstrate thesis impact during defenses and publications.

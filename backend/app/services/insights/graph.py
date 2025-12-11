@@ -210,7 +210,7 @@ async def augment_context(state: SnapshotState) -> SnapshotState:
                 documents=docs,
                 theme=label,
                 time_window=request.time_window,
-                top_k=25,
+                top_k=50,
             )
             augmented[theme_key] = context
         except Exception as exc:
@@ -310,7 +310,7 @@ def _synthesize_single_theme(
             return None
 
     if context and context.relevant_chunks:
-        top_chunks = context.relevant_chunks[:25]
+        top_chunks = context.relevant_chunks[:50]
         top_scores = context.relevance_scores[: len(top_chunks)]
         enriched_docs = [
             {
@@ -328,7 +328,7 @@ def _synthesize_single_theme(
                 **doc.model_dump(),
                 "url": str(doc.url) if doc.url else "",
             }
-            for doc in docs[:25]
+            for doc in docs[:50]
         ]
 
     evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
@@ -370,11 +370,11 @@ def _synthesize_single_theme(
                 default=docs[0],
             )
             title = f"Key updates in {label}"
-            detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240]
+            detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:500]
         return Insight(
             category=label,
             title=title,
-            detail=detail[:240],
+            detail=detail[:500],
             evidence=evidence,
         )
     except Exception as exc:
@@ -383,7 +383,7 @@ def _synthesize_single_theme(
         return Insight(
             category=label,
             title=f"Key updates in {label}",
-            detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:240],
+            detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:500],
             evidence=[str(doc.url) for doc in docs[:2] if doc.url],
         )
 
@@ -566,7 +566,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 Insight(
                     category=focus.title(),
                     title=f"Monitor {focus.title()} developments",
-                    detail=snippet[:240],
+                    detail=snippet[:500],
                     evidence=[str(doc.url) for doc in related[:2] if doc.url],
                 )
             )
@@ -622,7 +622,16 @@ graph.add_edge("build_snapshot", END)
 compiled_graph = graph.compile()
 
 
-async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
+async def generate_snapshot(
+    request: SnapshotRequest,
+    progress_callback=None,
+) -> SnapshotResponse:
+    """Generate a sentiment snapshot with optional progress callbacks.
+    
+    Args:
+        request: The snapshot request configuration
+        progress_callback: Optional async callback(stage, message, progress) for real-time updates
+    """
     logger.info(
         "[snapshot] generate_snapshot invoked",
         extra={
@@ -632,9 +641,60 @@ async def generate_snapshot(request: SnapshotRequest) -> SnapshotResponse:
             "include_alerts": request.include_alerts,
         },
     )
+    
+    # Define progress stages with their weights
+    stages = [
+        ("query_orchestrator", "📡 Query Orchestrator: Generating search queries...", 0.1),
+        ("retrieval", "🔍 Retrieval Agent: Fetching documents...", 0.25),
+        ("sentiment", "📊 Sentiment Agent: Analyzing sentiment...", 0.45),
+        ("credibility", "✅ Credibility Agent: Verifying sources...", 0.6),
+        ("context", "🔗 Context Agent: Augmenting with RAG...", 0.75),
+        ("themes", "🎯 Theme Agents: Generating insights...", 0.9),
+    ]
+    
     state: SnapshotState = {"request": request}
-    result = await compiled_graph.ainvoke(state)
-    snapshot = result.get("snapshot")
+    
+    # Run each node manually to emit progress
+    try:
+        # Stage 1: Query Orchestrator
+        if progress_callback:
+            await progress_callback("query_orchestrator", stages[0][1], stages[0][2])
+        state = await orchestrate_queries(state)
+        
+        # Stage 2: Retrieval
+        if progress_callback:
+            await progress_callback("retrieval", stages[1][1], stages[1][2])
+        state = await fetch_documents(state)
+        doc_count = len(state.get("documents", []))
+        
+        # Stage 3: Sentiment
+        if progress_callback:
+            await progress_callback("sentiment", f"📊 Sentiment Agent: Analyzing {doc_count} documents...", stages[2][2])
+        state = label_sentiment(state)
+        
+        # Stage 4: Credibility
+        if progress_callback:
+            await progress_callback("credibility", stages[3][1], stages[3][2])
+        state = await analyze_enriched(state)
+        
+        # Stage 5: Context Augmentation
+        if progress_callback:
+            await progress_callback("context", stages[4][1], stages[4][2])
+        state = await augment_context(state)
+        
+        # Stage 6: Theme Agents
+        if progress_callback:
+            await progress_callback("themes", stages[5][1], stages[5][2])
+        state = theme_agents(state)
+        
+        # Final: Build Snapshot
+        state = await build_snapshot(state)
+        
+    except Exception as exc:
+        logger.exception("[snapshot] Pipeline failed: %s", exc)
+        raise
+    
+    snapshot = state.get("snapshot")
     if snapshot is None:
         return SnapshotResponse(
             overall_sentiment=SentimentBreakdown(

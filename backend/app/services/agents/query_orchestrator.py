@@ -1,4 +1,10 @@
-"""ReAct-based query orchestrator that creates optimized search prompts for retrieval."""
+"""ReAct-based query orchestrator that creates optimized search prompts for retrieval.
+
+Multi-query strategy for result diversity:
+- Groups keywords into topic clusters (3-4 keywords each)
+- Generates separate queries per cluster
+- Results are merged with diversity enforcement in retrieval agent
+"""
 from __future__ import annotations
 
 import json
@@ -22,6 +28,48 @@ logging.getLogger("langchain_core.callbacks.manager").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+# Keyword clusters for diversity - group related terms together
+KEYWORD_CLUSTERS: dict[str, list[list[str]]] = {
+    "infrastructure": [
+        ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
+        ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
+        ["Baguio water shortage", "Baguio drainage issue", "Baguio power outage"],
+        ["Baguio parking problem", "Baguio internet problem", "Baguio jeepney modernization"],
+    ],
+    "health": [
+        ["Baguio hospital issue", "BGH Baguio problem", "Baguio emergency room"],
+        ["Baguio dengue outbreak", "Baguio COVID update", "Baguio vaccination"],
+        ["Baguio healthcare concern", "Baguio doctor shortage", "Baguio medicine shortage"],
+        ["Baguio mental health", "Baguio medical services", "Baguio health center"],
+    ],
+    "safety": [
+        ["Baguio crime incident", "Baguio theft problem", "Baguio police operation"],
+        ["Baguio landslide warning", "Baguio earthquake drill", "Baguio disaster preparedness"],
+        ["Baguio fire incident", "Baguio accident report", "Baguio road accident"],
+        ["Baguio emergency response", "Baguio missing person", "Baguio evacuation"],
+        ["Baguio flood control", "Baguio corruption issue", "Baguio flood control corruption"],
+        ["Baguio students walkout", "Baguio student protest", "Baguio youth rally"],
+    ],
+    "tourism": [
+        ["Baguio tourist complaint", "Baguio scam tourist", "Baguio tourist trap"],
+        ["Baguio overcrowding", "Session Road crowd", "Baguio weekend traffic"],
+        ["Burnham Park problem", "Panagbenga issue", "Baguio travel advisory"],
+        ["Baguio hotel issue", "Baguio accommodation problem", "Baguio tour package complaint"],
+    ],
+    "economy": [
+        ["Baguio vendor issue", "Baguio vendor displacement", "Baguio market problem"],
+        ["Baguio mallification protest", "SM Baguio expansion", "Baguio student protest market"],
+        ["Baguio business closure", "Baguio unemployment", "Baguio job hiring"],
+        ["Baguio public market", "Baguio cost of living", "Baguio livelihood program"],
+    ],
+    "environment": [
+        ["Baguio tree cutting", "Baguio pine trees", "Baguio green space"],
+        ["Baguio air pollution", "Baguio water pollution", "Baguio environmental concern"],
+        ["Baguio flooding", "Baguio waste management", "Baguio garbage problem"],
+        ["Baguio urban development", "Baguio climate change", "Baguio illegal dumping"],
+    ],
+}
 
 
 def _get_time_search_suffix(time_window: str | None) -> str:
@@ -58,13 +106,13 @@ def _get_time_search_suffix(time_window: str | None) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def analyze_focus_areas(input_str: str) -> str:
-    """Analyze focus areas and retrieve ALL curated concern keywords.
+    """Analyze focus areas and retrieve keyword clusters for diverse queries.
     
     Args:
         input_str: JSON with 'focus_areas' list
     
     Returns:
-        All concern keywords for query optimization
+        Keyword clusters organized by topic for multi-query generation
     """
     try:
         data = json.loads(input_str)
@@ -72,106 +120,116 @@ def analyze_focus_areas(input_str: str) -> str:
     except json.JSONDecodeError:
         return "Error: Invalid JSON input"
 
-    all_keywords: list[str] = []
-    area_info = []
+    all_clusters: list[dict] = []
     
     for area in focus_areas:
         area_lower = area.lower()
-        keywords = FOCUS_CONCERN_KEYWORDS.get(area_lower, [])
-        all_keywords.extend(keywords)
-        area_info.append({
-            "area": area,
-            "keywords": keywords,
-            "count": len(keywords)
-        })
-
-    unique_keywords = list(dict.fromkeys(all_keywords))
+        clusters = KEYWORD_CLUSTERS.get(area_lower, [])
+        for i, cluster in enumerate(clusters):
+            all_clusters.append({
+                "area": area,
+                "cluster_id": f"{area_lower}_{i+1}",
+                "keywords": cluster,
+                "topic": cluster[0].replace("Baguio ", "").replace(" issue", "").replace(" problem", ""),
+            })
 
     return json.dumps({
-        "total_keywords": len(unique_keywords),
-        "areas": area_info,
-        "all_keywords": unique_keywords,
-        "instruction": "Use these keywords to craft an optimized search query"
+        "total_clusters": len(all_clusters),
+        "clusters": all_clusters,
+        "instruction": "Generate ONE query per cluster for result diversity. Use looser matching (no quotes) for broader results."
     })
 
 
 def generate_query(input_str: str) -> str:
-    """Generate an optimized search query from keywords.
+    """Generate diverse queries from keyword clusters.
     
     Args:
-        input_str: JSON with 'keywords' list and optional 'strategy'
+        input_str: JSON with 'clusters' list from analyze_focus_areas
     
     Returns:
-        Optimized search query string
+        Multiple queries for diverse result coverage
     """
     try:
         data = json.loads(input_str)
-        keywords = data.get("keywords", [])
-        strategy = data.get("strategy", "comprehensive")
+        clusters = data.get("clusters", [])
     except json.JSONDecodeError:
         return "Error: Invalid JSON input"
 
-    if not keywords:
+    if not clusters:
         return json.dumps({
-            "query": "Baguio City civic concerns news",
+            "queries": [{"query": "Baguio City civic concerns news", "topic": "general"}],
             "type": "fallback"
         })
 
-    # Build OR query with all keywords
-    or_terms = " OR ".join(f'"{kw}"' for kw in keywords)
-    query = f"({or_terms})"
+    queries = []
+    for cluster in clusters[:6]:  # Max 6 queries for full topic coverage
+        keywords = cluster.get("keywords", [])
+        topic = cluster.get("topic", "general")
+        
+        # Use looser matching: mix quoted and unquoted terms
+        # First term exact, others loose for broader matching
+        if len(keywords) >= 2:
+            query = f'"{keywords[0]}" OR {keywords[1]}'
+            if len(keywords) >= 3:
+                query += f' OR {keywords[2]}'
+        elif keywords:
+            query = keywords[0]
+        else:
+            continue
+            
+        queries.append({
+            "query": f"({query})",
+            "topic": topic,
+            "cluster_id": cluster.get("cluster_id", "unknown"),
+        })
 
     return json.dumps({
-        "query": query,
-        "keyword_count": len(keywords),
-        "strategy": strategy,
-        "type": "optimized"
+        "queries": queries,
+        "query_count": len(queries),
+        "type": "diverse_multi_query"
     })
 
 
 def evaluate_query(input_str: str) -> str:
-    """Evaluate if the query covers all important concerns.
+    """Evaluate if queries cover diverse topics.
     
     Args:
-        input_str: JSON with 'query' and 'focus_areas'
+        input_str: JSON with 'queries' list and 'focus_areas'
     
     Returns:
-        Coverage assessment
+        Diversity assessment
     """
     try:
         data = json.loads(input_str)
-        query = data.get("query", "").lower()
+        queries = data.get("queries", [])
         focus_areas = data.get("focus_areas", [])
     except json.JSONDecodeError:
         return "Error: Invalid JSON input"
 
-    coverage = []
-    missing = []
+    topics_covered = set()
+    for q in queries:
+        topic = q.get("topic", "")
+        if topic:
+            topics_covered.add(topic)
     
+    # Check cluster coverage per focus area
+    coverage = []
     for area in focus_areas:
         area_lower = area.lower()
-        keywords = FOCUS_CONCERN_KEYWORDS.get(area_lower, [])
-        
-        found = sum(1 for kw in keywords if kw.lower() in query)
-        total = len(keywords)
-        pct = (found / total * 100) if total > 0 else 0
-        
+        total_clusters = len(KEYWORD_CLUSTERS.get(area_lower, []))
+        covered = sum(1 for q in queries if q.get("cluster_id", "").startswith(area_lower))
         coverage.append({
             "area": area,
-            "coverage": f"{found}/{total} ({pct:.0f}%)",
-            "complete": found == total
+            "clusters_covered": f"{covered}/{total_clusters}",
+            "sufficient": covered >= 2,  # At least 2 clusters per area
         })
-        
-        if found < total:
-            missing.extend([kw for kw in keywords if kw.lower() not in query])
 
-    all_complete = all(c["complete"] for c in coverage)
-    
     return json.dumps({
+        "topics_covered": list(topics_covered),
+        "topic_count": len(topics_covered),
         "coverage": coverage,
-        "all_keywords_included": all_complete,
-        "missing_keywords": missing[:5] if missing else [],
-        "recommendation": "Query is comprehensive" if all_complete else f"Add missing keywords: {', '.join(missing[:3])}"
+        "diverse": len(topics_covered) >= len(queries) * 0.75,
+        "recommendation": "Good diversity" if len(topics_covered) >= 3 else "Add more topic variety"
     })
 
 
@@ -181,7 +239,7 @@ def evaluate_query(input_str: str) -> str:
 
 REACT_PROMPT = PromptTemplate.from_template("""You are a search query optimization agent for Baguio City civic monitoring.
 
-Your task: Create an OPTIMIZED search query that the retrieval agent will use to find relevant documents.
+Your task: Create MULTIPLE DIVERSE search queries to ensure broad topic coverage.
 
 Tools available:
 {tools}
@@ -195,19 +253,19 @@ Action: [tool name]
 Action Input: [JSON input]
 Observation: [tool result]
 ... (repeat as needed)
-Thought: I have crafted an optimized query.
-Final Answer: [JSON with strategy and query]
+Thought: I have crafted diverse queries.
+Final Answer: [JSON with strategy and queries]
 
 WORKFLOW:
-1. Use analyze_focus_areas to retrieve ALL keywords for the focus areas
-2. Use generate_query to build an optimized OR query with ALL keywords
-3. Optionally use evaluate_query to verify completeness
-4. Output Final Answer with the optimized query
+1. Use analyze_focus_areas to get keyword CLUSTERS (grouped by topic)
+2. Use generate_query with the clusters to create MULTIPLE queries (one per topic cluster)
+3. Optionally use evaluate_query to verify topic diversity
+4. Output Final Answer with ALL queries
 
 Final Answer JSON format:
-{{"strategy": "description of your optimization approach", "queries": ["the optimized search query"], "expected_results": ["what results to expect"]}}
+{{"strategy": "multi-query for topic diversity", "queries": [{{"query": "...", "topic": "..."}}], "expected_results": ["diverse results across topics"]}}
 
-IMPORTANT: Include ALL concern keywords in the query - do not filter or reduce them.
+CRITICAL: Generate 3-4 separate queries covering DIFFERENT topics. Do NOT combine all keywords into one query.
 
 Begin!
 
@@ -217,9 +275,9 @@ Question: {input}
 
 @dataclass
 class QueryOrchestratorAgent:
-    """ReAct agent that creates optimized search prompts for retrieval."""
+    """ReAct agent that creates diverse search queries for broad topic coverage."""
 
-    max_queries: int = 1
+    max_queries: int = 6  # Up to 6 diverse queries
     max_iterations: int = 5
     fallback_focus: str = "public services"
     _llm: ChatGoogleGenerativeAI | None = field(default=None, init=False)
@@ -249,9 +307,9 @@ class QueryOrchestratorAgent:
                 name="generate_query",
                 func=generate_query,
                 description=(
-                    "Generate an optimized search query from keywords. "
-                    "Input: JSON with 'keywords' list. "
-                    "Returns an OR-combined query string."
+                    "Generate diverse search queries from keyword clusters. "
+                    "Input: JSON with 'clusters' list from analyze_focus_areas. "
+                    "Returns multiple queries for topic diversity."
                 ),
             ),
             Tool(
@@ -318,7 +376,7 @@ class QueryOrchestratorAgent:
         return plan
 
     def _parse_output(self, output: str, focus_values: list[str], steps: list | None = None, time_window: str | None = None) -> QueryPlan:
-        """Parse ReAct output into QueryPlan."""
+        """Parse ReAct output into QueryPlan with multiple diverse queries."""
         time_suffix = _get_time_search_suffix(time_window)
         
         try:
@@ -341,21 +399,32 @@ class QueryOrchestratorAgent:
             
             queries = []
             for idx, q in enumerate(data.get("queries", [])):
-                query_text = q if isinstance(q, str) else q.get("query", "")
+                if isinstance(q, str):
+                    query_text = q
+                    topic_name = f"topic_{idx+1}"
+                else:
+                    query_text = q.get("query", "")
+                    topic_name = q.get("topic", f"topic_{idx+1}")
+                
                 if query_text:
-                    # Append time suffix to each query
                     query_with_time = f"{query_text}{time_suffix}"
-                    queries.append(QueryTask(query=query_with_time, intent="targeted", priority=idx + 1))
+                    queries.append(QueryTask(
+                        query=query_with_time, 
+                        intent="targeted",
+                        topic=topic_name,
+                        priority=idx + 1
+                    ))
 
             if not queries:
                 if steps:
                     return self._extract_from_steps(steps, focus_values, time_window)
                 return self._fallback_plan(focus_values, time_window)
 
-            logger.info("[query_orchestrator] Added time suffix to queries: %s", time_suffix or "(none)")
+            logger.info("[query_orchestrator] Generated %d diverse queries with time suffix: %s", 
+                       len(queries), time_suffix or "(none)")
             
             return QueryPlan(
-                strategy=data.get("strategy", f"Optimized query for {', '.join(focus_values)}"),
+                strategy=data.get("strategy", f"Multi-query diversity for {', '.join(focus_values)}"),
                 queries=queries[:self.max_queries],
                 expected_results=data.get("expected_results", [])[:3],
             )
@@ -367,7 +436,7 @@ class QueryOrchestratorAgent:
             return self._fallback_plan(focus_values, time_window)
 
     def _extract_from_steps(self, steps: list, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
-        """Extract query from intermediate steps."""
+        """Extract queries from intermediate steps."""
         time_suffix = _get_time_search_suffix(time_window)
         
         for step in reversed(steps):
@@ -376,41 +445,70 @@ class QueryOrchestratorAgent:
                 if hasattr(action, 'tool') and action.tool == "generate_query":
                     try:
                         result = json.loads(observation) if isinstance(observation, str) else observation
-                        if isinstance(result, dict) and result.get("query"):
-                            query_with_time = f"{result['query']}{time_suffix}"
-                            logger.info("[query_orchestrator] Added time suffix: %s", time_suffix or "(none)")
-                            return QueryPlan(
-                                strategy=f"Optimized query with {result.get('keyword_count', 0)} keywords",
-                                queries=[QueryTask(query=query_with_time, intent="targeted", priority=1)],
-                                expected_results=[f"Results for {', '.join(focus_values)} concerns"],
-                            )
+                        if isinstance(result, dict) and result.get("queries"):
+                            queries = []
+                            for idx, q in enumerate(result["queries"][:self.max_queries]):
+                                query_text = q.get("query", "") if isinstance(q, dict) else q
+                                topic_name = q.get("topic", f"topic_{idx+1}") if isinstance(q, dict) else f"topic_{idx+1}"
+                                if query_text:
+                                    queries.append(QueryTask(
+                                        query=f"{query_text}{time_suffix}",
+                                        intent="targeted",
+                                        topic=topic_name,
+                                        priority=idx + 1
+                                    ))
+                            if queries:
+                                logger.info("[query_orchestrator] Extracted %d queries from steps", len(queries))
+                                return QueryPlan(
+                                    strategy=f"Multi-query with {len(queries)} topic clusters",
+                                    queries=queries,
+                                    expected_results=[f"Diverse results for {', '.join(focus_values)}"],
+                                )
                     except (json.JSONDecodeError, TypeError):
                         continue
         return self._fallback_plan(focus_values, time_window)
 
     def _fallback_plan(self, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
-        """Direct fallback using ALL concern keywords."""
+        """Direct fallback using keyword clusters for diversity."""
         time_suffix = _get_time_search_suffix(time_window)
         
-        all_keywords: list[str] = []
+        queries = []
         for area in focus_values:
-            keywords = FOCUS_CONCERN_KEYWORDS.get(area.lower(), [])
-            all_keywords.extend(keywords)
+            area_lower = area.lower()
+            clusters = KEYWORD_CLUSTERS.get(area_lower, [])
+            
+            # Take first 2 clusters per area for diversity
+            for i, cluster in enumerate(clusters[:2]):
+                if len(cluster) >= 2:
+                    # Mix exact and loose matching
+                    query = f'("{cluster[0]}" OR {cluster[1]})'
+                elif cluster:
+                    query = cluster[0]
+                else:
+                    continue
+                
+                queries.append(QueryTask(
+                    query=f"{query}{time_suffix}",
+                    intent="targeted",
+                    topic=cluster[0].replace("Baguio ", ""),
+                    priority=len(queries) + 1
+                ))
+                
+                if len(queries) >= self.max_queries:
+                    break
+            
+            if len(queries) >= self.max_queries:
+                break
         
-        unique = list(dict.fromkeys(all_keywords))
-        
-        if unique:
-            or_terms = " OR ".join(f'"{kw}"' for kw in unique)
-            query = f"({or_terms}){time_suffix}"
-            strategy = f"Fallback: {len(unique)} keywords for {', '.join(focus_values)}"
-        else:
+        if not queries:
+            # Ultimate fallback
             query = f"Baguio City {' '.join(focus_values)} problem OR concern{time_suffix}"
-            strategy = f"Fallback: Generic query for {', '.join(focus_values)}"
+            queries = [QueryTask(query=query, intent="broad", topic="general", priority=1)]
         
-        logger.info("[query_orchestrator] Fallback with time suffix: %s", time_suffix or "(none)")
+        logger.info("[query_orchestrator] Fallback: %d diverse queries", len(queries))
         
         return QueryPlan(
-            strategy=strategy,
-            queries=[QueryTask(query=query, intent="targeted", priority=1)],
-            expected_results=[f"Results for {', '.join(focus_values)} concerns in Baguio City"],
+            strategy=f"Fallback multi-query for {', '.join(focus_values)}",
+            queries=queries,
+            expected_results=[f"Diverse results for {', '.join(focus_values)} concerns"],
         )

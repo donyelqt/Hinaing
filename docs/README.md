@@ -3,12 +3,18 @@
 This directory houses the thesis documentation for **Hinaing**, a multi-agent, real-time intelligent search platform for context-aware public opinion analysis in Baguio City.
 
 ## Contents
+- `ARCHITECTURE.md` – detailed system architecture with Mermaid diagrams for the Sentiment Generator pipeline.
+- `CHAT_ARCHITECTURE.md` – architecture documentation for Chat Analyzer and AI Assistant systems.
 - `ROADMAP.md` – high-level milestones, completed work, and next steps.
 - `THESIS_FINDINGS.md` – current thesis findings, capabilities, and remaining gaps.
+- `DEFENSE_GUIDE.md` – thesis defense preparation and key differentiators.
 - `README.md` (this file) – quick overview plus links to app resources.
 
 ## Application Overview
-- **Frontend**: React/TypeScript Sentiment Generator that visualizes snapshots, credibility tags, and alerts.
+- **Frontend**: React/TypeScript application with three main interfaces:
+  - **Sentiment Generator** – Dashboard for configuring and running sentiment analysis
+  - **Chat Analyzer** – Conversational interface with streaming 6-agent pipeline
+  - **AI Assistant** – Quick Q&A with LangSearch + Gemini
 - **Backend**: FastAPI service running a LangGraph workflow with Query Orchestrator, Retrieval, Sentiment, Credibility, Theme Router, Context Augmentation agents, plus per-theme Gemini mini-agents.
 - **Shared goals**: Provide civic leaders with near real-time sentiment summaries grounded in the latest news, social, and forum discussions.
 
@@ -32,7 +38,22 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 9. **RAG Solutions Agent** *(planned)* will pull guidance from a Qdrant-backed knowledge base to suggest follow-up actions per theme.
 10. **Per-agent telemetry** logs runtime + doc counts inside `backend/app/services/insights/graph.py` for observability.
 
-## Latest Updates (Dec 9, 2025)
+### Chat Systems (see `CHAT_ARCHITECTURE.md`)
+11. **Chat Analyzer** (`/chat/analyze`) - Streaming conversational interface that routes user messages through intent detection:
+    - `analyze` intent → Full 6-agent pipeline with SSE progress updates
+    - `simple` intent → Quick Q&A via AI Assistant path
+    - `followup` intent → RAG on cached analysis results
+12. **AI Assistant** (`/chat/`) - Lightweight chat agent using Gemini 2.0 Flash with function calling for real-time LangSearch queries. Returns JSON with response + source badges.
+13. **Session Cache** - In-memory storage of analysis results by `session_id` for follow-up questions without re-running the pipeline.
+
+## Latest Updates (Dec 11, 2025)
+- **Chat Analyzer System**: New conversational interface (`/chat/analyze`) with streaming SSE progress updates through the 6-agent pipeline. Supports three intents: `analyze` (full pipeline), `simple` (quick Q&A), `followup` (RAG on cached results).
+- **Real-Time Progress Streaming**: Frontend displays 6-stage progress indicator (Query → Retrieval → Sentiment → Credibility → Context → Insights) with live updates via `progress_callback`.
+- **Facebook Page Integration**: LangSearch queries now automatically include Baguio City official Facebook pages (BaguioCityPIO, BaguioCityGovernment, baboratoryph) via `site:` operators.
+- **Enhanced Narrative Generation**: Gemini now processes up to 50 documents (was 5-15) and generates 3-5 sentence summaries (was 2) with up to 5 insights (was 3).
+- **Increased Context Limits**: RAG pipeline now uses top 50 chunks per theme (was 25), insight details expanded to 500 chars (was 240).
+
+## Previous Updates (Dec 9, 2025)
 - **Time-Based Search Operators**: Added Google-style `after:YYYY-MM-DD` operators to search queries for fresher content retrieval. Queries now include time suffixes based on requested time window (6h/24h/3d/7d).
 - **Multi-Layer Freshness Filtering**: Three-tier approach: (1) Query-level time operators, (2) API-level freshness hints to LangSearch, (3) Client-side `published_at` filtering.
 
@@ -94,9 +115,12 @@ This directory houses the thesis documentation for **Hinaing**, a multi-agent, r
 4. In `frontend/`, run `npm install` then `npm run dev` and open the Sentiment Generator UI.
 
 ## Key Docs & References
-- Backend architecture and agents: `backend/app/services/insights/graph.py`, `backend/app/services/insights/agents.py`.
-- Sentiment ensemble: `backend/app/services/agents/sentiment_agent.py`.
-- Frontend usage guide: `frontend/README.md`.
-- Roadmap and thesis findings (this docs folder).
+- **System Architecture**: `docs/ARCHITECTURE.md` - Full Mermaid diagrams for Sentiment Generator pipeline
+- **Chat Architecture**: `docs/CHAT_ARCHITECTURE.md` - Chat Analyzer and AI Assistant systems
+- **Backend agents**: `backend/app/services/insights/graph.py`, `backend/app/services/insights/agents.py`
+- **Chat endpoints**: `backend/app/routers/chat_analyze.py`, `backend/app/routers/chat.py`
+- **Sentiment ensemble**: `backend/app/services/agents/sentiment_agent.py`
+- **Frontend usage guide**: `frontend/README.md`
+- **Thesis defense**: `docs/DEFENSE_GUIDE.md`
 
 Keep this README updated as the thesis evolves.

@@ -1,0 +1,561 @@
+"""Chat-based Sentiment Analysis using the same Multi-Agent Architecture.
+
+This endpoint provides a conversational interface that intelligently routes:
+1. Sentiment analysis requests → 6-agent pipeline
+2. Quick Q&A requests → Simple LangSearch + Gemini
+
+Streaming progress updates are sent to the frontend.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import uuid
+from typing import AsyncGenerator
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+from ..services.insights.graph import generate_snapshot
+from ..schemas.snapshot import SnapshotRequest, SnapshotResponse
+from ..services.agents.chat_agent import run_chat_agent
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/chat", tags=["chat-analyze"])
+
+# In-memory session storage (for caching analysis results)
+# In production, use Redis or similar
+_session_cache: dict[str, dict] = {}
+
+
+class ChatMessage(BaseModel):
+    """A single message in conversation history."""
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatAnalyzeRequest(BaseModel):
+    """Request for chat-based sentiment analysis."""
+    message: str = Field(..., description="User message")
+    session_id: str | None = Field(default=None, description="Session ID for conversation continuity")
+    history: list[ChatMessage] = Field(default_factory=list, description="Conversation history")
+    platforms: list[str] = Field(default=["web"], description="Platforms to search")
+    time_window: str = Field(default="24h", description="Time window for search")
+
+
+class ChatProgress(BaseModel):
+    """Progress update during analysis."""
+    stage: str
+    message: str
+    progress: float  # 0.0 to 1.0
+    data: dict | None = None
+
+
+def detect_intent(message: str, history: list[ChatMessage]) -> str:
+    """Detect user intent to route to appropriate handler.
+    
+    Returns:
+        "analyze" - Run full multi-agent sentiment pipeline
+        "followup" - Answer based on cached analysis results
+        "simple" - Quick Q&A using LangSearch + Gemini
+    """
+    message_lower = message.lower()
+    
+    # Keywords that trigger sentiment analysis
+    analyze_keywords = [
+        "analyze", "sentiment", "public opinion", "what do people think",
+        "how do citizens feel", "civic sentiment", "generate insight",
+        "run analysis", "check sentiment", "sentiment breakdown",
+        "what's the mood", "public perception", "community sentiment"
+    ]
+    
+    # Keywords for follow-up on existing analysis
+    followup_keywords = [
+        "tell me more", "explain", "why", "what about", "sources",
+        "evidence", "details", "elaborate", "based on the analysis",
+        "from the results", "according to", "you mentioned"
+    ]
+    
+    # Check if this is a follow-up (has history AND uses follow-up keywords)
+    has_recent_analysis = len(history) > 0 and any(
+        "Sentiment Analysis Results" in msg.content or
+        "analyzing" in msg.content.lower()
+        for msg in history[-5:]  # Check last 5 messages
+    )
+    
+    if has_recent_analysis and any(kw in message_lower for kw in followup_keywords):
+        return "followup"
+    
+    # Check for analysis intent
+    if any(kw in message_lower for kw in analyze_keywords):
+        return "analyze"
+    
+    # Focus area mentions with analysis context
+    focus_areas = ["safety", "infrastructure", "health", "tourism", "economy", "environment"]
+    if any(area in message_lower for area in focus_areas):
+        # Check if context suggests analysis
+        analysis_context = ["in baguio", "baguio city", "about", "regarding", "concerning"]
+        if any(ctx in message_lower for ctx in analysis_context):
+            return "analyze"
+    
+    # Default to simple Q&A
+    return "simple"
+
+
+def parse_user_intent(message: str) -> tuple[list[str], str]:
+    """Parse user message to extract focus areas and time window.
+    
+    Returns:
+        Tuple of (focus_areas, time_window)
+    """
+    message_lower = message.lower()
+    
+    # Detect focus areas from message
+    focus_mapping = {
+        "infrastructure": ["infrastructure", "traffic", "road", "water", "power", "transport"],
+        "health": ["health", "hospital", "medical", "disease", "healthcare", "bgh"],
+        "safety": ["safety", "crime", "accident", "fire", "disaster", "police", "walkout", "protest"],
+        "tourism": ["tourism", "tourist", "travel", "hotel", "burnham", "panagbenga"],
+        "economy": ["economy", "economic", "business", "vendor", "market", "job", "employment", "mall"],
+        "environment": ["environment", "pollution", "tree", "flood", "waste", "climate"],
+    }
+    
+    detected_areas = []
+    for area, keywords in focus_mapping.items():
+        if any(kw in message_lower for kw in keywords):
+            detected_areas.append(area)
+    
+    # Default to all areas if none detected
+    if not detected_areas:
+        detected_areas = list(focus_mapping.keys())
+    
+    # Detect time window
+    time_window = "24h"  # default
+    if "today" in message_lower or "now" in message_lower:
+        time_window = "6h"
+    elif "week" in message_lower:
+        time_window = "7d"
+    elif "3 day" in message_lower or "three day" in message_lower:
+        time_window = "3d"
+    
+    return detected_areas, time_window
+
+
+def format_results_for_chat(response) -> str:
+    """Format the SnapshotResponse for chat display.
+    
+    SnapshotResponse fields:
+    - overall_sentiment: SentimentBreakdown (label, summary, scores)
+    - actionable_insights: list[Insight] (category, title, detail, evidence)
+    - sources: list[WebDocument] | None
+    - alerts: list[str] | None
+    """
+    lines = []
+    
+    # Header
+    lines.append("## 📊 Sentiment Analysis Results\n")
+    
+    # Summary from overall_sentiment
+    if response.overall_sentiment:
+        lines.append(f"**Overall Sentiment:** {response.overall_sentiment.label.capitalize()}")
+        if response.overall_sentiment.summary:
+            summary = response.overall_sentiment.summary
+            lines.append(f"\n{summary[:800]}..." if len(summary) > 800 else f"\n{summary}")
+        
+        # Sentiment scores (positive, negative, neutral)
+        if response.overall_sentiment.scores:
+            lines.append("\n### Sentiment Breakdown")
+            scores = response.overall_sentiment.scores
+            pos = scores.get("positive", 0)
+            neg = scores.get("negative", 0)
+            neu = scores.get("neutral", 0)
+            total = pos + neg + neu
+            if total > 0:
+                lines.append(f"- 🟢 Positive: {pos:.0%}")
+                lines.append(f"- 🔴 Negative: {neg:.0%}")
+                lines.append(f"- ⚪ Neutral: {neu:.0%}\n")
+    
+    # Key Insights with full detail and evidence
+    if response.actionable_insights:
+        lines.append("### Key Insights")
+        for i, insight in enumerate(response.actionable_insights[:5], 1):
+            lines.append(f"\n**{i}. {insight.title}** ({insight.category})")
+            # Full detail (not truncated)
+            if insight.detail:
+                lines.append(f"{insight.detail}")
+            # Evidence citations
+            if insight.evidence:
+                lines.append("\n*Supporting evidence:*")
+                for ev in insight.evidence[:3]:  # Max 3 evidence per insight
+                    ev_text = ev[:150] + "..." if len(ev) > 150 else ev
+                    lines.append(f"  - {ev_text}")
+    
+    # Alerts
+    if response.alerts:
+        lines.append("\n### ⚠️ Alerts")
+        for alert in response.alerts[:5]:
+            lines.append(f"- {alert}")
+    
+    # Top Sources
+    doc_count = len(response.sources) if response.sources else 0
+    if response.sources and doc_count > 0:
+        lines.append("\n### 📰 Top Sources")
+        seen_titles = set()
+        for doc in response.sources[:10]:  # Max 10 sources
+            if doc.title not in seen_titles:
+                seen_titles.add(doc.title)
+                title = doc.title[:60] + "..." if len(doc.title) > 60 else doc.title
+                sentiment_emoji = {"positive": "🟢", "negative": "🔴", "neutral": "⚪"}.get(doc.sentiment, "")
+                lines.append(f"- {sentiment_emoji} [{title}]({doc.url})")
+    
+    # Footer
+    lines.append(f"\n---\n_Analyzed {doc_count} documents_")
+    
+    return "\n".join(lines)
+
+
+async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, None]:
+    """Smart streaming handler that routes to appropriate backend.
+    
+    Routes:
+    - "analyze" → Multi-agent sentiment pipeline
+    - "followup" → RAG on cached results
+    - "simple" → LangSearch + Gemini quick Q&A
+    """
+    # Detect intent
+    intent = detect_intent(request.message, request.history)
+    session_id = request.session_id or str(uuid.uuid4())
+    
+    logger.info(f"[chat_analyze] Intent detected: {intent}, session: {session_id}")
+    
+    if intent == "simple":
+        # Route to simple chat agent (fast)
+        yield json.dumps({
+            "type": "progress",
+            "stage": "start",
+            "message": "💬 Processing your question...",
+            "progress": 0.3
+        }) + "\n"
+        
+        try:
+            # Convert history to format expected by chat_agent
+            history = [{"role": msg.role, "content": msg.content} for msg in request.history]
+            
+            # Call the simple chat agent
+            response_text, sources = await run_chat_agent(
+                message=request.message,
+                history=request.history,
+                jurisdiction="Baguio City"
+            )
+            
+            yield json.dumps({
+                "type": "result",
+                "stage": "complete",
+                "message": response_text,
+                "progress": 1.0,
+                "data": {
+                    "mode": "simple",
+                    "sources": sources
+                }
+            }) + "\n"
+            
+        except Exception as exc:
+            logger.exception("Simple chat failed: %s", exc)
+            yield json.dumps({
+                "type": "error",
+                "stage": "error",
+                "message": f"❌ Failed to process question: {str(exc)[:100]}",
+                "progress": 0.0
+            }) + "\n"
+        return
+    
+    elif intent == "followup":
+        # RAG on cached analysis results
+        cached = _session_cache.get(session_id)
+        
+        if cached and "response" in cached:
+            yield json.dumps({
+                "type": "progress",
+                "stage": "start",
+                "message": "🔍 Looking up from previous analysis...",
+                "progress": 0.3
+            }) + "\n"
+            
+            try:
+                # Build context from cached response
+                cached_response = cached["response"]
+                context = format_results_for_chat(cached_response)
+                
+                # Use Gemini to answer based on context
+                from google import genai
+                from ..core.config import get_settings
+                
+                settings = get_settings()
+                client = genai.Client(api_key=settings.gemini_api_key)
+                
+                prompt = f"""Based on the following Baguio City sentiment analysis results, answer the user's question.
+
+ANALYSIS RESULTS:
+{context}
+
+USER QUESTION: {request.message}
+
+Provide a helpful, conversational response that directly addresses their question using the analysis data above. If the information isn't available in the analysis, say so politely."""
+
+                result = client.models.generate_content(
+                    model="gemini-2.0-flash-exp",
+                    contents=prompt
+                )
+                
+                answer = result.text if result.text else "I couldn't find specific information about that in the analysis."
+                
+                yield json.dumps({
+                    "type": "result",
+                    "stage": "complete",
+                    "message": answer,
+                    "progress": 1.0,
+                    "data": {"mode": "followup"}
+                }) + "\n"
+                
+            except Exception as exc:
+                logger.exception("Follow-up failed: %s", exc)
+                # Fallback to simple chat
+                yield json.dumps({
+                    "type": "progress",
+                    "stage": "fallback",
+                    "message": "🔄 Searching for answer...",
+                    "progress": 0.5
+                }) + "\n"
+                
+                response_text, sources = await run_chat_agent(
+                    message=request.message,
+                    history=request.history,
+                    jurisdiction="Baguio City"
+                )
+                
+                yield json.dumps({
+                    "type": "result",
+                    "stage": "complete",
+                    "message": response_text,
+                    "progress": 1.0,
+                    "data": {"mode": "simple_fallback", "sources": sources}
+                }) + "\n"
+            return
+        else:
+            # No cached data, fall through to full analysis
+            intent = "analyze"
+    
+    # intent == "analyze" - Full multi-agent pipeline
+    focus_areas, time_window = parse_user_intent(request.message)
+    
+    yield json.dumps({
+        "type": "progress",
+        "stage": "start",
+        "message": f"🔄 Starting multi-agent analysis for: {', '.join(focus_areas)}",
+        "progress": 0.0
+    }) + "\n"
+    
+    # Create the snapshot request
+    snapshot_request = SnapshotRequest(
+        focus_areas=focus_areas,
+        platforms=request.platforms,
+        time_window=time_window,
+    )
+    
+    # Queue for progress updates from the pipeline
+    progress_queue: asyncio.Queue = asyncio.Queue()
+    
+    async def progress_callback(stage: str, message: str, progress: float):
+        """Callback to receive progress updates from the pipeline."""
+        await progress_queue.put({
+            "type": "progress",
+            "stage": stage,
+            "message": message,
+            "progress": progress
+        })
+    
+    try:
+        # Start the pipeline in a task so we can yield progress updates
+        pipeline_task = asyncio.create_task(
+            generate_snapshot(snapshot_request, progress_callback=progress_callback)
+        )
+        
+        # Yield progress updates as they come in
+        while not pipeline_task.done():
+            try:
+                # Wait for progress update with timeout
+                progress_update = await asyncio.wait_for(progress_queue.get(), timeout=0.1)
+                yield json.dumps(progress_update) + "\n"
+            except asyncio.TimeoutError:
+                # No update yet, continue waiting
+                continue
+        
+        # Drain any remaining progress updates
+        while not progress_queue.empty():
+            progress_update = await progress_queue.get()
+            yield json.dumps(progress_update) + "\n"
+        
+        # Get the result
+        response = await pipeline_task
+        
+        # Cache the response for follow-up questions
+        _session_cache[session_id] = {
+            "response": response,
+            "focus_areas": focus_areas,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Get document count from sources
+        doc_count = len(response.sources) if response.sources else 0
+        
+        # Format and send final results
+        formatted_results = format_results_for_chat(response)
+        
+        # Extract sentiment scores as percentages
+        sentiment_scores = None
+        if response.overall_sentiment and response.overall_sentiment.scores:
+            scores = response.overall_sentiment.scores
+            sentiment_scores = {
+                "positive": round(scores.get("positive", 0) * 100),
+                "negative": round(scores.get("negative", 0) * 100),
+                "neutral": round(scores.get("neutral", 0) * 100),
+            }
+        
+        # Extract insights for structured display
+        insights_data = []
+        if response.actionable_insights:
+            for insight in response.actionable_insights[:5]:
+                # Ensure evidence URLs are strings
+                evidence_strs = [str(e) for e in (insight.evidence[:3] if insight.evidence else [])]
+                insights_data.append({
+                    "category": str(insight.category) if insight.category else "",
+                    "title": str(insight.title) if insight.title else "",
+                    "detail": str(insight.detail) if insight.detail else "",
+                    "evidence": evidence_strs,
+                })
+        
+        # Extract sources for structured display
+        sources_data = []
+        if response.sources:
+            for doc in response.sources:
+                meta = doc.metadata or {}
+                # Ensure all values are JSON serializable
+                cred_score = meta.get("credibility_score")
+                sources_data.append({
+                    "title": str(doc.title) if doc.title else "",
+                    "snippet": str(doc.snippet)[:200] if doc.snippet else "",
+                    "url": str(doc.url) if doc.url else None,
+                    "sentiment": str(doc.sentiment) if doc.sentiment else None,
+                    "credibility_score": float(cred_score) if cred_score is not None else None,
+                    "credibility_tier": str(meta.get("credibility_tier")) if meta.get("credibility_tier") else None,
+                    "verification_status": str(meta.get("verification_status")) if meta.get("verification_status") else None,
+                })
+        
+        # Compute credibility breakdown
+        high_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) >= 0.55)
+        low_cred = len(sources_data) - high_cred
+        avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
+        
+        yield json.dumps({
+            "type": "result",
+            "stage": "complete",
+            "message": formatted_results,
+            "progress": 1.0,
+            "data": {
+                "mode": "analyze",
+                "session_id": session_id,
+                "overall_sentiment": {
+                    "label": response.overall_sentiment.label if response.overall_sentiment else "neutral",
+                    "summary": response.overall_sentiment.summary if response.overall_sentiment else "",
+                    "scores": sentiment_scores,
+                },
+                "insights": insights_data,
+                "sources": sources_data,
+                "credibility": {
+                    "avg_score": round(avg_cred * 100),
+                    "high_percent": round(high_cred / max(1, len(sources_data)) * 100),
+                    "low_percent": round(low_cred / max(1, len(sources_data)) * 100),
+                },
+                "document_count": doc_count,
+                "insights_count": len(insights_data),
+                "alerts": response.alerts[:5] if response.alerts else [],
+            }
+        }) + "\n"
+        
+    except Exception as exc:
+        logger.exception("Chat analysis failed: %s", exc)
+        yield json.dumps({
+            "type": "error",
+            "stage": "error",
+            "message": f"❌ Analysis failed: {str(exc)[:100]}",
+            "progress": 0.0
+        }) + "\n"
+
+
+@router.post("/analyze")
+async def chat_analyze(request: ChatAnalyzeRequest):
+    """Stream sentiment analysis through multi-agent pipeline.
+    
+    This endpoint uses the SAME architecture as the dashboard Sentiment Generator:
+    1. Query Orchestrator (ReAct)
+    2. Retrieval Agent (Multi-query)
+    3. Sentiment Agent (RoBERTa + Gemini ensemble)
+    4. Credibility Agent (5-signal verification)
+    5. Theme Agents (RAG-augmented insights)
+    6. Narrative Generator
+    
+    Responses are streamed as newline-delimited JSON.
+    """
+    return StreamingResponse(
+        stream_analysis(request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
+@router.post("/analyze/sync")
+async def chat_analyze_sync(request: ChatAnalyzeRequest):
+    """Non-streaming version for simpler clients."""
+    focus_areas, time_window = parse_user_intent(request.message)
+    
+    snapshot_request = SnapshotRequest(
+        focus_areas=focus_areas,
+        platforms=request.platforms,
+        time_window=time_window,
+    )
+    
+    try:
+        response = await generate_snapshot(snapshot_request)
+        doc_count = len(response.sources) if response.sources else 0
+        
+        # Extract sentiment data from overall_sentiment.scores
+        sentiment_data = None
+        if response.overall_sentiment and response.overall_sentiment.scores:
+            scores = response.overall_sentiment.scores
+            sentiment_data = {
+                "positive": int(scores.get("positive", 0) * doc_count),
+                "negative": int(scores.get("negative", 0) * doc_count),
+                "neutral": int(scores.get("neutral", 0) * doc_count),
+            }
+        
+        return {
+            "success": True,
+            "message": format_results_for_chat(response),
+            "data": {
+                "sentiment": sentiment_data,
+                "credibility_avg": None,
+                "document_count": doc_count,
+                "focus_areas": focus_areas,
+                "time_window": time_window,
+            }
+        }
+    except Exception as exc:
+        logger.exception("Chat analysis failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+

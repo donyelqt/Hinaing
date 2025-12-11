@@ -11,10 +11,13 @@ class QueryTask(BaseModel):
 
     query: str = Field(..., description="Search query string")
     intent: Literal["broad", "targeted", "trend", "risk"] = Field(
-        default="broad", description="High-level intent for this query"
+        default="targeted", description="High-level intent for this query"
     )
     priority: int = Field(
         default=1, description="Relative priority order (1=highest)"
+    )
+    topic: str = Field(
+        default="general", description="Topic cluster for diversity tracking"
     )
 
 

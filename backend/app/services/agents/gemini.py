@@ -51,15 +51,15 @@ def _summarize_context(documents: Any = None) -> str:
     if isinstance(documents, list):
         if not documents:
             return "No documents available."
-        titles: list[str] = []
-        for doc in documents[:3]:
+        summaries: list[str] = []
+        for doc in documents[:20]:  # Summarize up to 20 docs
             if isinstance(doc, dict):
                 title = doc.get("title") or "Untitled"
+                sentiment = doc.get("sentiment", "neutral")
+                summaries.append(f"[{sentiment}] {title}")
             else:
-                title = str(doc)
-            titles.append(title)
-        reason = "; ".join(titles)
-        return f"Key civic chatter: {reason}"
+                summaries.append(str(doc))
+        return f"Key civic chatter ({len(documents)} docs): " + "; ".join(summaries)
 
     return "No documents available."
 
@@ -98,7 +98,7 @@ Action Input: the input to the action
 Observation: the result of the action
 ... (this Thought/Action/Action Input/Observation can repeat N times)
 Thought: I now know the final answer
-Final Answer: {{JSON}} containing 'summary' (<=2 sentences) and 'insights' (array of up to 3 objects with category/title/detail/evidence array).
+Final Answer: {{JSON}} containing 'summary' (3-5 sentences covering ALL major themes from the documents) and 'insights' (array of up to 5 objects with category/title/detail/evidence array).
 
 Begin!
 
@@ -153,16 +153,18 @@ def run_gemini_agent(
     executor = get_gemini_agent()
     if documents:
         doc_lines = []
-        for doc in documents[:5]:
+        for doc in documents[:50]:  # Process up to 50 documents
             title = sanitize_text(doc.get('title', 'Untitled'))
-            snippet = sanitize_text(doc.get('snippet', ''))[:180]
-            doc_lines.append(f"- {title} :: {snippet}")
+            snippet = sanitize_text(doc.get('snippet', ''))[:250]  # More context per doc
+            sentiment = doc.get('sentiment', 'neutral')
+            doc_lines.append(f"- [{sentiment}] {title} :: {snippet}")
         context_block = "\n".join(doc_lines)
         instructions = system_instruction or (
             "You are a civic operations analyst for Baguio City."
-            " Return ONLY valid JSON with keys 'summary' (<=2 sentences) and"
-            " 'insights' (array of up to 3 objects with category/title/detail/evidence array)."
-            " Use tools if needed before answering."
+            " Analyze ALL provided documents thoroughly."
+            " Return ONLY valid JSON with keys 'summary' (3-5 sentences covering ALL major themes) and"
+            " 'insights' (array of up to 5 objects with category/title/detail/evidence array)."
+            " Ensure the summary covers: crimes, disasters, protests, fires, floods, and any other major topics found."
         )
         # Sanitize the message and context
         safe_message = sanitize_text(message)

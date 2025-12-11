@@ -983,7 +983,9 @@ class EnhancedCredibilityAgent:
             # Return neutral scores if Tavily not configured
             return [(0.50, [], "disabled") for _ in docs]
         
-        semaphore = asyncio.Semaphore(5)  # Max 5 concurrent requests
+        # Use semaphore=1 to process Tavily requests sequentially
+        # This ensures we catch rate limits immediately and skip remaining items
+        semaphore = asyncio.Semaphore(1)
         limit_reached = False
         
         async def verify_one(doc: WebDocument, domain: str, idx: int) -> tuple[float, list[str], str]:

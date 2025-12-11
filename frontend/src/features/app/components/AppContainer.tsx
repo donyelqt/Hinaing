@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ActivePage } from "../../shared/types/navigation";
 import { ChatPage } from "../../chat/chat-page";
+import { ChatAnalyzePage } from "../../chat/chat-analyze-page";
 import { SentimentGeneratorPage } from "../../sentiment/components/sentiment-generator-page";
 import { DashboardPage } from "../../dashboard/components/DashboardPage";
 import { SavedReportsPage } from "../../reports/components/SavedReportsPage";
@@ -14,6 +15,7 @@ export function AppContainer() {
     const path = window.location.pathname;
     if (path.includes('/dashboard')) return 'dashboard';
     if (path.includes('/reports')) return 'reports';
+    if (path.includes('/analyze')) return 'analyze';
     if (path.includes('/chat')) return 'chat';
     return 'sentiment';
   };
@@ -52,6 +54,8 @@ export function AppContainer() {
         return <SavedReportsPage activePage={activePage} onNavigate={handleNavigate} />;
       case 'chat':
         return <ChatPage onNavigate={handleNavigate} />;
+      case 'analyze':
+        return <ChatAnalyzePage onNavigate={handleNavigate} />;
       default:
         return <SentimentGeneratorPage activePage={activePage} onNavigate={handleNavigate} />;
     }
@@ -63,3 +67,4 @@ export function AppContainer() {
     </div>
   );
 }
+

@@ -20,14 +20,20 @@ from .agent_tools import (
 from ..agents.sentiment_agent import get_sentiment_agent
 
 # Maximum documents to process (controls cost and latency)
-MAX_DOCUMENTS = 30
+MAX_DOCUMENTS = 50
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class RetrievalAgent:
-    """Agent that decides which platforms to pull documents from."""
+    """Agent that decides which platforms to pull documents from.
+    
+    Supports multi-query execution with diversity-aware merging:
+    - Executes each query separately
+    - Tracks which topic each result came from
+    - Merges results ensuring topic diversity
+    """
 
     async def run(
         self,
@@ -43,72 +49,130 @@ class RetrievalAgent:
             },
         )
 
-        tasks: list[asyncio.Task[list[WebDocument]]] = []
+        # Track results by topic for diversity merging
+        topic_results: dict[str, list[WebDocument]] = {}
+        other_results: list[WebDocument] = []
+
         if "web" in request.platforms:
             if query_plan and query_plan.queries:
                 logger.info(
-                    "[retrieval_agent] executing orchestrated web queries",
-                    extra={"count": len(query_plan.queries)},
+                    "[retrieval_agent] executing %d diverse web queries SEQUENTIALLY (rate limit safe)",
+                    len(query_plan.queries),
                 )
-                # Execute queries sequentially with delay to avoid rate limits
+                
+                # Sequential execution with delays to avoid rate limits
                 for idx, task in enumerate(query_plan.queries):
+                    topic = task.topic or f"topic_{idx}"
+                    
+                    # Add delay between queries to avoid rate limiting
                     if idx > 0:
-                        await asyncio.sleep(1.5)  # 1.5s delay between queries to avoid 429
-                    tasks.append(
-                        asyncio.create_task(
-                            search_web_documents(
-                                request,
-                                custom_query=task.query,
-                            )
+                        await asyncio.sleep(2.0)  # 2s delay for rate limit safety
+                    
+                    logger.info("[retrieval_agent] query %d/%d: topic='%s'", 
+                               idx+1, len(query_plan.queries), topic)
+                    
+                    try:
+                        docs = await search_web_documents(
+                            request,
+                            custom_query=task.query,
+                            limit=10,
                         )
-                    )
+                        # Tag documents with their source topic
+                        for doc in docs:
+                            doc.metadata = {**(doc.metadata or {}), "_source_topic": topic}
+                        topic_results.setdefault(topic, []).extend(docs)
+                        logger.info("[retrieval_agent] query '%s' returned %d docs", topic, len(docs))
+                    except Exception as exc:
+                        logger.warning("[retrieval_agent] query '%s' failed: %s", topic, exc)
             else:
                 logger.info("[retrieval_agent] invoking LangSearch tool (baseline)")
-                tasks.append(asyncio.create_task(search_web_documents(request)))
+                try:
+                    docs = await search_web_documents(request)
+                    other_results.extend(docs)
+                except Exception as exc:
+                    logger.warning("[retrieval_agent] baseline search failed: %s", exc)
 
         if "facebook" in request.platforms:
             logger.info("[retrieval_agent] invoking Facebook tool")
-            tasks.append(asyncio.create_task(fetch_facebook_documents(request)))
+            try:
+                docs = await fetch_facebook_documents(request)
+                other_results.extend(docs)
+            except Exception as exc:
+                logger.warning("[retrieval_agent] Facebook failed: %s", exc)
 
         if "reddit" in request.platforms:
-            # Pass query_plan to Reddit so it uses orchestrated queries
-            if query_plan and query_plan.queries:
-                logger.info("[retrieval_agent] invoking Reddit tool with orchestrated query")
-                tasks.append(asyncio.create_task(
-                    fetch_reddit_documents(request, query_plan=query_plan)
-                ))
-            else:
-                logger.info("[retrieval_agent] invoking Reddit tool (baseline)")
-                tasks.append(asyncio.create_task(fetch_reddit_documents(request)))
+            logger.info("[retrieval_agent] invoking Reddit tool")
+            try:
+                docs = await fetch_reddit_documents(request, query_plan=query_plan)
+                other_results.extend(docs)
+            except Exception as exc:
+                logger.warning("[retrieval_agent] Reddit failed: %s", exc)
 
-        if not tasks:
-            return []
+        # Diversity-aware merging: interleave results from different topics
+        documents = self._merge_with_diversity(topic_results, other_results)
 
-        documents: list[WebDocument] = []
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for result in results:
-            if isinstance(result, Exception):
-                logger.exception("[retrieval_agent] data source failed", exc_info=result)
-                continue
-            documents.extend(result)
-
-        # Global deduplication across all query results
+        # Global deduplication
         before_dedup = len(documents)
         documents = deduplicate_documents(documents)
         
-        # Cap total documents to control cost/latency
+        # Cap total documents
         if len(documents) > MAX_DOCUMENTS:
-            logger.info(
-                "[retrieval_agent] capping documents: %d -> %d",
-                len(documents), MAX_DOCUMENTS
-            )
+            logger.info("[retrieval_agent] capping: %d -> %d", len(documents), MAX_DOCUMENTS)
             documents = documents[:MAX_DOCUMENTS]
+
+        # Log topic distribution
+        topic_counts = {}
+        for doc in documents:
+            topic = (doc.metadata or {}).get("_source_topic", "other")
+            topic_counts[topic] = topic_counts.get(topic, 0) + 1
+        logger.info("[retrieval_agent] topic distribution: %s", topic_counts)
 
         logger.info(
             "[retrieval_agent] collected %d documents (before dedup: %d)",
             len(documents), before_dedup
         )
         return documents
+
+    def _merge_with_diversity(
+        self, 
+        topic_results: dict[str, list[WebDocument]], 
+        other_results: list[WebDocument]
+    ) -> list[WebDocument]:
+        """Interleave results from different topics for diversity.
+        
+        Strategy: Round-robin through topics, taking 2-3 docs at a time from each.
+        This ensures no single topic dominates the results.
+        """
+        if not topic_results:
+            return other_results
+        
+        merged: list[WebDocument] = []
+        topics = list(topic_results.keys())
+        indices = {topic: 0 for topic in topics}
+        docs_per_round = 3  # Take 3 docs per topic per round
+        
+        # Round-robin through topics
+        while True:
+            added_this_round = False
+            for topic in topics:
+                docs = topic_results[topic]
+                start_idx = indices[topic]
+                end_idx = min(start_idx + docs_per_round, len(docs))
+                
+                if start_idx < len(docs):
+                    merged.extend(docs[start_idx:end_idx])
+                    indices[topic] = end_idx
+                    added_this_round = True
+            
+            if not added_this_round:
+                break
+        
+        # Add other results at the end
+        merged.extend(other_results)
+        
+        logger.info("[retrieval_agent] diversity merge: %d topics, %d total docs", 
+                   len(topics), len(merged))
+        return merged
 
 
 @dataclass

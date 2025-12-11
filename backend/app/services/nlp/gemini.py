@@ -149,7 +149,7 @@ class GeminiClient:
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         doc_lines = []
-        for idx, doc in enumerate(documents[:15], start=1):
+        for idx, doc in enumerate(documents[:50], start=1):
             title = sanitize_text(doc.get('title'))
             snippet = sanitize_text(doc.get('snippet'))
             sentiment = doc.get('sentiment', 'neutral')
@@ -162,12 +162,12 @@ class GeminiClient:
             "You are an analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n"
             "Steps:\n"
-            "1. Review the provided documents.\n"
+            "1. Review ALL the provided documents thoroughly.\n"
             "2. Identify key risks, emerging trends, and sentiment drivers.\n"
-            "3. Draft a JSON summary.\n\n"
+            "3. Draft a comprehensive JSON summary.\n\n"
             "Return a JSON object with keys:\n"
-            "summary: string narrative (<= 2 sentences)\n"
-            "insights: list of up to 3 items, each {category, title, detail, evidence? (array of concise bullets)}.\n"
+            "summary: string narrative (3-5 sentences covering all major themes from the documents)\n"
+            "insights: list of up to 5 items, each {category, title, detail, evidence? (array of source URLs)}.\n"
             "Use the following context entries to ground your analysis:\n"
             f"{context_block}\n"
         )
@@ -178,11 +178,11 @@ class GeminiClient:
         return (
             "Summarize public chatter for the Baguio City command center."
             f" Time window: {window}. Focus areas: {focus}."
-            " Produce a JSON object with keys summary (<=2 sentences) and insights (array of up to 3 items)."
-            " Each insight needs category, title, detail, and optional evidence array."
+            " Produce a JSON object with keys summary (3-5 sentences covering all major themes) and insights (array of up to 5 items)."
+            " Each insight needs category, title, detail (comprehensive explanation), and optional evidence array with source URLs."
             f" IMPORTANT: Generate at least one insight for EACH focus area ({focus})."
             " Ensure balanced coverage - do not focus only on the most common topic."
-            " Cite only from the provided context block and highlight actionable guidance."
+            " Analyze ALL provided documents thoroughly and cite from the context block."
         )
 
     def _build_plan_prompt(self, *, window: str, focus_areas: list[str], documents: list[dict[str, Any]]) -> str:

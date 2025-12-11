@@ -189,7 +189,7 @@ JSON:"""
                 logger.warning(f"[Direct Gemini] JSON parse failed for '{theme_label}': {output[:100]}")
                 return json.dumps({
                     "title": f"Analysis for {theme_label}",
-                    "detail": output[:240],  # Return raw text as detail if it's not JSON
+                    "detail": output[:500],  # Return raw text as detail if it's not JSON
                     "evidence": []
                 })
             

@@ -8,6 +8,22 @@ export type ValidationErrors = {
   focusAreas?: string;
 };
 
+export type GenerationProgress = {
+  stage: string;
+  message: string;
+  progress: number; // 0.0 to 1.0
+};
+
+// Backend workflow stages for progress display
+export const WORKFLOW_STAGES = [
+  { id: 'query_orchestrator', label: 'Query Orchestrator', icon: '📡', description: 'Generating diverse search queries...' },
+  { id: 'retrieval', label: 'Document Retrieval', icon: '🔍', description: 'Searching across platforms...' },
+  { id: 'sentiment', label: 'Sentiment Analysis', icon: '📊', description: 'Analyzing document sentiment...' },
+  { id: 'credibility', label: 'Credibility Check', icon: '✅', description: 'Verifying source quality...' },
+  { id: 'themes', label: 'Theme Analysis', icon: '🎯', description: 'Generating insights...' },
+  { id: 'narrative', label: 'Narrative Generation', icon: '📝', description: 'Building summary...' },
+] as const;
+
 export function useSentimentGenerator() {
   // State
   const [platforms, setPlatforms] = useState<string[]>([]);

@@ -84,14 +84,14 @@ export function Sidebar({
         </div>
 
         <nav
-          className="mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8"
+          className="mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8 isolate"
           aria-label="Workspace navigation"
           role="navigation"
         >
           <button
             type="button"
             onClick={() => handleNavClick('sentiment')}
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'sentiment'
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'sentiment'
               ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
@@ -109,7 +109,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('dashboard')}
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'dashboard'
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'dashboard'
               ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
@@ -127,7 +127,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('chat')}
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
               ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
@@ -137,7 +137,25 @@ export function Sidebar({
             <div>
               <p>AI Assistant</p>
               <p className={`text-xs ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
-                Conversational insights (ChatGPT/Perplexity-style)
+                Quick Q&A (Perplexity-style)
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNavClick('analyze')}
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'analyze'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
+              }`}
+            aria-current={activePage === 'analyze' ? 'page' : undefined}
+          >
+            <BarChart3 className="h-5 w-5" aria-hidden="true" />
+            <div>
+              <p>Chat Analyzer</p>
+              <p className={`text-xs ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
+                Multi-agent analysis in chat (Thesis Novelty)
               </p>
             </div>
           </button>
@@ -145,7 +163,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('reports')}
-            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'reports'
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'reports'
               ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
