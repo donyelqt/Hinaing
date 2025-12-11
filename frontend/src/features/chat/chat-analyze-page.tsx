@@ -598,9 +598,16 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
     const [sessionId, setSessionId] = React.useState<string | null>(null);
 
     const bottomRef = React.useRef<HTMLDivElement>(null);
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        // Scroll within the container only, not the whole page
+        if (scrollContainerRef.current && bottomRef.current) {
+            const container = scrollContainerRef.current;
+            const bottom = bottomRef.current;
+            const scrollTop = bottom.offsetTop - container.offsetTop;
+            container.scrollTo({ top: scrollTop, behavior: "smooth" });
+        }
     }, [messages, isLoading]);
 
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -778,7 +785,10 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                         <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm sm:rounded-3xl border-0 sm:border border-slate-200/60 shadow-sm overflow-hidden relative">
 
                             {/* Scrollable Messages */}
-                            <div className="flex-1 overflow-y-auto w-full scroll-smooth p-3 sm:p-4 md:p-6 overscroll-contain">
+                            <div 
+                                ref={scrollContainerRef}
+                                className="flex-1 overflow-y-auto w-full scroll-smooth p-3 sm:p-4 md:p-6 overscroll-contain"
+                            >
                                 {messages.length === 0 ? (
                                     <WelcomeScreen onPromptSelect={handlePromptSelect} />
                                 ) : (
