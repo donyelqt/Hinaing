@@ -564,14 +564,6 @@ summary_chain = RunnableLambda(
 async def build_snapshot(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     docs = state.get("enriched", [])
-    
-    # Debug: Log LLM scores from credibility breakdown
-    llm_scores = []
-    for doc in docs[:5]:  # Sample first 5
-        breakdown = doc.metadata.get("credibility_breakdown", {})
-        llm_scores.append(breakdown.get("llm", "missing"))
-    logger.info(f"[snapshot] LLM scores sample (first 5): {llm_scores}")
-    
     logger.info(
         "[snapshot] Building snapshot",
         extra={

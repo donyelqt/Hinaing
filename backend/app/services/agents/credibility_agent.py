@@ -276,8 +276,7 @@ class LLMCredibilityAnalyzer:
             "gemini-2.5-flash",
             safety_settings=SAFETY_SETTINGS,
         )
-        # Reduced batch size to prevent JSON truncation (was 10, caused incomplete responses)
-        self.batch_size = 5
+        self.batch_size = 10  # Reduced from 12 for memory
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with controlled parallelism.
@@ -286,29 +285,19 @@ class LLMCredibilityAnalyzer:
         """
         # Create batches
         batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
-        logger.info(f"[llm_credibility] Processing {len(docs)} docs in {len(batches)} batches")
         
         results = []
         # MEMORY OPTIMIZATION: Reduced workers from 5 to 2
         with ThreadPoolExecutor(max_workers=2) as executor:
             batch_results = list(executor.map(self._analyze_batch, batches))
             
-        for batch_idx, res in enumerate(batch_results):
-            # Log scores from each batch
-            scores = [r.get("score", 0.5) for r in res]
-            logger.info(f"[llm_credibility] Batch {batch_idx} scores: {scores}")
+        for res in batch_results:
             results.extend(res)
-        
-        # Log final distribution
-        all_scores = [r.get("score", 0.5) for r in results]
-        non_default = [s for s in all_scores if s != 0.5]
-        logger.info(f"[llm_credibility] Final: {len(results)} results, {len(non_default)} non-default scores")
             
         return results
     
     def _analyze_batch(self, batch: list[WebDocument]) -> list[dict]:
         """Analyze a single batch."""
-        logger.info(f"[llm_credibility] Analyzing batch of {len(batch)} docs")
         entries = []
         for i, doc in enumerate(batch):
             domain = _extract_domain(str(doc.url) if doc.url else None)
@@ -316,41 +305,46 @@ class LLMCredibilityAnalyzer:
             snippet = (doc.snippet or "")[:150]
             entries.append(f"[{i}] {domain}: {title}\n    {snippet}")
         
-        prompt = f"""Score source credibility 0.0-1.0. Focus on SOURCE QUALITY, not content accuracy.
+        prompt = f"""You are a credibility and misinformation analyst for civic news about Baguio City, Philippines.
 
-SCORING GUIDE:
-- 0.8-1.0: Established news orgs, government sites, verified journalists
-- 0.6-0.8: Local news, community sites with bylines
-- 0.4-0.6: Blogs, social media, opinion pieces
-- 0.0-0.4: Anonymous, clickbait, conspiracy sites
+Score each item's credibility from 0.0 to 1.0 and detect misinformation patterns:
 
-DO NOT penalize for:
-- Future publication dates (normal for news)
-- Reporting on past events
-- Standard news formatting
+CREDIBILITY FACTORS:
+- Is the source a legitimate news organization or official source?
+- Is the content specific (names, dates, locations) or vague?
+- Is the language professional or sensational?
+
+MISINFORMATION INDICATORS (flag these):
+- Emotional manipulation (fear, outrage, urgency)
+- Conspiracy framing ("they don't want you to know")
+- False certainty ("100% proven", "scientists baffled")
+- Unverified claims without sources
+- Clickbait/sensationalist headlines
+- Social proof manipulation ("going viral", "everyone is talking")
 
 Items:
 {chr(10).join(entries)}
 
-Return ONLY valid JSON array:
-[{{"index":0,"score":0.X,"reasoning":"3-5 words","red_flags":[],"misinfo_risk":"none|low|medium|high"}}]"""
+Return JSON array only:
+[{{"index": 0, "score": 0.X, "reasoning": "one sentence", "red_flags": ["FLAG_TYPE"], "misinfo_risk": "none|low|medium|high"}}]
+
+Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential misinformation"""
 
         try:
             resp = self.model.generate_content(
                 prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.1,
-                    max_output_tokens=2000,
+                    max_output_tokens=1500,
                 ),
             )
-            logger.info(f"[llm_credibility] Raw response (first 500 chars): {resp.text[:500] if resp.text else 'EMPTY'}")
             return self._parse_response(resp.text, len(batch))
         except Exception as e:
             logger.warning(f"[llm_credibility] Gemini Flash error: {e}")
             return [{"score": 0.50, "reasoning": "Analysis unavailable", "red_flags": []}] * len(batch)
     
     def _parse_response(self, text: str, count: int) -> list[dict]:
-        """Parse LLM JSON response with fallback for truncated responses."""
+        """Parse LLM JSON response."""
         default = {"score": 0.50, "reasoning": "", "red_flags": [], "misinfo_risk": "unknown"}
         results = [default.copy() for _ in range(count)]
         
@@ -365,60 +359,21 @@ Return ONLY valid JSON array:
                     text = part.strip()
                     break
         
-        text = text.strip()
-        
-        # Try direct parse first
         try:
-            data = json.loads(text)
-            return self._extract_items(data, results, count)
-        except json.JSONDecodeError:
+            data = json.loads(text.strip())
+            if isinstance(data, list):
+                for item in data:
+                    idx = item.get("index", -1)
+                    if 0 <= idx < count:
+                        results[idx] = {
+                            "score": min(1.0, max(0.0, float(item.get("score", 0.5)))),
+                            "reasoning": str(item.get("reasoning", "")),
+                            "red_flags": list(item.get("red_flags", [])),
+                            "misinfo_risk": str(item.get("misinfo_risk", "unknown")),
+                        }
+        except (json.JSONDecodeError, ValueError, TypeError):
             pass
         
-        # Fallback: Try to fix truncated JSON by closing brackets
-        # Find complete objects using regex
-        try:
-            # Match complete JSON objects: {"index":X,"score":Y,...}
-            pattern = r'\{"index"\s*:\s*(\d+)\s*,\s*"score"\s*:\s*([\d.]+)[^}]*\}'
-            matches = re.findall(pattern, text)
-            
-            if matches:
-                parsed_count = 0
-                for idx_str, score_str in matches:
-                    idx = int(idx_str)
-                    if 0 <= idx < count:
-                        results[idx]["score"] = min(1.0, max(0.0, float(score_str)))
-                        parsed_count += 1
-                
-                if parsed_count > 0:
-                    logger.info(f"[llm_credibility] Fallback regex parsed {parsed_count}/{count} items")
-                    return results
-        except Exception as e:
-            logger.warning(f"[llm_credibility] Fallback parse failed: {e}")
-        
-        logger.warning(f"[llm_credibility] Could not parse response (first 200 chars): {text[:200]}")
-        return results
-    
-    def _extract_items(self, data: list | dict, results: list[dict], count: int) -> list[dict]:
-        """Extract items from parsed JSON data."""
-        if not isinstance(data, list):
-            logger.warning(f"[llm_credibility] Response is not a list: {type(data)}")
-            return results
-        
-        parsed_count = 0
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            idx = item.get("index", -1)
-            if 0 <= idx < count:
-                results[idx] = {
-                    "score": min(1.0, max(0.0, float(item.get("score", 0.5)))),
-                    "reasoning": str(item.get("reasoning", ""))[:100],  # Limit length
-                    "red_flags": list(item.get("red_flags", []))[:3],  # Limit count
-                    "misinfo_risk": str(item.get("misinfo_risk", "unknown")),
-                }
-                parsed_count += 1
-        
-        logger.info(f"[llm_credibility] Successfully parsed {parsed_count}/{count} items")
         return results
 
 

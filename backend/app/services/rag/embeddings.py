@@ -11,10 +11,6 @@ from functools import lru_cache
 
 import torch
 
-# Enable offline mode if model is cached - prevents HuggingFace connection timeouts
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-
 
 def sanitize_text(text: str | None) -> str:
     """Remove invalid Unicode characters (surrogates) that break tokenizers."""
@@ -63,19 +59,10 @@ class EmbeddingService:
         logger.info(f"Loading embedding model: {self.model_name}")
         logger.info(f"CPU threads: {CPU_THREADS}")
         
-        try:
-            self._model = SentenceTransformer(
-                self.model_name,
-                device="cpu",
-            )
-        except Exception as e:
-            # If offline mode fails, try with local_files_only
-            logger.warning(f"Failed to load model, trying local_files_only: {e}")
-            self._model = SentenceTransformer(
-                self.model_name,
-                device="cpu",
-                local_files_only=True,
-            )
+        self._model = SentenceTransformer(
+            self.model_name,
+            device="cpu",
+        )
         # Put model in eval mode for inference optimization
         self._model.eval()
         

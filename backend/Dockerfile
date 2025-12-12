@@ -49,9 +49,6 @@ COPY --from=builder /app/.venv /app/.venv
 
 COPY app ./app
 
-# Copy Qdrant vector database (pre-indexed documents for RAG)
-COPY qdrant_data ./qdrant_data
-
 # Pre-download models during build to avoid startup timeout
 RUN python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
     AutoModelForSequenceClassification.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
