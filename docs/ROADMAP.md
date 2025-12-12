@@ -4,123 +4,193 @@
 
 This document tracks what has been delivered so far and the remaining work needed to reach the "thesis-grade" target.
 
-## ✅ Completed Work
+## Agent Summary (12 Total)
 
-### Frontend (Sentiment Generator UI)
-- Parsed JSON summaries into human-readable narratives and evidence cards.
-- Added legitimacy vs potential fake-news indicators beside sentiment scores.
-- Introduced inline loading animations (overall sentiment card, actionable insights placeholder).
-- Documented sentiment/credibility computations and long-term accuracy roadmap in `frontend/README.md`.
+| Category | Count | Agents |
+|----------|-------|--------|
+| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
-### Backend
-- LangGraph workflow now integrates dedicated Retrieval, Sentiment, Credibility, and Theme Router agents plus theme-specific Gemini mini-agents—i.e., the multi-agent stack is live in production.
-- **Full Ensemble Sentiment Agent**: RoBERTa transformer + Gemini LLM analyze ALL documents with weighted voting (40%/60%) for maximum accuracy.
-- Integrated LangSearch Semantic Rerank API + Facebook ingestion into the retrieval agent so snapshots already leverage real-time intelligent search across multiple platforms.
-- Instrumented per-agent latency logging (retrieval, sentiment, enrichment, theme agents) and added selective Gemini skipping for low-document themes to cut wasted LLM time.
-- Parallelized `analyze_enriched` (Credibility + Theme Router) via `asyncio.gather`, tightened LangSearch + Facebook concurrency inside `RetrievalAgent.run`.
+## Completed Work
+
+### 7-Node Multi-Agent Architecture (12 Agents) - Dec 12, 2025
+
+| Node | Agent(s) | Status |
+|------|----------|--------|
+| 1 | **QueryOrchestratorAgent** | ✅ ReAct reasoning with KEYWORD_CLUSTERS |
+| 2 | **RetrievalAgent** | ✅ LangSearch + Facebook + Reddit |
+| 3 | **ContextAugmentationAgent** | ✅ Memory recall from Qdrant |
+| 4 | **SentimentAgent + CredibilityAgent + ThemeRouterAgent** | ✅ Parallel via asyncio.gather |
+| 5 | **ContextAugmentationAgent** | ✅ Memory consolidation to Qdrant |
+| 6 | **6 Theme Agents** | ✅ Parallel via ThreadPoolExecutor |
+| 7 | **CoordinatorAgent** | ✅ Narrative generation |
+
+### Agent-Specific Implementations
+
+#### QueryOrchestratorAgent
+- ReAct reasoning with 3 tools: `analyze_focus_areas`, `generate_query`, `evaluate_query`
+- KEYWORD_CLUSTERS for topic diversity (4 clusters per focus area)
+- 6 diverse queries generated per request
+- Time-based search operators (`after:YYYY-MM-DD`)
+
+#### RetrievalAgent
+- LangSearch Web API integration
+- Facebook ingestion via Apify
+- Reddit integration via PRAW (r/baguio, r/Philippines, r/CasualPH)
+- Round-robin diversity merge
+
+#### SentimentAgent
+- RoBERTa (40%) - `twitter-roberta-base-sentiment-latest`
+- Gemini (60%) - Context-aware LLM classification
+- Rich metadata: both predictions, confidence scores, model agreement
+
+#### CredibilityAgent (5-Signal Framework)
+- Domain Trust (25%) - Tiered scoring (gov.ph = 0.95, social = 0.45)
+- Semantic Cross-Reference (20%) - MiniLM cosine similarity
+- Google Fact Check API (15%) - External fact-checker verification
+- LLM Pattern Recognition (20%) - Gemini misinformation detection
+- Tavily Web Verification (20%) - Real-time claim verification
+
+#### ContextAugmentationAgent
+- `retrieve_knowledge()` - Memory recall from Qdrant
+- `consolidate_memory()` - Ingest enriched documents
+- SemanticChunker (400 chars, 100 overlap)
+- MiniLM-L6-v2 embeddings (384 dims)
+
+#### ThemeRouterAgent
+- Routes documents to 6 theme buckets
+- Keyword-based matching with FOCUS_CONCERN_KEYWORDS
+- Runs in parallel with SentimentAgent and CredibilityAgent
+
+#### 6 Theme Agents
+- InfrastructureAgent, HealthAgent, SafetyAgent
+- TourismAgent, EconomyAgent, EnvironmentAgent
+- ThreadPoolExecutor with 6 workers
+- Gemini 2.5 Flash for fast insight generation
+
+### Chat Systems
+- **Chat Analyzer** - Streaming SSE with 12-agent pipeline
+- **AI Assistant (ChatAgent)** - Single agent for quick Q&A (control group)
+- **Intent Detection** - Routes to analyze/simple/followup paths
+
+### Frontend
+- Sentiment Generator dashboard with focus area selection
+- Chat Analyzer with real-time progress indicator (6 stages)
+- AI Assistant with source badges
+- Actionable insights cards with evidence links
 
 ### Documentation
-- Created consistency docs (frontend + backend READMEs) plus this roadmap for future contributors.
-- Synced `README.md`, `ROADMAP.md`, and `THESIS_FINDINGS.md` so each mirrors the live LangGraph workflow.
+- ARCHITECTURE.md - 7-node multi-agent pipeline with Mermaid diagrams
+- CHAT_ARCHITECTURE.md - Chat systems with agent details
+- THESIS_FINDINGS.md - Findings with agent-specific contributions
+- DEFENSE_GUIDE.md - Defense preparation
 
-## 🔄 Latest Updates (Dec 10, 2025)
+## Latest Updates (Dec 12, 2025)
 
-### Reddit Platform Integration
-- **PRAW Integration**: Connected Reddit ingestion service to retrieval pipeline
-- **New Tool**: `fetch_reddit_documents()` in `agent_tools.py` fetches from r/Baguio, r/Philippines, r/CordilleraAdministrativeRegion
-- **Dual Fetch Strategy**: Search by query + fetch recent posts from r/Baguio
-- **Time Window Mapping**: Maps 6h/24h → "day", 3d/7d → "week" for Reddit API
-- **Files Updated**: `agent_tools.py`, `agents.py`
+### Self-Learning Verification (ContextAugmentationAgent)
+- **Verified Self-Reference Loop**: System successfully recalls past analyses
+- Run 1 (Cold Start): 47 external docs, 0 internal docs
+- Run 2 (2 mins later): 49 external docs, 20 internal docs recalled
+- Proves the 7-Node Multi-Agent Architecture functions as a learning engine
 
-## Previous Updates (Dec 9, 2025)
+### Documentation Refresh
+- Updated all docs to explicitly mention 12 agents
+- Added agent-to-node mapping tables
+- Added agent-specific implementation details
+- Updated LLM model versions (gemini-2.5-flash, gemini-2.5-pro)
 
-### Time-Based Search Enhancement
-- **Query-Level Time Operators**: Added Google-style `after:YYYY-MM-DD` suffixes to search queries
-- **Time Window Mapping**: 6h → today, 24h → yesterday, 3d/7d → calculated dates
-- **Multi-Layer Freshness**: Query operators + API freshness hints + client-side filtering
-- **Files Updated**: `query_orchestrator.py`, `agent_tools.py`, `langsearch.py`
+## Previous Updates
 
-## Previous Updates (Dec 4, 2025)
+### Dec 11, 2025
+- Chat Analyzer System with streaming SSE progress
+- Intent-based routing (analyze/simple/followup)
+- Facebook Page Integration via site: operators
+- Enhanced narrative generation (50 docs, 3-5 sentences)
 
-### Performance Optimization: Narrative Generation
-- **Model Switch**: Changed `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for narrative generation
-- **~5x faster** response times while maintaining output quality
-- Located in `backend/app/services/nlp/gemini.py`
+### Dec 10, 2025
+- **RetrievalAgent**: Reddit Platform Integration via PRAW
+- Target subreddits: r/baguio, r/Philippines, r/CasualPH
+- Query extraction from QueryOrchestratorAgent output
+- Location filtering for Baguio-relevant content
 
-### Refactor: Agent Tools Consolidation & Query Parsing
-- **Centralized Tool Management**: Migrated tool definitions from `tools.py` to `agent_tools.py`, deleted redundant `tools.py`
-- **Baguio-Specific Keywords**: Enhanced `context_agent.py` with local search terms (BGH, Kennon Road, Session Road, etc.)
-- **Theme-Specific Query Templates**: Expanded with location-aware terms for improved local relevance
-- **Robust Query Parsing**: `query_orchestrator.py` now handles both string and object query formats from LLM responses
-- **Fallback Query Fields**: Added support for `query_string`, `search_query` field variants for resilient parsing
-- **Graph Module Update**: `graph.py` now uses consolidated `agent_tools` module
+### Dec 9, 2025
+- **QueryOrchestratorAgent**: Time-Based Search Operators (`after:YYYY-MM-DD`)
+- Multi-layer freshness filtering
+- API-level freshness hints to LangSearch
 
-## Previous Updates (Dec 3, 2025)
+### Dec 4, 2025
+- Narrative generation optimization (gemini-2.0-flash-exp)
+- Agent tools consolidation
+- Baguio-specific search keywords
 
-### Phase 2 Complete: Query Orchestrator Agent (ReAct)
-- **ReAct Reasoning Loop**: Implemented LLM-powered Thought → Action → Observation cycle
-- **3 Custom Tools** in `backend/app/services/agents/query_orchestrator.py`:
-  - `analyze_focus_areas` - Determines search strategy (urgent/trend/broad) per focus area
-  - `generate_query` - Creates optimized queries with location + temporal context
-  - `evaluate_query` - Scores query quality (0-1) before execution
-- **Gemini 2.0 Flash** for reasoning, typically 3-4 iterations per plan
-- **Fallback generation** when ReAct fails ensures 100% availability
-- Retrieval agent now uses orchestrated query plans instead of static queries
+### Dec 3, 2025
+- **QueryOrchestratorAgent**: Phase 2 - ReAct reasoning with 3 tools
+- **ContextAugmentationAgent**: Phase 1 - RAG Pipeline (Chunker + Embeddings + Qdrant)
 
-### Phase 1 Complete: RAG Pipeline
-- **SemanticChunker**: Sentence-based chunking (400 chars, 100 overlap) with metadata preservation
-- **EmbeddingService**: MiniLM-L6-v2 embeddings (384 dimensions, CPU-optimized, batch processing)
-- **VectorStore**: Qdrant in-memory with cosine similarity search
-- **ContextAugmentationAgent**: Retrieves top-k relevant chunks per theme
-- Theme agents receive RAG-augmented context (top 10 chunks) for higher quality insights
-- Files: `backend/app/services/rag/chunker.py`, `embeddings.py`, `vector_store.py`, `backend/app/services/agents/context_agent.py`
+### Nov 29, 2025
+- **SentimentAgent**: Full Ensemble (RoBERTa + Gemini)
+- Per-agent latency logging
+- Parallel analysis via asyncio.gather
 
-### Previous Updates (Nov 29, 2025)
-- **Full Ensemble Sentiment Agent**: Upgraded from hybrid (selective Gemini) to full ensemble approach:
-  - RoBERTa (`twitter-roberta-base-sentiment`) analyzes ALL documents → probability distribution
-  - Gemini LLM analyzes ALL documents → probability distribution
-  - Weighted voting combines predictions (40% RoBERTa + 60% Gemini)
-  - Rich metadata: both predictions, confidence scores, model agreement status
-- Added per-agent latency logging directly in `backend/app/services/insights/graph.py` for thesis benchmarking.
-- `analyze_enriched` now dispatches `CredibilityAgent` and `ThemeRouterAgent` concurrently via `asyncio.gather`.
-- Retrieval concurrency tightened by awaiting LangSearch + Facebook futures together.
-- LangSearch retrieval now applies rate-limit resilience with retriable 429 handling, exponential backoff.
-- Theme routing uses six refined categories, increases per-theme document analysis to 25 docs.
-- Low-signal theme buckets skip Gemini, falling back to deterministic summaries when cluster has <2 docs.
+## In Progress / Near-Term TODOs
 
-## 🚧 In Progress / Near-Term TODOs
-
-1. **Sentiment Ensemble Optimization**
-   - ✅ Full ensemble with RoBERTa + Gemini (completed Nov 29, 2025)
-   - Tune ensemble weights based on validation set performance
+1. **SentimentAgent Tuning**
+   - Tune RoBERTa/Gemini weights based on validation set
    - Add confidence calibration for probability outputs
 
-2. **Credibility Enhancement**
-   - Plug fine-tuned credibility models into the agent pipeline.
-   - Emit `confidence`, `model_version`, and `credibility_breakdown` directly in `/insights/snapshot`.
+2. **CredibilityAgent Validation**
+   - Create labeled dataset for credibility scoring
+   - Measure precision/recall of 5-signal framework
 
-3. **Calibration & QA assets**
-   - Assemble labeled validation sets for both sentiment and credibility.
-   - Define acceptance thresholds (precision/recall, false-positive rate) and automate reporting.
+3. **Performance Optimization**
+   - Profile and optimize slow agents
+   - Consider caching for repeated queries
 
-4. **Observability & performance**
-   - Export per-agent latency & doc-count metrics to observability stack (Prometheus/LangSmith).
-   - Configure alerts for drift, low confidence, or inadequate sample coverage.
+4. **Observability**
+   - Export per-agent telemetry to dashboards
+   - Configure alerts for drift and low confidence
 
-5. **Documentation expansion**
-   - Create `docs/model-log.md` with model versions, dataset hashes, confusion matrices.
-   - Add updated architecture diagrams showing ensemble sentiment flow.
+## Longer-Term Roadmap
 
-## 🧭 Longer-Term Roadmap
+1. **RAG Solutions Agent (New Agent)**
+   - Recommend follow-up actions per theme
+   - Pull guidance from knowledge base
 
-1. **Multi-agent evolution (next phase)**
-   - Introduce a RAG Solutions agent backed by Qdrant to recommend actions per theme.
-   - Explore parallel execution, retries, and shared memory across agents.
+2. **Human-in-the-Loop Review**
+   - Interface for analysts to approve/override agent outputs
+   - Continuous improvement loop
 
-2. **Real-time intelligent search & RAG**
-   - Integrate live search connectors and retrieval-augmented generation so insights reference the freshest context automatically.
+3. **Additional Data Sources (RetrievalAgent)**
+   - Twitter/X integration
+   - Local news RSS feeds
+   - Government announcement APIs
 
-3. **Human-in-the-loop review portal**
-   - Build an interface for analysts to approve/override classifier outputs, closing the loop for continuous improvement.
+4. **Scheduled Analysis**
+   - Automated periodic snapshots
+   - Trend detection over time
 
-Keeping this list up to date ensures everyone knows the current status and the next steps required to deliver a defensible, multi-agent, real-time public opinion analysis platform.
+## Architecture Summary (12 Agents)
+
+```
+SnapshotRequest
+    -> Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS)
+    -> Node 2: RetrievalAgent (LangSearch + Facebook + Reddit)
+    -> Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Memory)
+    -> Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
+    -> Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk -> Embed -> Store)
+    -> Node 6: 6 Theme Agents in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
+    -> Node 7: CoordinatorAgent (Narrative Generation)
+    -> SnapshotResponse
+```
+
+## Key Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Total Agents | 12 | 12+ |
+| Documents per request | 50-100 | 100+ |
+| Latency (full pipeline) | 30-60s | <30s |
+| Theme agents (parallel) | 6 | 6 |
+| Credibility signals | 5 | 5 |
+| Memory recall accuracy | TBD | >80% |
+| Sentiment ensemble accuracy | TBD | >85% |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Multi-Agentic AI system with real-time intelligent search and RAG for context-aware public opinion analysis in Baguio City.
+Multi-Agentic AI system with real-time intelligent search and RAG for context-aware public opinion analysis in Baguio City. Features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation.
 
 ## Agent Count Summary
 
@@ -12,22 +12,70 @@ Multi-Agentic AI system with real-time intelligent search and RAG for context-aw
 | **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
 | **Total** | **12** | 6 main + 6 theme-specific |
 
-> **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather`, reducing latency from ~88s to ~54s while maintaining the same agent count.
+> **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather` in a single unified analysis node, reducing latency significantly.
 
 ## LLM Configuration
 
 | Component | Model | Reason |
 |-----------|-------|--------|
-| **Narrative Summary** | `gemini-2.5-pro` | Comprehensive topic coverage (Flash misses details) |
-| **Query Orchestrator** | `gemini-2.0-flash-exp` | Fast ReAct loop for query planning |
-| **Sentiment Agent (LLM)** | `gemini-2.0-flash-exp` | Fast classification, RoBERTa maintains accuracy |
-| **Credibility Agent** | `gemini-2.0-flash-exp` | Fast content quality scoring |
-| **Theme Agents (6x)** | `gemini-2.0-flash-exp` | Fast insight generation |
+| **Narrative Summary** | `gemini-2.5-pro` | Comprehensive topic coverage |
+| **Query Orchestrator** | `gemini-2.5-flash` | Fast ReAct loop for query planning |
+| **Sentiment Agent (LLM)** | `gemini-2.5-pro` | Context-aware classification, 60% ensemble weight |
+| **Credibility Agent** | `gemini-2.5-flash` | Fast content quality scoring |
+| **Theme Agents (6x)** | `gemini-2.5-flash` | Fast insight generation |
 | **Chat Agent** | `gemini-2.0-flash-exp` | Fast Q&A responses |
-| **RoBERTa** | `twitter-roberta-base-sentiment` | Local model, 40% ensemble weight |
+| **RoBERTa** | `twitter-roberta-base-sentiment-latest` | Local model, 40% ensemble weight |
 | **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Local 384-dim vectors for RAG |
 
-## System Flow Diagram (Mermaid)
+## 7-Node Self-Learning Pipeline
+
+The system implements a cyclic learning architecture where fresh external data is merged with internal memory, analyzed, and then consolidated back into the knowledge base.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    7-NODE MULTI-AGENT SELF-LEARNING PIPELINE                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
+│  │   NODE 1     │    │   NODE 2     │    │   NODE 3     │                  │
+│  │   Query      │───▶│  Retrieval   │───▶│   Context    │                  │
+│  │ Orchestrator │    │    Agent     │    │    Agent     │                  │
+│  │    Agent     │    │ (Web/FB/RD)  │    │  (Recall)    │                  │
+│  └──────────────┘    └──────────────┘    └──────────────┘                  │
+│                                                 │                           │
+│                                                 ▼                           │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
+│  │   NODE 7     │    │   NODE 6     │    │   NODE 4     │                  │
+│  │ Coordinator  │◀───│  6 Theme     │◀───│  3 Agents    │                  │
+│  │    Agent     │    │   Agents     │    │  (Parallel)  │                  │
+│  │ (Narrative)  │    │  (Parallel)  │    │ Sent+Cred+TR │                  │
+│  └──────────────┘    └──────────────┘    └──────────────┘                  │
+│                                                 │                           │
+│                                                 ▼                           │
+│                                          ┌──────────────┐                  │
+│                                          │   NODE 5     │                  │
+│                                          │   Context    │◀─── LEARNING     │
+│                                          │    Agent     │     LOOP         │
+│                                          │ (Consolidate)│                  │
+│                                          └──────────────┘                  │
+│                                                                             │
+│  TOTAL: 12 AGENTS (6 Core + 6 Theme)                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Node Descriptions (Agent Mapping)
+
+| Node | Agent(s) | Function | Key Components |
+|------|----------|----------|----------------|
+| 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS, 3 tools, Gemini 2.5 Flash |
+| 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
+| 3 | **ContextAugmentationAgent** | Retrieve relevant memories from vector store | Qdrant, MiniLM embeddings, `retrieve_knowledge()` |
+| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
+| 5 | **ContextAugmentationAgent** | Ingest enriched documents into knowledge base | SemanticChunker, VectorStore, `consolidate_memory()` |
+| 6 | **6 Theme Agents** (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | 6x parallel Gemini calls, ThreadPoolExecutor |
+| 7 | **Coordinator** (GeminiClient) | Assemble final response with narrative | Gemini 2.5 Pro narrative generation |
+
+## System Flow Diagram
 
 ```mermaid
 flowchart TB
@@ -38,58 +86,72 @@ flowchart TB
     end
 
     subgraph Backend["Backend (FastAPI + LangGraph)"]
-        subgraph Workflow["LangGraph Workflow"]
+        subgraph Workflow["7-Node Multi-Agent Pipeline"]
             
-            subgraph Stage1["1. Query Orchestrator Agent (ReAct)"]
-                QO[Query Orchestrator]
-                T1[analyze_focus_areas]
-                T2[generate_query]
-                T3[evaluate_query]
+            subgraph Node1["Node 1: Query Orchestrator Agent (ReAct)"]
+                QO[QueryOrchestratorAgent]
+                T1[analyze_focus_areas tool]
+                T2[generate_query tool]
+                T3[evaluate_query tool]
                 QO --> T1 & T2 & T3
-                QP[QueryPlan]
+                QP[QueryPlan<br/>6 diverse queries]
                 T1 & T2 & T3 --> QP
             end
 
-            subgraph Stage2["2. Retrieval Agent"]
+            subgraph Node2["Node 2: Retrieval Agent"]
+                RA[RetrievalAgent]
                 LS[LangSearch Web API]
                 FB[Facebook Ingestion]
-                RR[Semantic Reranker]
-                LS & FB --> RR
-                Docs[List of WebDocuments]
-                RR --> Docs
+                RD[Reddit r/baguio]
+                RA --> LS & FB & RD
+                RR[Diversity Merge]
+                LS & FB & RD --> RR
+                ExtDocs[External Documents]
+                RR --> ExtDocs
             end
 
-            subgraph Stage3["3. Parallel Analysis (Optimized)"]
+            subgraph Node3["Node 3: Context Agent (Memory Recall)"]
+                CTX[ContextAugmentationAgent]
+                VS1[Qdrant Vector Search]
+                EM1[MiniLM Embeddings]
+                CTX --> VS1
+                IntDocs[Internal Documents]
+                VS1 --> IntDocs
+                Merge[Deduplicate & Merge]
+                ExtDocs --> Merge
+                IntDocs --> Merge
+            end
+
+            subgraph Node4["Node 4: Unified Analysis (3 Agents in Parallel)"]
                 direction TB
                 subgraph Parallel["asyncio.gather"]
-                    SA[Sentiment Agent<br/>RoBERTa 40% + Gemini 60%]
-                    CA[Credibility Agent<br/>domain + fact-check]
-                    TR[Theme Router<br/>6 theme buckets]
+                    SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
+                    CA[CredibilityAgent<br/>5-Signal Ensemble]
+                    TR[ThemeRouterAgent<br/>6 theme buckets]
                 end
                 SA & CA & TR --> ED[Enriched + Routed Docs]
             end
 
-            subgraph Stage4["4. Context Augmentation Agent (RAG)"]
+            subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
+                CTX2[ContextAugmentationAgent]
                 SC[Semantic Chunker<br/>400 chars]
                 ES[Embedding Service<br/>MiniLM-L6-v2]
-                VS[Qdrant VectorStore<br/>cosine similarity]
-                SC --> ES --> VS
-                TK[Top-k Chunks per Theme]
-                VS --> TK
+                VS2[Qdrant VectorStore]
+                CTX2 --> SC --> ES --> VS2
             end
 
-            subgraph Stage5["5. Theme Agents (6x parallel)"]
-                TH1[Infrastructure]
-                TH2[Health & Wellness]
-                TH3[Public Safety]
-                TH4[Tourism & Events]
-                TH5[Business & Economy]
-                TH6[Environment]
+            subgraph Node6["Node 6: Theme Agents (6 Agents in Parallel)"]
+                TH1[InfrastructureAgent]
+                TH2[HealthAgent]
+                TH3[SafetyAgent]
+                TH4[TourismAgent]
+                TH5[EconomyAgent]
+                TH6[EnvironmentAgent]
                 TI[Theme Insights]
                 TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
             end
 
-            subgraph Stage6["6. Build Snapshot"]
+            subgraph Node7["Node 7: Coordinator Agent"]
                 GC[GeminiClient<br/>gemini-2.5-pro]
                 NR[Narrative Generation]
                 GC --> NR
@@ -97,23 +159,27 @@ flowchart TB
                 NR --> SR
             end
 
-            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5 --> Stage6
+            Node1 --> Node2 --> Node3 --> Node4
+            Node4 --> Node5 --> Node6 --> Node7
         end
     end
 
-    Request[SnapshotRequest] --> Stage1
+    Request[SnapshotRequest] --> Node1
     SR --> Response[SnapshotResponse JSON]
     Response --> Frontend
 
-    style Stage1 fill:#e1f5fe
-    style Stage2 fill:#fff3e0
-    style Stage3 fill:#f3e5f5
-    style Stage4 fill:#e8f5e9
-    style Stage5 fill:#fff8e1
-    style Stage6 fill:#e0f2f1
+    style Node1 fill:#e1f5fe
+    style Node2 fill:#fff3e0
+    style Node3 fill:#e8f5e9
+    style Node4 fill:#f3e5f5
+    style Node5 fill:#fff8e1
+    style Node6 fill:#fce4ec
+    style Node7 fill:#e0f2f1
 ```
 
-## Detailed Agent Flow (Mermaid)
+
+
+## Detailed Agent Flow (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
@@ -121,40 +187,43 @@ sequenceDiagram
     participant API as FastAPI
     participant QO as Query Orchestrator
     participant RA as Retrieval Agent
-    participant ANALYZE as Parallel Analysis
-    participant CTX as Context Agent
+    participant MEM as Memory (Qdrant)
+    participant ANALYZE as Unified Analysis
     participant TA as Theme Agents
     participant GC as GeminiClient
 
     Client->>API: POST /insights/snapshot
     API->>QO: SnapshotRequest
     
-    Note over QO: ReAct Loop (Gemini 2.0 Flash)
-    QO->>QO: analyze_focus_areas
-    QO->>QO: generate_query
-    QO->>QO: evaluate_query
-    QO-->>RA: QueryPlan
+    Note over QO: ReAct Loop (Gemini 2.5 Flash)
+    QO->>QO: analyze_focus_areas → KEYWORD_CLUSTERS
+    QO->>QO: generate_query → 6 diverse queries
+    QO->>QO: evaluate_query → diversity check
+    QO-->>RA: QueryPlan (6 queries)
 
-    par Parallel Retrieval
+    par Parallel External Retrieval (Batches of 3)
         RA->>RA: LangSearch Web API
         RA->>RA: Facebook Ingestion
+        RA->>RA: Reddit r/baguio, r/Philippines
     end
-    RA->>RA: Semantic Rerank
-    RA-->>ANALYZE: List[WebDocument]
+    RA->>RA: Diversity Merge (round-robin)
+    RA-->>MEM: External Documents
 
-    Note over ANALYZE: OPTIMIZED: All 3 run in parallel via asyncio.gather
-    par Parallel Analysis (Single Node)
+    Note over MEM: Node 3: Internal Recall
+    MEM->>MEM: Vector search per focus area
+    MEM-->>ANALYZE: External + Internal (deduplicated)
+
+    Note over ANALYZE: Node 4: All 3 run in parallel via asyncio.gather
+    par Unified Analysis (Single Node)
         ANALYZE->>ANALYZE: Sentiment (RoBERTa 40% + Gemini 60%)
-        ANALYZE->>ANALYZE: Credibility (domain + fact-check)
+        ANALYZE->>ANALYZE: Credibility (5-signal ensemble)
         ANALYZE->>ANALYZE: Theme Routing (6 buckets)
     end
-    ANALYZE-->>CTX: Enriched + Routed Documents
+    ANALYZE-->>MEM: Enriched Documents
 
-    Note over CTX: RAG Pipeline
-    CTX->>CTX: Semantic Chunking
-    CTX->>CTX: MiniLM-L6 Embeddings
-    CTX->>CTX: Qdrant Vector Search
-    CTX-->>TA: Augmented Context
+    Note over MEM: Node 5: Memory Consolidation
+    MEM->>MEM: Chunk → Embed → Store
+    MEM-->>TA: Theme-routed documents
 
     par 6 Theme Agents (ThreadPool)
         TA->>TA: Infrastructure
@@ -171,30 +240,33 @@ sequenceDiagram
     API-->>Client: JSON Response
 ```
 
-## Component Architecture (Mermaid)
+## Component Architecture
 
 ```mermaid
 graph LR
     subgraph External["External Services"]
         LS[LangSearch API]
         FB[Facebook/Apify]
+        RD[Reddit/PRAW]
         GEMINI[Google Gemini API]
+        TAVILY[Tavily API]
+        GFACT[Google Fact Check API]
     end
 
     subgraph Models["ML Models"]
-        ROBERTA[RoBERTa<br/>twitter-roberta-base-sentiment]
+        ROBERTA[RoBERTa<br/>twitter-roberta-base-sentiment-latest]
         MINILM[MiniLM-L6-v2<br/>Sentence Embeddings]
     end
 
     subgraph Storage["Storage"]
-        QDRANT[Qdrant<br/>Vector Store]
+        QDRANT[Qdrant<br/>Vector Store<br/>Persistent Disk]
         SUPA[Supabase<br/>Database]
     end
 
-    subgraph LangGraphNodes["LangGraph Pipeline (7 Nodes - Self Learning)"]
+    subgraph LangGraphNodes["LangGraph Pipeline (7 Nodes)"]
         NODE1[Node 1: Query Orchestrator]
-        NODE2[Node 2: External Retrieval<br/>(Web/FB/Reddit)]
-        NODE3[Node 3: Internal Retrieval<br/>(Memory Recall)]
+        NODE2[Node 2: External Retrieval<br/>Web/FB/Reddit]
+        NODE3[Node 3: Internal Retrieval<br/>Memory Recall]
         
         subgraph NODE4["Node 4: Unified Analysis (asyncio.gather)"]
             SNA[Sentiment Agent]
@@ -202,7 +274,7 @@ graph LR
             TRA[Theme Router]
         end
         
-        NODE5[Node 5: Context Agent<br/>(Memory Consolidation)]
+        NODE5[Node 5: Memory Consolidation<br/>Ingest to Qdrant]
         
         subgraph NODE6["Node 6: Theme Agents (ThreadPool)"]
             TH1[Infrastructure]
@@ -216,20 +288,17 @@ graph LR
         NODE7[Node 7: Build Snapshot<br/>Narrative Generation]
     end
 
-    subgraph Control["Control Group"]
-        CHAT[Chat Agent<br/>ReAct Loop]
-    end
-
     %% External connections
     LS --> NODE2
-    LS --> CHAT
     FB --> NODE2
-    SUPA --> NODE2
+    RD --> NODE2
     GEMINI --> NODE1
     GEMINI --> SNA
+    GEMINI --> CRA
     GEMINI --> TH1 & TH2 & TH3 & TH4 & TH5 & TH6
     GEMINI --> NODE7
-    GEMINI --> CHAT
+    TAVILY --> CRA
+    GFACT --> CRA
     ROBERTA --> SNA
     MINILM --> NODE3
     MINILM --> NODE5
@@ -249,39 +318,49 @@ graph LR
 
 | Theme | Label | Keywords | Focus Values |
 |-------|-------|----------|--------------|
-| infrastructure | Infrastructure | road, traffic, water, power, bridge, construction | infrastructure |
-| health | Health & Wellness | hospital, clinic, dengue, covid, vaccine, medicine | health |
-| safety | Public Safety | crime, police, fire, landslide, accident, emergency | safety |
-| tourism | Tourism & Events | tourist, hotel, festival, panagbenga, visitor | tourism |
-| economy | Business & Economy | market, vendor, livelihood, SM Prime, price | economy, business |
-| environment | Environment | garbage, pollution, waste, tree, climate | environment |
+| infrastructure | Infrastructure | road, traffic, water, power, bridge, construction, kennon, session road | infrastructure |
+| health | Health & Wellness | hospital, clinic, dengue, covid, vaccine, medicine, bgh | health |
+| safety | Public Safety | crime, police, fire, landslide, accident, emergency, flood, walkout, protest | safety |
+| tourism | Tourism & Events | tourist, hotel, festival, panagbenga, visitor, burnham, overcrowding | tourism |
+| economy | Business & Economy | market, vendor, livelihood, mallification, SM Prime, price, displacement | economy, business |
+| environment | Environment | garbage, pollution, waste, tree, climate, air quality, flooding | environment |
 
-## Data Flow Summary
+## The 5-Signal Credibility Framework
 
-```
-SnapshotRequest
-    → Query Planning (ReAct) + Time-Based Search Operators
-    → Document Retrieval (LangSearch + Facebook)
-    → PARALLEL: Sentiment + Credibility + Theme Routing (asyncio.gather)
-    → RAG Augmentation (Chunking → Embedding → Vector Search)
-    → Theme Insights (6x parallel Gemini)
-    → Narrative Generation (Gemini 2.5 Pro)
-    → SnapshotResponse
-```
+The `CredibilityAgent` employs a **Multi-Signal Verification Strategy** with weighted ensemble:
+
+| Signal | Weight | Description |
+|--------|--------|-------------|
+| **Domain Trust** | 25% | Tiered scoring (gov.ph = 0.95, social media = 0.45) |
+| **Semantic Cross-Reference** | 20% | MiniLM embeddings for cosine similarity between documents |
+| **Google Fact Check API** | 15% | Real-time query against Google's fact-check repository |
+| **LLM Pattern Recognition** | 20% | Gemini analyzes for clickbait, conspiracy framing, misinformation |
+| **Tavily Web Verification** | 20% | Real-time web search to verify claims against authoritative sources |
+
+### Domain Trust Tiers
+
+| Tier | Score | Examples |
+|------|-------|----------|
+| Government | 0.90-0.95 | gov.ph, pia.gov.ph, pna.gov.ph |
+| Fact-checkers | 0.85-0.90 | verafiles.org, rappler.com |
+| Established News | 0.75-0.82 | inquirer.net, philstar.com, gmanetwork.com |
+| Organizations | 0.65-0.70 | .org.ph, .org |
+| Social Media | 0.40-0.50 | facebook.com, reddit.com, twitter.com |
+| User-generated | 0.35-0.45 | medium.com, wordpress.com |
 
 ## Time-Based Search Filtering
 
-The system uses a multi-layer approach to prioritize fresh content:
+Multi-layer approach to prioritize fresh content:
 
 ### 1. Query-Level Time Operators
-Search queries include Google-style `after:YYYY-MM-DD` operators based on the requested time window:
+Search queries include Google-style `after:YYYY-MM-DD` operators:
 
 | Time Window | Search Suffix | Example |
 |-------------|---------------|---------|
-| 6h | `after:{today}` | `after:2025-12-09` |
-| 24h | `after:{yesterday}` | `after:2025-12-08` |
-| 3d | `after:{3 days ago}` | `after:2025-12-06` |
-| 7d | `after:{7 days ago}` | `after:2025-12-02` |
+| 6h | `after:{today}` | `after:2025-12-12` |
+| 24h | `after:{yesterday}` | `after:2025-12-11` |
+| 3d | `after:{3 days ago}` | `after:2025-12-09` |
+| 7d | `after:{7 days ago}` | `after:2025-12-05` |
 
 ### 2. API-Level Freshness Hints
 LangSearch API receives a `freshness` parameter:
@@ -289,12 +368,41 @@ LangSearch API receives a `freshness` parameter:
 - `3d` / `7d` → `oneWeek`
 
 ### 3. Client-Side Time Filtering
-Documents are filtered by `published_at` timestamp after retrieval to enforce strict time boundaries.
+Documents filtered by `published_at` timestamp after retrieval.
 
-**Implementation Files:**
-- `backend/app/services/agents/query_orchestrator.py` - Time suffix in ReAct queries
-- `backend/app/services/insights/agent_tools.py` - Time suffix in direct queries + client-side filtering
-- `backend/app/services/langsearch.py` - API freshness parameter mapping
+## Multi-Query Diversity Strategy
+
+The Query Orchestrator generates **6 diverse queries** using KEYWORD_CLUSTERS:
+
+```python
+KEYWORD_CLUSTERS = {
+    "infrastructure": [
+        ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
+        ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
+        ["Baguio water shortage", "Baguio drainage issue", "Baguio power outage"],
+        ...
+    ],
+    "health": [...],
+    "safety": [...],
+    ...
+}
+```
+
+**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating.
+
+## Data Flow Summary (12 Agents)
+
+```
+SnapshotRequest
+    → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS)
+    → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit)
+    → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Memory Recall)
+    → Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
+    → Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk → Embed → Store)
+    → Node 6: 6 ThemeAgents in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
+    → Node 7: CoordinatorAgent (Narrative Generation with Gemini 2.5 Pro)
+    → SnapshotResponse
+```
 
 ## Tech Stack
 
@@ -303,38 +411,45 @@ Documents are filtered by `published_at` timestamp after retrieval to enforce st
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11+, Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5-pro for narrative, 2.0-flash-exp for orchestration/sentiment/theme) |
-| Sentiment | RoBERTa (twitter-roberta-base-sentiment) |
+| LLM | Google Gemini (2.5-pro for narrative/sentiment, 2.5-flash for orchestration/credibility/theme) |
+| Sentiment | RoBERTa (twitter-roberta-base-sentiment-latest) |
 | Embeddings | MiniLM-L6-v2 (384 dimensions) |
-| Vector DB | Qdrant |
+| Vector DB | Qdrant (persistent disk storage) |
 | Search | LangSearch API |
+| Social | Reddit (PRAW), Facebook (Apify) |
+| Fact-Check | Google Fact Check API, Tavily |
 | Database | Supabase |
 | Observability | LangSmith |
 
-## 6. Hybrid Architectures (Control vs Novel)
-
-The system implements two distinct architectural patterns to demonstrate thesis novelty:
+## Hybrid Architectures (Control vs Novel)
 
 ### A. The Chat Agent (Control Group)
-*   **Pattern:** Agentic RAG (ReAct Loop)
-*   **Goal:** Single-turn, atomic question answering.
-*   **Stack:** Gemini 2.0 Flash + LangSearch.
-*   **Behavior:** Reactive. Waiting for user input.
+- **Pattern:** Agentic RAG (ReAct Loop)
+- **Goal:** Single-turn, atomic question answering
+- **Stack:** Gemini 2.0 Flash + LangSearch
+- **Behavior:** Reactive, waiting for user input
 
 ### B. The Sentiment Generator (Novel Contribution)
-*   **Pattern:** Hierarchical Graph-Based Multi-Agent System
-*   **Goal:** Holistic, proactive landscape analysis.
-*   **Stack:** LangGraph + 6-Agents + Ensemble Sentiment via RoBERTa/Gemini.
-*   **Behavior:** Proactive. Scans the environment to surface risks.
+- **Pattern:** Hierarchical Graph-Based Multi-Agent System with Self-Learning
+- **Goal:** Holistic, proactive landscape analysis with memory
+- **Stack:** LangGraph + 7-Node Pipeline + Ensemble Sentiment + 5-Signal Credibility
+- **Behavior:** Proactive, scans environment, learns from each run
 
-## 7. The 5-Layer Credibility Framework
+## Key Implementation Files
 
-Unlike standard white-list approaches, the `CredibilityAgent` employs a **Multi-Signal Verification Strategy**:
-
-1.  **Domain Reputation (25%)**: Tiered scoring of known sources (gov.ph = 0.95, blogs = 0.40).
-2.  **Semantic Cross-Referencing (20%)**: Uses **MiniLM Vector Embeddings** to compute Cosine Similarity between documents. If Source A's story vector matches Source B's, capability increases (Automated Triangulation).
-3.  **Google Fact Check API (15%)**: Real-time query against Google's repository of debunked claims.
-4.  **LLM Pattern Recognition (20%)**: Gemini 2.0 analyzes content for patterns of "Clickbait", "Fear-mongering", or "Conspiracy Framing".
-5.  **Live Web Verification (20%)**: Uses **Tavily** to perform a real-time search of the claim to find corroborating external evidence.
-
-This ensures that "Fake News" on a "Trusted Domain" can still be flagged if the content patterns or external evidence contradict it.
+| Component | File |
+|-----------|------|
+| LangGraph Pipeline | `backend/app/services/insights/graph.py` |
+| Agent Orchestrators | `backend/app/services/insights/agents.py` |
+| Agent Tools | `backend/app/services/insights/agent_tools.py` |
+| Query Orchestrator | `backend/app/services/agents/query_orchestrator.py` |
+| Sentiment Agent | `backend/app/services/agents/sentiment_agent.py` |
+| Credibility Agent | `backend/app/services/agents/credibility_agent.py` |
+| Context Agent | `backend/app/services/agents/context_agent.py` |
+| Theme Agent | `backend/app/services/agents/theme_agent.py` |
+| RAG Chunker | `backend/app/services/rag/chunker.py` |
+| RAG Embeddings | `backend/app/services/rag/embeddings.py` |
+| RAG Vector Store | `backend/app/services/rag/vector_store.py` |
+| LangSearch Client | `backend/app/services/langsearch.py` |
+| Reddit Ingestion | `backend/app/services/ingestion/reddit.py` |
+| Facebook Ingestion | `backend/app/services/ingestion/facebook.py` |

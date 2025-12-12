@@ -1,104 +1,89 @@
 # Thesis Findings
 
 ## Overview
-The prototype now delivers a multi-agent, real-time intelligent search stack for context-aware public opinion analysis in Baguio City. A LangGraph workflow orchestrates specialized agents (query orchestrator, retrieval, sentiment, credibility, theme routing, context augmentation) and invokes Gemini micro-agents per theme to ground insights in the latest civic chatter. This document captures the current evidence, what works well, and the remaining gaps toward a thesis-ready system.
+The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **12 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating a cyclic learning loop that improves analysis quality over time.
+
+## Agent Summary (12 Total)
+
+| Category | Count | Agents |
+|----------|-------|--------|
+| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ## Current Capabilities
 
-| Capability | Evidence | Notes |
-| --- | --- | --- |
-| Multi-agent architecture | `backend/app/services/insights/agents.py`, LangGraph workflow in `backend/app/services/insights/graph.py` | Query Orchestrator/Retrieval/Sentiment/Credibility/Theme Router/Context Augmentation agents cooperate via shared `SnapshotState`. |
-| Ensemble sentiment analysis | `backend/app/services/agents/sentiment_agent.py` | Full ensemble: RoBERTa (40%) + Gemini 2.5 Pro (60%) weighted voting for all documents. |
-| Theme-specific LLM reasoning | `backend/app/services/agents/theme_agent.py` | Direct Gemini 2.5 Pro calls with theme-specific prompts produce JSON insights for each category. |
-| Real-time intelligent search | `agent_tools.search_web_documents` + `fetch_facebook_documents` | Combines LangSearch semantic rerank + Facebook ingestion under the Retrieval Agent. |
-| RAG pipeline | `backend/app/services/rag/` | SemanticChunker → EmbeddingService (MiniLM-L6-v2) → Qdrant VectorStore for context augmentation. |
-| Credibility tagging | `CredibilityAgent.run` | Domain-based scoring (.gov.ph, .org boost) + recency factors. |
-| Snapshot coordination | `build_snapshot` | Integrates agent outputs, Gemini narrative (gemini-2.0-flash-exp), alerts, and traceable evidence links for the UI. |
-| Per-agent telemetry | `backend/app/services/insights/graph.py` | Stage-level duration + document counts logged for benchmarking and observability. |
+| Capability | Agent(s) | Evidence |
+|------------|----------|----------|
+| ReAct Query Planning | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS, 6 diverse queries |
+| Multi-Source Retrieval | **RetrievalAgent** | `agents.py` - LangSearch + Facebook + Reddit |
+| Memory Recall | **ContextAugmentationAgent** | `context_agent.py` - `retrieve_knowledge()` from Qdrant |
+| Ensemble Sentiment | **SentimentAgent** | `sentiment_agent.py` - RoBERTa (40%) + Gemini (60%) |
+| 5-Signal Credibility | **CredibilityAgent** | `credibility_agent.py` - Domain + Cross-Ref + Fact-Check + LLM + Tavily |
+| Theme Routing | **ThemeRouterAgent** | `agents.py` - Routes to 6 theme buckets |
+| Memory Consolidation | **ContextAugmentationAgent** | `context_agent.py` - `consolidate_memory()` to Qdrant |
+| Theme-Specific Insights | **6 Theme Agents** | `theme_agent.py` - 6 parallel Gemini agents |
 
 ## Key Findings
 
-### 1. Full Ensemble Sentiment Analysis (Nov 29, 2025)
+### 1. Multi-Agent Self-Learning Architecture Verified (Dec 12, 2025)
 
-**Problem**: Single-model approaches (rule-based or LLM-only) had accuracy limitations and cost/speed trade-offs.
+**Hypothesis:** The 12-agent system can improve its analysis by referencing its own past memories.
 
-**Solution**: Implemented `EnsembleSentimentAgent` combining two models:
+**Verified Outcome:** CONFIRMED
+
+| Run | External Docs | Internal Docs | Result |
+|-----|---------------|---------------|--------|
+| Run 1 (Cold Start) | 47 | 0 | **ContextAugmentationAgent** builds initial knowledge base |
+| Run 2 (2 mins later) | 49 | 20 | **ContextAugmentationAgent** recalls relevant past analysis |
+
+**Significance:** The 7-Node Multi-Agent Architecture functions as a true learning engine. It is no longer just a "monitor" but a "growing knowledge base."
+
+### 2. QueryOrchestratorAgent: Multi-Query Diversity Strategy
+
+**Problem:** Single queries return homogeneous results, missing topic diversity.
+
+**Solution:** **QueryOrchestratorAgent** uses ReAct reasoning with KEYWORD_CLUSTERS:
+
+```python
+KEYWORD_CLUSTERS = {
+    "infrastructure": [
+        ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
+        ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
+        ["Baguio water shortage", "Baguio drainage issue", "Baguio power outage"],
+        ["Baguio parking problem", "Baguio internet problem", "Baguio jeepney modernization"],
+    ],
+    # ... 6 focus areas total
+}
+```
+
+**Agent Tools:**
+- `analyze_focus_areas` - Retrieves keyword clusters for focus areas
+- `generate_query` - Creates diverse queries from clusters
+- `evaluate_query` - Validates topic diversity
+
+**Result:** 6 diverse queries per request, round-robin interleaving prevents topic domination.
+
+### 3. SentimentAgent: Full Ensemble Analysis
+
+**Problem:** Single-model approaches had accuracy limitations.
+
+**Solution:** **SentimentAgent** uses weighted ensemble combining two models:
 
 | Model | Type | Weight | Strengths |
 |-------|------|--------|-----------|
-| RoBERTa | Transformer | 40% | Fast, trained on 124M tweets, good for social media slang |
-| Gemini | LLM | 60% | Context-aware, understands Baguio civic issues, nuanced |
+| RoBERTa | Transformer | 40% | Fast, trained on 124M tweets, social media native |
+| Gemini | LLM | 60% | Context-aware, understands Baguio civic issues |
 
 **Why RoBERTa Twitter (`cardiffnlp/twitter-roberta-base-sentiment-latest`)?**
-
-We selected this specific model because our data sources (Facebook, Reddit, Web) share linguistic characteristics with Twitter:
 
 | Factor | RoBERTa Twitter | Alternatives | Why RoBERTa Wins |
 |--------|-----------------|--------------|------------------|
 | Training Data | 124M tweets | BERT: Wikipedia/Books | Social media style matches our sources |
-| Native 3-Class | ✅ pos/neg/neu | DistilBERT-SST2: binary only | No need to infer neutral from confidence |
-| Benchmark Accuracy | 94% (TweetEval) | DistilBERT: 91% (SST-2) | Higher accuracy on sentiment task |
-| Informal Text | ✅ Excellent | BERT: Poor | Handles slang, abbreviations, emoticons |
-| Global English | ✅ Good | Most models: US-centric | Trained on worldwide Twitter including Filipino English |
+| Native 3-Class | pos/neg/neu | DistilBERT-SST2: binary | No need to infer neutral |
+| Benchmark | 94% (TweetEval) | DistilBERT: 91% (SST-2) | Higher accuracy |
+| Informal Text | Excellent | BERT: Poor | Handles slang, emoticons |
 
-**Data Source Compatibility**:
-
-| Source | Text Style | Twitter Similarity |
-|--------|------------|-------------------|
-| Facebook | Informal, emotional, reactions, Taglish | High ✅ |
-| Reddit | Opinionated, slang, abbreviations | High ✅ |
-| Web News | Formal, factual reporting | Medium (Gemini compensates) |
-
-**Why Not Other Models?**
-
-| Model | Reason for Rejection |
-|-------|---------------------|
-| BERT base | Trained on Wikipedia/Books, poor performance on informal social media text |
-| DistilBERT-SST2 | Binary classification only (no neutral class), trained on movie reviews |
-| VADER | Rule-based lexicon, no contextual understanding |
-| Custom fine-tuned | Requires labeled Baguio civic sentiment dataset which doesn't exist |
-
-**Why Not Fine-Tune on Baguio Data?**
-
-Fine-tuning would require a labeled dataset of Baguio civic sentiment, which doesn't exist. Creating one would require significant time and annotation resources. Instead, we use:
-1. Pre-trained RoBERTa that generalizes well to social media
-2. Gemini LLM for context-aware verification of Baguio-specific content
-
-This ensemble approach achieves high accuracy without custom training data.
-
-**Citation**:
-```
-@inproceedings{barbieri2020tweeteval,
-  title={TweetEval: Unified Benchmark and Comparative Evaluation for Tweet Classification},
-  author={Barbieri, Francesco and Camacho-Collados, Jose and Espinosa-Anke, Luis and Neves, Leonardo},
-  booktitle={Findings of EMNLP},
-  year={2020}
-}
-```
-
-**Technical Implementation**:
-```python
-# Both models analyze ALL documents
-roberta_probs = roberta.predict_batch_with_probs(texts)  # P(neg, neu, pos)
-gemini_probs = gemini.analyze_all(documents)             # P(neg, neu, pos)
-
-# Weighted combination
-combined = {
-    "negative": (0.4 * roberta["negative"]) + (0.6 * gemini["negative"]),
-    "neutral":  (0.4 * roberta["neutral"])  + (0.6 * gemini["neutral"]),
-    "positive": (0.4 * roberta["positive"]) + (0.6 * gemini["positive"]),
-}
-
-# Final prediction = argmax
-final_label = max(combined, key=combined.get)
-```
-
-**Why Full Ensemble over Hybrid**:
-- Hybrid: RoBERTa for all, Gemini only for uncertain (~20%)
-- Full Ensemble: Both models for ALL documents
-- Trade-off: Slightly slower, but higher accuracy and richer metadata for thesis
-
-**Metadata Captured Per Document**:
+**Metadata Captured Per Document:**
 ```python
 {
     "sentiment": "negative",
@@ -108,188 +93,168 @@ final_label = max(combined, key=combined.get)
     "roberta_confidence": 0.70,
     "gemini_prediction": "negative",
     "gemini_confidence": 0.85,
-    "model_agreement": "full_agreement",  # or "roberta_dominant", "gemini_dominant"
+    "model_agreement": "full_agreement",
 }
 ```
 
-**Safety Filter Configuration**:
-```python
-SAFETY_SETTINGS = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
-```
+### 4. CredibilityAgent: 5-Signal Framework
 
-**Rationale for Disabled Safety Filters**: Civic news contains reports about crimes, accidents, protests. Gemini's default filters incorrectly blocked legitimate content. Disabling is appropriate because:
-- Content is factual news reporting, not harmful user-generated content
-- System analyzes sentiment, not generates harmful content
-- Fallback mechanisms ensure reliability
+**Problem:** Simple domain whitelists miss content-level misinformation.
 
-**Configuration (December 2025)**:
-- Model: `gemini-2.5-pro` for sentiment and theme agents
-- Batch size: 12 documents per sentiment request
-- Max output tokens: 3000 (sentiment and theme agents)
-- Safety settings: `BLOCK_NONE` for all harm categories
-- This configuration balances quality, speed, and API rate limits (15 RPM)
+**Solution:** **CredibilityAgent** uses multi-signal verification ensemble:
 
-### 2. Agent Modularity Speeds Iteration
-New logic (e.g., classifiers, RAG solutions agent) can be introduced by swapping an agent node without rewriting the entire pipeline.
+| Signal | Weight | Implementation |
+|--------|--------|----------------|
+| Domain Trust | 25% | Tiered scoring (gov.ph=0.95, social=0.45) |
+| Semantic Cross-Reference | 20% | MiniLM cosine similarity between documents |
+| Google Fact Check API | 15% | Real-time query against fact-check repository |
+| LLM Pattern Recognition | 20% | Gemini detects clickbait, conspiracy framing |
+| Tavily Web Verification | 20% | Real-time web search for claim verification |
 
-### 3. LLM Micro-Agents Add Nuance but Cost Latency
-Theme-specific Gemini calls provide richer insights; selective invocation (skip for <2 docs) reduces wasted LLM time.
+**Misinformation Patterns Detected:**
+- Clickbait language ("you won't believe", "shocking")
+- Conspiracy framing ("they don't want you to know")
+- False certainty ("100% proven")
+- Social proof manipulation ("going viral")
 
-### 4. Real-Time Coverage Hinges on LangSearch + Apify
-The Retrieval Agent fans out to both; adding more connectors (e.g., Reddit, X) requires only new tool wrappers.
+### 5. RetrievalAgent: Time-Based Search Filtering
 
-### 5. RAG Pipeline Enhances Context
-Context Augmentation Agent uses semantic chunking + vector search to provide relevant context to theme agents.
+**Problem:** Search results returned stale content (2012-2022) instead of fresh content.
 
-### 6. Time-Based Search Filtering (Dec 9, 2025)
-
-**Problem**: Search results were returning stale content (articles from 2012-2022) instead of fresh content within the requested time window (6h/24h).
-
-**Root Cause Analysis**:
-1. LangSearch API's `freshness` parameter only supports coarse granularity (oneDay/oneWeek)
-2. Many web results lack `datePublished` metadata, making client-side filtering ineffective
-3. Search engines prioritize relevance over recency by default
-
-**Solution**: Multi-layer freshness filtering:
+**Solution:** **RetrievalAgent** implements multi-layer freshness filtering:
 
 | Layer | Implementation | Example |
 |-------|----------------|---------|
-| Query-Level | `after:YYYY-MM-DD` suffix | `("Baguio hospital") after:2025-12-09` |
-| API-Level | `freshness` parameter | `oneDay` for 6h/24h requests |
+| Query-Level | `after:YYYY-MM-DD` suffix | `after:2025-12-12` |
+| API-Level | `freshness` parameter | `oneDay` for 6h/24h |
 | Client-Side | `published_at` filtering | Filter docs older than cutoff |
 
-**Time Window Mapping**:
-```python
-time_window → search_suffix
-"6h"  → f" after:{today}"      # e.g., after:2025-12-09
-"24h" → f" after:{yesterday}"  # e.g., after:2025-12-08
-"3d"  → f" after:{3_days_ago}" # e.g., after:2025-12-06
-"7d"  → f" after:{7_days_ago}" # e.g., after:2025-12-02
-```
+### 6. Comparative Architecture Analysis (Control vs Novel)
 
-**Files Modified**:
-- `query_orchestrator.py` - Time suffix in ReAct-generated queries
-- `agent_tools.py` - Time suffix in direct queries + `_get_time_search_suffix()` helper
-- `langsearch.py` - API freshness parameter mapping
+| Feature | Chat Agent (Control - 1 Agent) | Sentiment Generator (Novel - 12 Agents) |
+|---------|-------------------------------|----------------------------------------|
+| Architecture | Agentic RAG (ReAct) | 7-Node Multi-Agent Graph |
+| Agent Count | 1 | **12** (6 core + 6 theme) |
+| Execution | Serial | Parallelized (3 agents + 6 theme agents) |
+| Data Scope | Atomic (~5 results) | Holistic (50+ documents) |
+| Output | Unstructured Text | Structured Intelligence |
+| Memory | None | Persistent (Qdrant) |
 
-## Latest Evidence (Dec 11, 2025)
-- **Chat Analyzer System**: New conversational interface (`/chat/analyze`) with streaming SSE progress through 6-agent pipeline
-- **Intent-Based Routing**: `detect_intent()` routes to `analyze` (full pipeline), `simple` (quick Q&A), or `followup` (cached RAG)
-- **Real-Time Progress Streaming**: Frontend displays 6-stage progress via `progress_callback` mechanism
-- **Facebook Page Integration**: LangSearch queries enriched with `site:facebook.com/BaguioCityPIO` etc.
-- **Enhanced Narrative Generation**: Gemini processes 50 docs (was 5-15), generates 3-5 sentences (was 2), up to 5 insights (was 3)
-- **Increased Context Limits**: RAG uses top 50 chunks per theme (was 25), insight details 500 chars (was 240)
-
-## Previous Evidence (Dec 9, 2025)
-- **Time-Based Search Operators**: Implemented multi-layer freshness filtering to prioritize recent content:
-  - **Query-Level**: Google-style `after:YYYY-MM-DD` operators appended to search queries
-  - **API-Level**: LangSearch `freshness` parameter (oneDay/oneWeek)
-  - **Client-Side**: Post-retrieval filtering by `published_at` timestamp
-- **Time Window Mapping**: 6h → today's date, 24h → yesterday, 3d/7d → calculated cutoff dates
-- **Files Updated**: `query_orchestrator.py` (ReAct queries), `agent_tools.py` (direct queries), `langsearch.py` (API hints)
-
-## Previous Evidence (Dec 4, 2025)
-- **Narrative Generation Optimization**: Switched `GeminiClient` from `gemini-2.5-pro` to `gemini-2.0-flash-exp` for ~5x faster response times while maintaining output quality.
-- **Agent Tools Consolidation**: Centralized tool definitions in `agent_tools.py`, eliminating code duplication from redundant `tools.py`.
-- **Baguio-Specific Search Enhancement**: Added local keywords (BGH, Kennon Road, Session Road, Burnham Park, etc.) to `context_agent.py` for improved local search relevance.
-- **Robust Query Parsing**: `query_orchestrator.py` now handles flexible LLM output formats (string/object queries, fallback field names like `query_string`, `search_query`).
-
-## Previous Evidence (Nov 29, 2025)
-- **Full Ensemble Sentiment Agent**: Both RoBERTa and Gemini analyze ALL documents with weighted voting (40%/60%). Provides rich metadata including both predictions, confidence scores, and model agreement status.
-- Added per-agent latency logging for thesis benchmarking.
-- `analyze_enriched` dispatches CredibilityAgent and ThemeRouterAgent concurrently.
-- Retrieval concurrency tightened with LangSearch + Facebook futures together.
-- LangSearch includes rate-limit resilience with retries and exponential backoff.
-- Theme routing uses six refined categories, 25 docs per theme analysis.
-
-## Gaps & Next Steps
-- ✅ ~~Integrate AI-based sentiment model~~ (Completed: Ensemble RoBERTa + Gemini)
-- ✅ ~~Document end-to-end agent flow in architecture diagram~~ (Completed: `ARCHITECTURE.md` + `CHAT_ARCHITECTURE.md`)
-- ✅ ~~Add conversational interface for analysis~~ (Completed: Chat Analyzer with streaming SSE)
-- Tune ensemble weights based on validation set performance
-- Integrate fine-tuned credibility models to replace heuristic scoring
-- Add the planned RAG Solutions agent backed by Qdrant
-- Switch Qdrant from in-memory to persistent storage for production
-- Export per-agent telemetry to dashboards for thesis evaluation
-- Add Reddit integration (code exists but not wired)
-
-## Architecture Flow
-```
-SnapshotRequest
-       ↓
-orchestrate_queries (QueryOrchestratorAgent)
-       ↓
-fetch_documents (RetrievalAgent → LangSearch + Facebook → Rerank)
-       ↓
-label_sentiment (EnsembleSentimentAgent)
-       ├── RoBERTa (all docs) → probabilities
-       ├── Gemini (all docs) → probabilities
-       └── Weighted Voting → final labels
-       ↓
-analyze_enriched (CredibilityAgent ∥ ThemeRouterAgent) ← parallel
-       ↓
-augment_context (ContextAugmentationAgent → Chunker → Embed → Qdrant)
-       ↓
-theme_agents (6x Gemini calls in parallel)
-       ↓
-build_snapshot (GeminiClient narrative + assembly)
-       ↓
-SnapshotResponse
-```
-
-## 7. Comparative Architecture Analysis (Control vs. Novelty)
-
-To scientifically validate the efficacy of the Hinaing system, we implemented a **Baseline Control Agent** to serve as a comparator.
-
-| Feature | **Chat Agent (Control / Baseline)** | **Sentiment Generator (Hinaing Novelty)** |
-| :--- | :--- | :--- |
-| **Architecture** | **Agentic RAG** (Standard ReAct) | **Hierarchical Multi-Agent Graph** |
-| **Execution** | **Serial** (Step-by-step generic search) | **Parallelized** (6 simultaneous domain analysts) |
-| **Data Scope** | **Atomic** (~5 search results per query) | **Holistic** (Batch processing of 50+ documents) |
-| **Output Type** | **Unstructured Text** (Conversational) | **Structured Intelligence** (Quantitative Metrics, Charts) |
-
-**Finding:** The Baseline Chat Agent effectively answers *single questions* ("What is the traffic like?"), but fails to provide *strategic situational awareness*. The **Sentiment Generator** successfully identifies, quantifies, and visualizes emerging risks without user prompting, demonstrating the superior utility of the Multi-Agent architecture for civic monitoring.
+**Finding:** The single-agent Chat Agent answers single questions but fails to provide strategic situational awareness. The 12-agent Sentiment Generator identifies, quantifies, and visualizes emerging risks without user prompting.
 
 ## Novel Contributions
 
-1.  **Orchestrated Parallelism**: Implementation of a **Graph-Based Multi-Agent System** that decomposes civic analysis into concurrent domain tasks (Health, Traffic, Safety), achieving 6x the analytical breadth of standard agents.
+1. **7-Node Multi-Agent Self-Learning Architecture (12 Agents)**
+   - Cyclic graph with 6 core agents + 6 theme agents
+   - **ContextAugmentationAgent** handles both recall (Node 3) and consolidation (Node 5)
+   - Verified self-reference loop
 
-2.  **Hybrid Sentiment Ensemble**: A weighted voting mechanism combining **RoBERTa** (fast, social-native) and **Gemini** (context-aware), achieving higher accuracy on Philippine English/Taglish than either model alone.
+2. **QueryOrchestratorAgent with Multi-Query Diversity**
+   - ReAct reasoning with 3 custom tools
+   - KEYWORD_CLUSTERS for topic coverage
+   - 6 diverse queries per request
 
-3.  **Dual-Mode Architecture**: The successful integration of a **Reactive Chat Interface** (for drill-down) and a **Proactive Dashboard** (for discovery) in a single unified platform.
+3. **SentimentAgent with Hybrid Ensemble**
+   - RoBERTa (social-native) + Gemini (context-aware)
+   - Weighted voting with confidence scores
+   - Model agreement tracking
 
-4.  **Domain-Specific Grounding**: Application of Agentic AI specifically for **Baguio City**, demonstrating how generic LLMs can be constrained to hyper-local contexts through RAG and prompt engineering.
+4. **CredibilityAgent with 5-Signal Framework**
+   - Domain + Cross-Ref + Fact-Check + LLM + Tavily
+   - Misinformation pattern detection
+   - Verified source tracking
 
-5.  **Multi-Signal Credibility Framework**: Implementation of a **5-Layer Verification System** that triangulates credibility using Domain Reputation, internal Semantic Cross-Referencing (MiniLM), Google Fact Check API, LLM Pattern Recognition, and Live Web Verification (Tavily).
+5. **6 Parallel Theme Agents**
+   - InfrastructureAgent, HealthAgent, SafetyAgent
+   - TourismAgent, EconomyAgent, EnvironmentAgent
+   - ThreadPoolExecutor for parallel execution
 
-Keeping this doc updated will make it easier to demonstrate thesis impact during defenses and publications.
+## Architecture Flow (12 Agents)
 
-## 8. Emergent Behaviors (Self-Learning Verification)
+```
+SnapshotRequest
+       |
+       v
+Node 1: QueryOrchestratorAgent (ReAct)
+       |-- Tools: analyze_focus_areas, generate_query, evaluate_query
+       |-- Generate 6 diverse queries via KEYWORD_CLUSTERS
+       v
+Node 2: RetrievalAgent
+       |-- LangSearch Web API
+       |-- Facebook Ingestion (Apify)
+       |-- Reddit r/baguio, r/Philippines (PRAW)
+       |-- Diversity merge (round-robin)
+       v
+Node 3: ContextAugmentationAgent.retrieve_knowledge()
+       |-- Qdrant vector search per focus area
+       |-- Merge external + internal (deduplicate)
+       v
+Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
+       |-- SentimentAgent: RoBERTa 40% + Gemini 60%
+       |-- CredibilityAgent: 5-signal ensemble
+       |-- ThemeRouterAgent: Route to 6 theme buckets
+       v
+Node 5: ContextAugmentationAgent.consolidate_memory()
+       |-- Chunk enriched documents (SemanticChunker)
+       |-- Embed with MiniLM-L6-v2
+       |-- Store in Qdrant for future recall
+       v
+Node 6: 6 Theme Agents in PARALLEL
+       |-- InfrastructureAgent
+       |-- HealthAgent
+       |-- SafetyAgent
+       |-- TourismAgent
+       |-- EconomyAgent
+       |-- EnvironmentAgent
+       v
+Node 7: CoordinatorAgent (GeminiClient)
+       |-- Narrative generation (Gemini 2.5 Pro)
+       |-- Assemble SnapshotResponse
+       v
+SnapshotResponse
+```
 
-### 8.1. The Self-Reference Loop
-**Hypothesis:** The system can improve its analysis by referencing its own past memories (Circular Knowledge).
-**Verified Outcome:** **CONFIRMED** (Dec 11, 2025).
-- **Run 1 (Cold Start):**
-  - External Retrieval: 47 docs.
-  - Internal Recall: 0 docs.
-  - *Result:* System builds initial knowledge base.
-- **Run 2 (Safety Query - 2 mins later):**
-  - External Retrieval: 49 docs.
-  - **Internal Recall: 20 relevant docs** (Score > 0.25).
-  - *Result:* The analysis phase (`Unified Analysis`) successfully merged fresh news with historical context. The system "remembered" previous safety concerns without needing to re-fetch them from the web.
-- **Significance:** This proves the **7-Node Architecture** functions as a true learning engine. It is no longer just a "monitor" but a "growing knowledge base."
+## Agent LLM Configuration
 
-## 9. Defense Readiness Checklist
-- ✅ **Architecture:** Defensible (7-Node Cyclic Graph).
-- ✅ **Data Persistence:** Defensible (Qdrant on Disk).
-- ✅ **Accuracy:** Defensible (Multi-Agent Consensus).
-- ✅ **UI:** Premium/Responsive.
+| Agent | Model | Reason |
+|-------|-------|--------|
+| QueryOrchestratorAgent | gemini-2.5-flash | Fast ReAct reasoning |
+| SentimentAgent (LLM part) | gemini-2.5-pro | Context-aware, 60% weight |
+| CredibilityAgent | gemini-2.5-flash | Fast pattern detection |
+| 6 Theme Agents | gemini-2.5-flash | Fast insight generation |
+| CoordinatorAgent | gemini-2.5-pro | Comprehensive narrative |
+| Chat Agent (Control) | gemini-2.0-flash-exp | Fast Q&A |
 
-## 10. Immediate Next Steps
-1. **Defense Prep:** Create slide for "Node 3 vs Node 5" (Recall vs Ingest).
-2. **Stress Test:** Run with 100+ documents to test vector search latency.
+## Gaps and Next Steps
+
+### Completed
+- [x] 7-Node Multi-Agent Architecture (12 agents)
+- [x] QueryOrchestratorAgent with Multi-Query Diversity
+- [x] SentimentAgent with Ensemble (RoBERTa + Gemini)
+- [x] CredibilityAgent with 5-Signal Framework
+- [x] ContextAugmentationAgent with RAG Memory
+- [x] 6 Theme Agents with parallel execution
+- [x] RetrievalAgent with Reddit Integration
+- [x] Chat Analyzer with streaming SSE
+
+### In Progress
+- [ ] Ensemble weight tuning with validation set
+- [ ] Credibility framework validation
+- [ ] Performance optimization
+
+### Future
+- [ ] RAG Solutions Agent for recommendations
+- [ ] Human-in-the-loop review portal
+- [ ] Twitter/X integration
+- [ ] Scheduled analysis with trend detection
+
+## Defense Readiness
+
+| Aspect | Status | Evidence |
+|--------|--------|----------|
+| Multi-Agent Architecture | Defensible | 12 Agents in 7-Node Graph |
+| Agent Specialization | Defensible | Each agent has distinct role |
+| Data Persistence | Defensible | Qdrant on Disk |
+| Accuracy | Defensible | Multi-Agent Consensus |
+| Self-Learning | Verified | ContextAugmentationAgent Memory Loop |
+| UI | Premium | Streaming Progress |

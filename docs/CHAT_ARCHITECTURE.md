@@ -2,27 +2,42 @@
 
 ## Overview
 
-Hinaing provides two distinct chat interfaces with different architectural patterns:
+Hinaing provides two distinct chat interfaces with different agent architectures:
 
-| Feature | Chat Analyzer | AI Assistant |
-|---------|---------------|--------------|
+| Feature | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+|---------|---------------------------|------------------------|
 | **Purpose** | Deep sentiment analysis | Quick Q&A |
 | **Endpoint** | `POST /chat/analyze` | `POST /chat/` |
 | **Response** | Streaming (SSE) | Sync JSON |
-| **Pipeline** | 12-agent system (6 core + 6 theme) | Single LLM + tool call |
+| **Agent Count** | **12** (6 core + 6 theme) | **1** (ChatAgent) |
+| **Pipeline** | 7-node multi-agent | Single LLM + tool call |
 | **Latency** | 15-30 seconds | 2-5 seconds |
+| **Memory** | Persistent (Qdrant) | None |
 
-> **Agent Count**: 6 core agents (Query Orchestrator, Retrieval, Sentiment, Credibility, Context, Theme Router) + 6 theme sub-agents = **12 total**. Three agents (Sentiment, Credibility, Theme Router) run in parallel for optimization.
+## Agent Summary
+
+### Chat Analyzer Agents (12 Total)
+
+| Category | Count | Agents |
+|----------|-------|--------|
+| **Core Pipeline** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
+
+### AI Assistant Agent (1 Total)
+
+| Agent | Function |
+|-------|----------|
+| **ChatAgent** | Single ReAct agent with LangSearch tool for quick Q&A |
 
 ---
 
-## Chat Analyzer System Flow (Mermaid)
+## Chat Analyzer System Flow (12 Agents)
 
 ```mermaid
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Chat Analyze Page]
-        Progress[Progress Indicator<br/>5 Stages]
+        Progress[Progress Indicator<br/>6 Stages]
         Results[Analysis Result Card]
         Sources[Supporting Conversations]
     end
@@ -35,52 +50,64 @@ flowchart TB
             ID --> |"followup"| Followup
         end
 
-        subgraph Pipeline["6-Agent Pipeline (Streaming)"]
-            subgraph Stage1["1. Query Orchestrator (10%)"]
-                QO[Query Orchestrator Agent]
-                QO --> |KEYWORD_CLUSTERS| QP[QueryPlan]
+        subgraph Pipeline["7-Node Multi-Agent Pipeline (12 Agents)"]
+            subgraph Node1["Node 1: QueryOrchestratorAgent (10%)"]
+                QO[QueryOrchestratorAgent]
+                QO --> |KEYWORD_CLUSTERS| QP[QueryPlan<br/>6 diverse queries]
             end
 
-            subgraph Stage2["2. Retrieval Agent (25%)"]
+            subgraph Node2["Node 2: RetrievalAgent (25%)"]
+                RA[RetrievalAgent]
                 LS[LangSearch + FB Pages]
                 RD[Reddit r/baguio]
-                LS & RD --> Docs[WebDocuments]
+                RA --> LS & RD
+                LS & RD --> Docs[External Documents]
             end
 
-            subgraph Stage3["3. Parallel Analysis (55%)"]
+            subgraph Node3["Node 3: ContextAugmentationAgent (35%)"]
+                CTX1[ContextAugmentationAgent]
+                VS[Qdrant Vector Search]
+                CTX1 --> VS
+                VS --> IntDocs[Internal Documents]
+                Docs --> Merge[Deduplicate & Merge]
+                IntDocs --> Merge
+            end
+
+            subgraph Node4["Node 4: 3 Agents in Parallel (55%)"]
                 direction TB
                 subgraph ParallelOps["asyncio.gather"]
-                    SA[Sentiment<br/>RoBERTa + Gemini]
-                    CA[Credibility<br/>domain + fact-check]
-                    TR[Theme Router<br/>6 buckets]
+                    SA[SentimentAgent<br/>RoBERTa + Gemini]
+                    CA[CredibilityAgent<br/>5-Signal Ensemble]
+                    TR[ThemeRouterAgent<br/>6 buckets]
                 end
                 SA & CA & TR --> ED[Enriched Docs]
             end
 
-            subgraph Stage4["4. Context Agent (75%)"]
+            subgraph Node5["Node 5: ContextAugmentationAgent (70%)"]
+                CTX2[ContextAugmentationAgent]
                 CH[Semantic Chunker]
                 EM[MiniLM-L6 Embeddings]
-                VS[Vector Search]
-                CH --> EM --> VS
+                VS2[Qdrant Store]
+                CTX2 --> CH --> EM --> VS2
             end
 
-            subgraph Stage5["5. Theme Agents (90%)"]
-                T1[Infrastructure]
-                T2[Health]
-                T3[Safety]
-                T4[Tourism]
-                T5[Economy]
-                T6[Environment]
+            subgraph Node6["Node 6: 6 Theme Agents in Parallel (90%)"]
+                T1[InfrastructureAgent]
+                T2[HealthAgent]
+                T3[SafetyAgent]
+                T4[TourismAgent]
+                T5[EconomyAgent]
+                T6[EnvironmentAgent]
             end
 
-            Stage1 --> Stage2 --> Stage3 --> Stage4 --> Stage5
+            Node1 --> Node2 --> Node3 --> Node4 --> Node5 --> Node6
         end
 
-        subgraph Simple["Simple Q&A Path"]
-            CA[Chat Agent]
+        subgraph Simple["Simple Q&A Path (1 Agent)"]
+            CA2[ChatAgent]
             LSS[LangSearch]
             GF[Gemini Flash]
-            CA --> LSS --> GF
+            CA2 --> LSS --> GF
         end
 
         subgraph Followup["Follow-up Path"]
@@ -89,8 +116,8 @@ flowchart TB
             Cache --> RAG
         end
 
-        subgraph Output["Response Builder"]
-            NR[Narrative Generator<br/>Gemini 2.5 Pro]
+        subgraph Output["Node 7: CoordinatorAgent"]
+            NR[CoordinatorAgent<br/>Gemini 2.5 Pro]
             SR[SnapshotResponse]
             NR --> SR
         end
@@ -103,31 +130,33 @@ flowchart TB
     Simple --> |JSON| Frontend
     Followup --> |JSON| Frontend
 
-    style Stage1 fill:#e1f5fe
-    style Stage2 fill:#fff3e0
-    style Stage3 fill:#f3e5f5
-    style Stage4 fill:#e8f5e9
-    style Stage5 fill:#fce4ec
-    style Stage6 fill:#fff8e1
+    style Node1 fill:#e1f5fe
+    style Node2 fill:#fff3e0
+    style Node3 fill:#e8f5e9
+    style Node4 fill:#f3e5f5
+    style Node5 fill:#fff8e1
+    style Node6 fill:#fce4ec
     style Simple fill:#e0f7fa
     style Followup fill:#f1f8e9
 ```
 
 ---
 
-## Chat Analyzer Sequence Diagram (Mermaid)
+## Chat Analyzer Sequence Diagram (12 Agents)
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as /chat/analyze
     participant ID as Intent Detector
-    participant QO as Query Orchestrator
-    participant RA as Retrieval Agent
-    participant ANALYZE as Parallel Analysis
-    participant CTX as Context Agent
-    participant TA as Theme Agents
-    participant GC as Gemini Narrative
+    participant QO as QueryOrchestratorAgent
+    participant RA as RetrievalAgent
+    participant CTX as ContextAugmentationAgent
+    participant SA as SentimentAgent
+    participant CA as CredibilityAgent
+    participant TR as ThemeRouterAgent
+    participant TA as 6 Theme Agents
+    participant CO as CoordinatorAgent
 
     Client->>API: POST {message, session_id, history}
     API->>ID: detect_intent(message, history)
@@ -137,49 +166,65 @@ sequenceDiagram
         
         API-->>Client: SSE: {stage: "start", progress: 0.0}
         
+        Note over QO: Node 1: QueryOrchestratorAgent
         API->>QO: parse_user_intent(message)
-        QO->>QO: Extract focus_areas
-        QO->>QO: Generate KEYWORD_CLUSTERS queries
+        QO->>QO: ReAct: analyze_focus_areas tool
+        QO->>QO: ReAct: generate_query tool (KEYWORD_CLUSTERS)
+        QO->>QO: ReAct: evaluate_query tool
         API-->>Client: SSE: {stage: "query_orchestrator", progress: 0.1}
         
+        Note over RA: Node 2: RetrievalAgent
         API->>RA: fetch_documents(QueryPlan)
-        par Parallel Retrieval
+        par Parallel External Retrieval
             RA->>RA: LangSearch + FB Pages
-            RA->>RA: Reddit Search
+            RA->>RA: Reddit Search (PRAW)
         end
         RA->>RA: Diversity Merge (round-robin)
         API-->>Client: SSE: {stage: "retrieval", progress: 0.25}
         
-        Note over ANALYZE: OPTIMIZED: Single node runs all 3 in parallel
-        API->>ANALYZE: label_sentiment_and_analyze(docs)
+        Note over CTX: Node 3: ContextAugmentationAgent.retrieve_knowledge()
+        API->>CTX: retrieve_internal_knowledge(focus_areas)
+        CTX->>CTX: Qdrant vector search per focus area
+        CTX-->>API: Internal + External (deduplicated)
+        API-->>Client: SSE: {stage: "recall", progress: 0.35}
+        
+        Note over SA,TR: Node 4: 3 Agents in Parallel (asyncio.gather)
+        API->>SA: analyze_sentiment(docs)
+        API->>CA: score_credibility(docs)
+        API->>TR: route_by_theme(docs)
         par asyncio.gather
-            ANALYZE->>ANALYZE: Sentiment (RoBERTa 40% + Gemini 60%)
-            ANALYZE->>ANALYZE: Credibility (domain + fact-check)
-            ANALYZE->>ANALYZE: Theme Routing (6 buckets)
+            SA->>SA: RoBERTa 40% + Gemini 60%
+            CA->>CA: 5-signal ensemble
+            TR->>TR: Route to 6 theme buckets
         end
         API-->>Client: SSE: {stage: "analyze", progress: 0.55}
         
-        API->>CTX: augment_context(theme_docs)
-        CTX->>CTX: Chunk → Embed → Vector Search
-        API-->>Client: SSE: {stage: "context", progress: 0.75}
+        Note over CTX: Node 5: ContextAugmentationAgent.consolidate_memory()
+        API->>CTX: consolidate_memory(enriched_docs)
+        CTX->>CTX: Chunk -> Embed -> Store in Qdrant
+        API-->>Client: SSE: {stage: "memory", progress: 0.70}
         
-        API->>TA: theme_agents(augmented)
-        par 6 Parallel Agents
-            TA->>TA: Infrastructure
-            TA->>TA: Health & Safety
-            TA->>TA: Tourism & Economy
-            TA->>TA: Environment
+        Note over TA: Node 6: 6 Theme Agents in Parallel (ThreadPoolExecutor)
+        API->>TA: generate_insights(theme_docs)
+        par 6 Parallel Theme Agents
+            TA->>TA: InfrastructureAgent
+            TA->>TA: HealthAgent
+            TA->>TA: SafetyAgent
+            TA->>TA: TourismAgent
+            TA->>TA: EconomyAgent
+            TA->>TA: EnvironmentAgent
         end
         API-->>Client: SSE: {stage: "themes", progress: 0.9}
         
-        API->>GC: build_snapshot()
-        GC->>GC: Narrative (Gemini 2.5 Pro)
-        GC->>GC: Insights (up to 5)
+        Note over CO: Node 7: CoordinatorAgent
+        API->>CO: build_snapshot()
+        CO->>CO: Narrative generation (Gemini 2.5 Pro)
         
         API-->>Client: SSE: {type: "result", data: AnalysisData}
         
     else Intent = "simple"
         ID-->>API: "simple"
+        Note over API: Single ChatAgent
         API->>API: run_chat_agent(message)
         API-->>Client: JSON: {message, sources}
         
@@ -192,7 +237,7 @@ sequenceDiagram
 
 ---
 
-## AI Assistant Architecture (Mermaid)
+## AI Assistant Architecture (1 Agent)
 
 ```mermaid
 flowchart TB
@@ -203,10 +248,11 @@ flowchart TB
     end
 
     subgraph Backend["Backend (FastAPI)"]
-        subgraph ChatAgent["Chat Agent"]
+        subgraph SingleAgent["ChatAgent (1 Agent)"]
+            CA[ChatAgent]
             GF[Gemini 2.0 Flash]
             FC[Function Calling]
-            GF --> FC
+            CA --> GF --> FC
         end
 
         subgraph Tools["Available Tools"]
@@ -225,43 +271,29 @@ flowchart TB
         FC --> |final_response| Response[JSON Response]
     end
 
-    Request[User Message + History] --> ChatAgent
+    Request[User Message + History] --> SingleAgent
     Response --> Frontend
 
-    style ChatAgent fill:#e1f5fe
+    style SingleAgent fill:#e1f5fe
     style Search fill:#fff3e0
 ```
 
 ---
 
-## AI Assistant Sequence Diagram (Mermaid)
+## Agent Comparison: Chat Analyzer vs AI Assistant
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as /chat/
-    participant Agent as Gemini Flash Agent
-    participant Tool as search_civic_data
-    participant LS as LangSearch
-
-    Client->>API: POST {message, history, jurisdiction}
-    API->>Agent: start_chat(history)
-    Agent->>Agent: Analyze message
-    
-    alt Needs Search
-        Agent->>Tool: function_call(query)
-        Tool->>LS: search(query + "Baguio City")
-        LS-->>Tool: List[WebDocument]
-        Tool->>Tool: Format results
-        Tool-->>Agent: Formatted context
-        Agent->>Agent: Generate response with context
-    else Direct Answer
-        Agent->>Agent: Generate response
-    end
-    
-    Agent-->>API: {response, sources}
-    API-->>Client: JSON {response, sources[]}
-```
+| Aspect | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+|--------|---------------------------|------------------------|
+| **QueryOrchestratorAgent** | ✅ ReAct with 3 tools | ❌ None |
+| **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ❌ LangSearch only (via tool) |
+| **ContextAugmentationAgent** | ✅ Memory recall + consolidation | ❌ None |
+| **SentimentAgent** | ✅ RoBERTa + Gemini ensemble | ❌ None |
+| **CredibilityAgent** | ✅ 5-signal framework | ❌ None |
+| **ThemeRouterAgent** | ✅ 6 theme buckets | ❌ None |
+| **6 Theme Agents** | ✅ Parallel Gemini | ❌ None |
+| **ChatAgent** | ❌ Not used | ✅ Single agent |
+| **Memory** | ✅ Qdrant persistent | ❌ None |
+| **Parallelization** | ✅ Nodes 4 + 6 | ❌ None |
 
 ---
 
@@ -271,14 +303,14 @@ sequenceDiagram
 flowchart TD
     MSG[User Message] --> KW{Contains analyze keywords?}
     
-    KW --> |Yes| ANALYZE[Intent: analyze]
+    KW --> |Yes| ANALYZE[Intent: analyze<br/>-> 12 Agents]
     KW --> |No| HIST{Has recent analysis<br/>in history?}
     
     HIST --> |Yes| FU{Contains followup keywords?}
     HIST --> |No| FOCUS{Contains focus area<br/>+ Baguio context?}
     
-    FU --> |Yes| FOLLOWUP[Intent: followup]
-    FU --> |No| SIMPLE[Intent: simple]
+    FU --> |Yes| FOLLOWUP[Intent: followup<br/>-> RAG on cache]
+    FU --> |No| SIMPLE[Intent: simple<br/>-> 1 Agent]
     
     FOCUS --> |Yes| ANALYZE
     FOCUS --> |No| SIMPLE
@@ -290,51 +322,15 @@ flowchart TD
 
 ### Intent Keywords
 
-| Intent | Keywords |
-|--------|----------|
-| **analyze** | "analyze", "sentiment", "public opinion", "how do citizens feel", "civic sentiment", "generate insight" |
-| **followup** | "tell me more", "explain", "why", "what about", "sources", "evidence", "based on the analysis" |
-| **simple** | Default (no analysis keywords detected) |
+| Intent | Keywords | Agent Path |
+|--------|----------|------------|
+| **analyze** | "analyze", "sentiment", "public opinion", "civic sentiment" | 12 Agents |
+| **followup** | "tell me more", "explain", "why", "sources" | RAG on cache |
+| **simple** | Default (no analysis keywords) | 1 Agent (ChatAgent) |
 
 ---
 
-## Data Sources Integration
-
-```mermaid
-flowchart LR
-    subgraph Sources["Data Sources"]
-        LS[LangSearch Web API]
-        FB[Facebook Pages]
-        RD[Reddit]
-    end
-
-    subgraph FBPages["Baguio Facebook Pages"]
-        PIO[BaguioCityPIO]
-        GOV[BaguioCityGovernment]
-        LAB[baboratoryph]
-    end
-
-    subgraph Subreddits["Target Subreddits"]
-        R1[r/baguio]
-        R2[r/Philippines]
-        R3[r/CasualPH]
-    end
-
-    LS --> |"query OR site:facebook.com/..."| FBPages
-    RD --> Subreddits
-
-    FBPages --> Docs[WebDocuments]
-    Subreddits --> Docs
-    LS --> Docs
-
-    style Sources fill:#e1f5fe
-    style FBPages fill:#e8f5e9
-    style Subreddits fill:#fff3e0
-```
-
----
-
-## Streaming Response Format
+## Streaming Response Format (12 Agents)
 
 ```mermaid
 sequenceDiagram
@@ -342,18 +338,26 @@ sequenceDiagram
     participant Server
 
     Server->>Client: {type: "progress", stage: "start", progress: 0.0}
+    Note right of Server: Starting 12-agent pipeline
     Server->>Client: {type: "progress", stage: "query_orchestrator", progress: 0.1}
+    Note right of Server: QueryOrchestratorAgent
     Server->>Client: {type: "progress", stage: "retrieval", progress: 0.25}
+    Note right of Server: RetrievalAgent
+    Server->>Client: {type: "progress", stage: "recall", progress: 0.35}
+    Note right of Server: ContextAugmentationAgent.retrieve_knowledge()
     Server->>Client: {type: "progress", stage: "analyze", progress: 0.55}
-    Note right of Server: Combined: sentiment + credibility + themes
-    Server->>Client: {type: "progress", stage: "context", progress: 0.75}
+    Note right of Server: SentimentAgent + CredibilityAgent + ThemeRouterAgent
+    Server->>Client: {type: "progress", stage: "memory", progress: 0.70}
+    Note right of Server: ContextAugmentationAgent.consolidate_memory()
     Server->>Client: {type: "progress", stage: "themes", progress: 0.9}
+    Note right of Server: 6 Theme Agents
     Server->>Client: {type: "result", stage: "complete", progress: 1.0, data: {...}}
+    Note right of Server: CoordinatorAgent
 ```
 
 ---
 
-## Component Architecture
+## Component Architecture (12 Agents)
 
 ```mermaid
 graph LR
@@ -361,6 +365,9 @@ graph LR
         LS[LangSearch API]
         GEMINI[Google Gemini API]
         APIFY[Apify/Facebook]
+        PRAW[Reddit/PRAW]
+        TAVILY[Tavily API]
+        GFACT[Google Fact Check]
     end
 
     subgraph Models["ML Models"]
@@ -368,89 +375,91 @@ graph LR
         MINILM[MiniLM-L6<br/>Embeddings]
     end
 
-    subgraph ChatAnalyze["Chat Analyzer"]
-        CA_ID[Intent Detector]
-        CA_QO[Query Orchestrator]
-        CA_RA[Retrieval Agent]
-        CA_SA[Sentiment Agent]
-        CA_CR[Credibility Agent]
-        CA_CTX[Context Agent]
-        CA_TA[Theme Agents]
-        CA_NR[Narrative Generator]
+    subgraph ChatAnalyze["Chat Analyzer (12 Agents)"]
+        CA_QO[QueryOrchestratorAgent]
+        CA_RA[RetrievalAgent]
+        CA_CTX[ContextAugmentationAgent]
+        CA_SA[SentimentAgent]
+        CA_CR[CredibilityAgent]
+        CA_TR[ThemeRouterAgent]
+        CA_T1[InfrastructureAgent]
+        CA_T2[HealthAgent]
+        CA_T3[SafetyAgent]
+        CA_T4[TourismAgent]
+        CA_T5[EconomyAgent]
+        CA_T6[EnvironmentAgent]
+        CA_CO[CoordinatorAgent]
     end
 
-    subgraph AIAssistant["AI Assistant"]
-        AA_AG[Chat Agent]
-        AA_FC[Function Calling]
+    subgraph AIAssistant["AI Assistant (1 Agent)"]
+        AA_AG[ChatAgent]
     end
 
-    LS --> CA_RA & AA_FC
+    LS --> CA_RA & AA_AG
     APIFY --> CA_RA
-    GEMINI --> CA_QO & CA_SA & CA_TA & CA_NR & AA_AG
+    PRAW --> CA_RA
+    GEMINI --> CA_QO & CA_SA & CA_CR & CA_T1 & CA_T2 & CA_T3 & CA_T4 & CA_T5 & CA_T6 & CA_CO & AA_AG
+    TAVILY --> CA_CR
+    GFACT --> CA_CR
     ROBERTA --> CA_SA
     MINILM --> CA_CTX
 
-    CA_ID --> CA_QO --> CA_RA --> CA_SA
-    CA_SA --> CA_CR
-    CA_SA --> CA_CTX
-    CA_CR --> CA_CTX
-    CA_CTX --> CA_TA --> CA_NR
-    Note right of CA_SA: Parallel: SA + CR + Theme Routing
+    CA_QO --> CA_RA --> CA_CTX
+    CA_CTX --> CA_SA & CA_CR & CA_TR
+    CA_SA & CA_CR & CA_TR --> CA_CTX
+    CA_CTX --> CA_T1 & CA_T2 & CA_T3 & CA_T4 & CA_T5 & CA_T6
+    CA_T1 & CA_T2 & CA_T3 & CA_T4 & CA_T5 & CA_T6 --> CA_CO
 ```
 
 ---
 
-## File Structure
+## Agent File Structure
 
 ```
 backend/
 ├── app/
 │   ├── routers/
-│   │   ├── chat_analyze.py      # /chat/analyze - Streaming SSE
-│   │   └── chat.py              # /chat/ - Sync JSON
+│   │   ├── chat_analyze.py      # /chat/analyze - 12 Agents (Streaming SSE)
+│   │   └── chat.py              # /chat/ - 1 Agent (Sync JSON)
 │   ├── services/
 │   │   ├── agents/
-│   │   │   ├── chat_agent.py    # AI Assistant (Gemini + tools)
-│   │   │   ├── query_orchestrator.py
-│   │   │   ├── sentiment_agent.py
-│   │   │   ├── credibility_agent.py
-│   │   │   ├── context_agent.py
-│   │   │   ├── theme_agent.py
-│   │   │   └── gemini.py        # ReAct agent
+│   │   │   ├── chat_agent.py           # ChatAgent (AI Assistant)
+│   │   │   ├── query_orchestrator.py   # QueryOrchestratorAgent
+│   │   │   ├── sentiment_agent.py      # SentimentAgent
+│   │   │   ├── credibility_agent.py    # CredibilityAgent
+│   │   │   ├── context_agent.py        # ContextAugmentationAgent
+│   │   │   ├── theme_agent.py          # 6 Theme Agents
+│   │   │   └── gemini.py               # ReAct agent utilities
 │   │   ├── insights/
-│   │   │   ├── graph.py         # LangGraph workflow
-│   │   │   ├── agents.py        # Agent orchestrators
+│   │   │   ├── graph.py         # 7-Node LangGraph workflow
+│   │   │   ├── agents.py        # RetrievalAgent, ThemeRouterAgent
 │   │   │   └── agent_tools.py   # Tool implementations
-│   │   ├── nlp/
-│   │   │   └── gemini.py        # Gemini client
+│   │   ├── rag/
+│   │   │   ├── chunker.py       # Semantic chunking
+│   │   │   ├── embeddings.py    # MiniLM service
+│   │   │   └── vector_store.py  # Qdrant client
+│   │   ├── ingestion/
+│   │   │   ├── reddit.py        # PRAW integration
+│   │   │   └── facebook.py      # Apify integration
 │   │   └── langsearch.py        # Web search + FB enrichment
-
-frontend/
-├── src/features/chat/
-│   ├── chat-analyze-page.tsx    # Chat Analyzer UI
-│   │   ├── ProgressIndicator    # 5-stage progress (optimized)
-│   │   ├── AnalysisResultCard   # Rich results display
-│   │   └── WelcomeScreen        # Suggestions
-│   └── chat-page.tsx            # AI Assistant UI
-│       ├── MessageBubble        # With source badges
-│       └── WelcomeScreen        # Quick prompts
 ```
 
 ---
 
 ## Performance Comparison
 
-| Metric | Chat Analyzer | AI Assistant |
-|--------|---------------|--------------|
-| Avg Latency | 15-30s (optimized) | 2-5s |
-| Documents Processed | Up to 50 | Up to 5 |
-| LLM Calls | 6-10 | 1-2 |
+| Metric | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+|--------|---------------------------|------------------------|
+| Agent Count | **12** | **1** |
+| Avg Latency | 15-30s | 2-5s |
+| Documents Processed | Up to 100 | Up to 5 |
+| LLM Calls | 8-12 | 1-2 |
 | Streaming | Yes (SSE) | No |
-| Session Cache | Yes | No |
-| Sentiment Scoring | Yes (per-doc) | No |
+| Memory | Persistent (Qdrant) | None |
+| Sentiment Scoring | Yes (ensemble) | No |
 | Credibility Scoring | Yes (5-signal) | No |
 | Structured Output | Yes | Text + Sources |
-| Parallelization | Sentiment+Credibility+Themes | None |
+| Parallelization | Nodes 4 + 6 | None |
 
 ---
 
@@ -465,12 +474,12 @@ flowchart LR
         S4[timestamp]
     end
 
-    Analyze[Analyze Request] --> |"Cache result"| Session
+    Analyze[Analyze Request<br/>12 Agents] --> |"Cache result"| Session
     Followup[Follow-up Request] --> |"Read cache"| Session
     Session --> |"RAG query"| Response[Contextual Answer]
 ```
 
 Chat Analyzer maintains in-memory session cache:
 - Stores analysis results by `session_id`
-- Enables follow-up questions without re-running pipeline
+- Enables follow-up questions without re-running 12-agent pipeline
 - Uses Gemini RAG on cached `SnapshotResponse`
