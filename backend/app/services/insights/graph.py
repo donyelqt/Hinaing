@@ -62,6 +62,12 @@ if settings.langsmith_api_key:
         os.environ.setdefault("LANGCHAIN_PROJECT", settings.langsmith_project)
 
 
+_node4_max_concurrency = max(1, int(os.getenv("NODE4_MAX_CONCURRENCY", "1")))
+_node4_semaphore = asyncio.Semaphore(_node4_max_concurrency)
+_node4_ml_max_concurrency = max(1, int(os.getenv("NODE4_ML_MAX_CONCURRENCY", "1")))
+_node4_ml_semaphore = asyncio.Semaphore(_node4_ml_max_concurrency)
+
+
 class SnapshotState(TypedDict, total=False):
     request: SnapshotRequest
     documents: list[WebDocument]  # Combined External + Internal
@@ -268,19 +274,28 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     # 1. Sentiment analysis (sync, wrapped in thread)
     # 2. Credibility scoring (async)
     # 3. Theme routing (sync, wrapped in thread)
-    
+
     async def run_sentiment():
-        return await asyncio.to_thread(sentiment_agent.run, docs)
-    
-    sentiment_task = run_sentiment()
-    credibility_task = credibility_agent_node.run(docs)
-    theme_task = asyncio.to_thread(theme_router_agent.run, docs, request)
-    
-    # Wait for all three to complete
-    sentiment_docs, credibility_docs, theme_docs = await asyncio.gather(
-        sentiment_task, credibility_task, theme_task
-    )
-    
+        async with _node4_ml_semaphore:
+            result = await asyncio.to_thread(sentiment_agent.run, docs)
+            gc.collect()
+            _log_memory_usage("node4_after_sentiment")
+            return result
+
+    async def run_credibility():
+        async with _node4_ml_semaphore:
+            result = await credibility_agent_node.run(docs)
+            gc.collect()
+            _log_memory_usage("node4_after_credibility")
+            return result
+
+    async with _node4_semaphore:
+        sentiment_docs, credibility_docs, theme_docs = await asyncio.gather(
+            run_sentiment(),
+            run_credibility(),
+            asyncio.to_thread(theme_router_agent.run, docs, request),
+        )
+
     # MEMORY OPTIMIZATION: Force garbage collection after heavy processing
     gc.collect()
     _log_memory_usage("node4_after_analysis")

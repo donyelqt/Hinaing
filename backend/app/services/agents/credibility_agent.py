@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
@@ -891,12 +892,16 @@ class EnhancedCredibilityAgent:
             for d in documents
         ]
         logger.info(f"[credibility_agent] Computing semantic embeddings for {n} documents")
-        embeddings = embedding_service.embed_batch(doc_texts, batch_size=16)
+        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "16")))
+        embeddings = embedding_service.embed_batch(doc_texts, batch_size=embed_batch_size)
         
         # ─── Signal 2: Semantic Cross-Reference (using embeddings) ───
         cross_ref_scores, corroborator_counts = compute_semantic_cross_reference_scores(
             documents, embeddings, domains, similarity_threshold=0.70
         )
+
+        del embeddings
+        del doc_texts
         
         # ─── Signal 3: Fact Check API (async) ───
         fact_results = await self._batch_fact_check(documents)

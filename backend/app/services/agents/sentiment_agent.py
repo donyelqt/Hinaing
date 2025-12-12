@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
@@ -92,34 +93,51 @@ class RoBERTaSentimentModel:
             if not clean:
                 clean = "neutral content"
             sanitized.append(clean[:512])
-        
-        try:
-            inputs = self.tokenizer(
-                sanitized,
-                return_tensors="pt",
-                truncation=True,
-                max_length=512,
-                padding=True,
-            )
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            
-            results = []
-            for prob in probs:
-                results.append({
-                    "negative": prob[0].item(),
-                    "neutral": prob[1].item(),
-                    "positive": prob[2].item(),
-                })
-            
-            return results
-            
-        except Exception as e:
-            logger.warning(f"RoBERTa batch failed: {e}")
-            # Return neutral for all on failure
-            return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(texts)
+
+        batch_size = max(1, int(os.getenv("ROBERTA_BATCH_SIZE", "16")))
+
+        results: list[dict[str, float]] = []
+        default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
+
+        for start in range(0, len(sanitized), batch_size):
+            batch = sanitized[start:start + batch_size]
+            try:
+                inputs = self.tokenizer(
+                    batch,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=512,
+                    padding=True,
+                )
+
+                with torch.inference_mode():
+                    outputs = self.model(**inputs)
+                    probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+
+                for prob in probs:
+                    results.append({
+                        "negative": prob[0].item(),
+                        "neutral": prob[1].item(),
+                        "positive": prob[2].item(),
+                    })
+            except Exception as e:
+                logger.warning(f"RoBERTa batch failed: {e}")
+                results.extend([default_probs.copy() for _ in range(len(batch))])
+            finally:
+                try:
+                    del inputs
+                except Exception:
+                    pass
+                try:
+                    del outputs
+                except Exception:
+                    pass
+                try:
+                    del probs
+                except Exception:
+                    pass
+
+        return results
 
 
 @lru_cache(maxsize=1)
