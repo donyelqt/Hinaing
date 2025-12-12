@@ -71,19 +71,39 @@ class RoBERTaSentimentModel:
     def __init__(self):
         logger.info(f"Loading sentiment model: {self.MODEL_NAME}")
         
-        self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
-        self.model.eval()
+        self.tokenizer = None
+        self.model = None
+        self._fallback_mode = False
+        
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)
+            self.model.eval()
+            logger.info("RoBERTa sentiment model loaded")
+        except Exception as e:
+            logger.warning(f"Failed to load RoBERTa model: {e}")
+            logger.warning("Running in FALLBACK MODE - using Gemini-only sentiment analysis")
+            self._fallback_mode = True
         
         # Model outputs: 0=negative, 1=neutral, 2=positive
         self.label_map = {0: "negative", 1: "neutral", 2: "positive"}
-        
-        logger.info("RoBERTa sentiment model loaded")
+    
+    @property
+    def is_fallback_mode(self) -> bool:
+        """Check if running in fallback mode."""
+        return self._fallback_mode
     
     def predict_batch_with_probs(self, texts: list[str]) -> list[dict[str, float]]:
         """Get probability distributions for batch of texts."""
         if not texts:
             return []
+        
+        default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
+        
+        # If in fallback mode, return neutral defaults (Gemini will handle sentiment)
+        if self._fallback_mode:
+            logger.debug(f"RoBERTa fallback: returning defaults for {len(texts)} texts")
+            return [default_probs.copy() for _ in texts]
         
         # Sanitize and validate texts
         sanitized = []
@@ -97,7 +117,6 @@ class RoBERTaSentimentModel:
         batch_size = max(1, int(os.getenv("ROBERTA_BATCH_SIZE", "16")))
 
         results: list[dict[str, float]] = []
-        default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
 
         for start in range(0, len(sanitized), batch_size):
             batch = sanitized[start:start + batch_size]
@@ -140,10 +159,15 @@ class RoBERTaSentimentModel:
         return results
 
 
-@lru_cache(maxsize=1)
+_sentiment_model_instance: RoBERTaSentimentModel | None = None
+
+
 def get_sentiment_model() -> RoBERTaSentimentModel:
     """Get singleton sentiment model instance."""
-    return RoBERTaSentimentModel()
+    global _sentiment_model_instance
+    if _sentiment_model_instance is None:
+        _sentiment_model_instance = RoBERTaSentimentModel()
+    return _sentiment_model_instance
 
 
 class EnsembleSentimentAgent:
@@ -402,7 +426,7 @@ Return JSON array with sentiment AND confidence for each:
                     prompt,
                     generation_config=genai.GenerationConfig(
                         temperature=0.1,
-                        max_output_tokens=2048,  # Reduced for faster response
+                        max_output_tokens=8192,  # Reduced for faster response
                     ),
                     safety_settings=SAFETY_SETTINGS,
                     request_options={"timeout": 25},  # 25 second timeout per batch

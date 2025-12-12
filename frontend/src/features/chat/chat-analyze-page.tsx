@@ -619,12 +619,12 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         setInput("");
         setIsLoading(true);
 
-        // Add initial streaming message
+        // Add initial streaming message with thinking animation
         setMessages((prev) => [...prev, {
             role: "model",
-            content: "🔄 Starting multi-agent analysis...",
+            content: "💭 Thinking...",
             isStreaming: true,
-            streamProgress: 0,
+            streamProgress: 0.1,
             streamStage: "start"
         }]);
 
@@ -660,6 +660,41 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 if (startData.session_id) {
                     setSessionId(startData.session_id);
                 }
+                
+                // Show animated progress for Q&A mode
+                // Step 1: Searching (300ms)
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIdx = updated.length - 1;
+                    if (updated[lastIdx]?.isStreaming) {
+                        updated[lastIdx] = {
+                            ...updated[lastIdx],
+                            content: "🔍 Searching for relevant information...",
+                            streamProgress: 0.4,
+                            streamStage: "retrieval"
+                        };
+                    }
+                    return updated;
+                });
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Step 2: Generating (300ms)
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIdx = updated.length - 1;
+                    if (updated[lastIdx]?.isStreaming) {
+                        updated[lastIdx] = {
+                            ...updated[lastIdx],
+                            content: "✨ Generating response...",
+                            streamProgress: 0.8,
+                            streamStage: "themes"
+                        };
+                    }
+                    return updated;
+                });
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Step 3: Display final result
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
@@ -676,11 +711,26 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 return;
             }
 
-            // Step 2: Poll for progress (background task mode)
+            // Step 2: Poll for progress (background task mode - full analysis)
             const taskId = startData.task_id;
             if (startData.session_id) {
                 setSessionId(startData.session_id);
             }
+            
+            // Update message to show full analysis is starting
+            setMessages((prev) => {
+                const updated = [...prev];
+                const lastIdx = updated.length - 1;
+                if (updated[lastIdx]?.isStreaming) {
+                    updated[lastIdx] = {
+                        ...updated[lastIdx],
+                        content: "🔄 Starting multi-agent analysis...",
+                        streamProgress: 0.1,
+                        streamStage: "query_orchestrator"
+                    };
+                }
+                return updated;
+            });
 
             // Poll every 2 seconds until complete
             const POLL_INTERVAL = 2000;

@@ -254,7 +254,11 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
 async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     """Node 4: Unified Analysis (Sentiment + Credibility + Theme Routing).
     
-    Now processes BOTH External (Fresh) and Internal (Memory) documents together!
+    TRUE PARALLEL EXECUTION:
+    - Sentiment: Heavy (RoBERTa + Gemini) - uses ML semaphore
+    - Credibility: Light (Gemini API only) - no semaphore needed
+    - Theme Router: Very Light (CPU only) - no semaphore needed
+    
     MEMORY OPTIMIZATION: Added GC and memory logging for Railway debugging.
     TIMEOUT PROTECTION: 150s total timeout for entire analysis node.
     """
@@ -271,12 +275,13 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         logger.info("[snapshot] label_sentiment_and_analyze skipped (no docs)")
         return state
 
-    # Run ALL three operations in parallel:
-    # 1. Sentiment analysis (sync, wrapped in thread)
-    # 2. Credibility scoring (async)
-    # 3. Theme routing (sync, wrapped in thread)
+    # TRUE PARALLEL EXECUTION:
+    # - Sentiment uses ML semaphore (heavy: RoBERTa local model + Gemini)
+    # - Credibility runs freely (light: Gemini API only, no local ML)
+    # - Theme Router runs freely (very light: CPU keyword matching only)
 
     async def run_sentiment():
+        """Heavy task: RoBERTa (local) + Gemini (API) - needs ML semaphore."""
         async with _node4_ml_semaphore:
             result = await asyncio.to_thread(sentiment_agent.run, docs)
             gc.collect()
@@ -284,25 +289,31 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             return result
 
     async def run_credibility():
-        async with _node4_ml_semaphore:
-            result = await credibility_agent_node.run(docs)
-            gc.collect()
-            _log_memory_usage("node4_after_credibility")
-            return result
+        """Light task: Gemini API only - no local ML, no semaphore needed."""
+        result = await credibility_agent_node.run(docs)
+        _log_memory_usage("node4_after_credibility")
+        return result
+
+    async def run_theme_router():
+        """Very light task: CPU keyword matching only - no semaphore needed."""
+        result = await asyncio.to_thread(theme_router_agent.run, docs, request)
+        return result
 
     # TIMEOUT PROTECTION: 150 seconds max for entire analysis node
     NODE4_TIMEOUT = 150  # seconds
     
     try:
         async with _node4_semaphore:
+            logger.info("[snapshot] Starting parallel analysis: Sentiment + Credibility + Theme Router")
             sentiment_docs, credibility_docs, theme_docs = await asyncio.wait_for(
                 asyncio.gather(
                     run_sentiment(),
                     run_credibility(),
-                    asyncio.to_thread(theme_router_agent.run, docs, request),
+                    run_theme_router(),
                 ),
                 timeout=NODE4_TIMEOUT
             )
+            logger.info(f"[snapshot] Parallel analysis completed in {time.perf_counter() - start_time:.1f}s")
     except asyncio.TimeoutError:
         logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using fallback")
         # Fallback: Use docs as-is with neutral sentiment

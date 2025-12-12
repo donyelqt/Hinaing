@@ -42,7 +42,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         "What are the top concerns in Baguio today?",
         "Explain the current sentiment on traffic.",
         "Are there any flood warnings near Irisan?",
-        "Summarize recent Reddit discussions about tourism."
+        "Summarize recent news about tourism in Baguio."
     ];
 
     return (
