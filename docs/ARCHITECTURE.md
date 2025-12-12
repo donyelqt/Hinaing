@@ -69,9 +69,9 @@ The system implements a cyclic learning architecture where fresh external data i
 |------|----------|----------|----------------|
 | 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS, 3 tools, Gemini 2.5 Flash |
 | 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
-| 3 | **ContextAugmentationAgent** | Retrieve relevant memories from vector store | Qdrant, MiniLM embeddings, `retrieve_knowledge()` |
+| 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K | Qdrant, MiniLM-L6-v2, `retrieve_knowledge()` |
 | 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
-| 5 | **ContextAugmentationAgent** | Ingest enriched documents into knowledge base | SemanticChunker, VectorStore, `consolidate_memory()` |
+| 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant | SemanticChunker, VectorStore, `consolidate_memory()` |
 | 6 | **6 Theme Agents** (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | 6x parallel Gemini calls, ThreadPoolExecutor |
 | 7 | **Coordinator** (GeminiClient) | Assemble final response with narrative | Gemini 2.5 Pro narrative generation |
 
@@ -110,13 +110,14 @@ flowchart TB
                 RR --> ExtDocs
             end
 
-            subgraph Node3["Node 3: Context Agent (Memory Recall)"]
+            subgraph Node3["Node 3: Context Agent (RAG Retrieval)"]
                 CTX[ContextAugmentationAgent]
-                VS1[Qdrant Vector Search]
-                EM1[MiniLM Embeddings]
-                CTX --> VS1
-                IntDocs[Internal Documents]
-                VS1 --> IntDocs
+                EM1[MiniLM-L6-v2<br/>Query Embedding]
+                VS1[Qdrant<br/>Cosine Similarity Search]
+                TopK[Top-K Results]
+                CTX --> EM1 --> VS1 --> TopK
+                IntDocs[Internal Documents<br/>from Memory]
+                TopK --> IntDocs
                 Merge[Deduplicate & Merge]
                 ExtDocs --> Merge
                 IntDocs --> Merge

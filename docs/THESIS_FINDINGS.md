@@ -16,7 +16,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **12 s
 |------------|----------|----------|
 | ReAct Query Planning | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS, 6 diverse queries |
 | Multi-Source Retrieval | **RetrievalAgent** | `agents.py` - LangSearch + Facebook + Reddit |
-| Memory Recall | **ContextAugmentationAgent** | `context_agent.py` - `retrieve_knowledge()` from Qdrant |
+| RAG Memory Recall | **ContextAugmentationAgent** | `context_agent.py` - Query embedding → **Cosine similarity** → Top-K retrieval |
 | Ensemble Sentiment | **SentimentAgent** | `sentiment_agent.py` - RoBERTa (40%) + Gemini (60%) |
 | 5-Signal Credibility | **CredibilityAgent** | `credibility_agent.py` - Domain + Cross-Ref + Fact-Check + LLM + Tavily |
 | Theme Routing | **ThemeRouterAgent** | `agents.py` - Routes to 6 theme buckets |
@@ -185,8 +185,10 @@ Node 2: RetrievalAgent
        |-- Reddit r/baguio, r/Philippines (PRAW)
        |-- Diversity merge (round-robin)
        v
-Node 3: ContextAugmentationAgent.retrieve_knowledge()
-       |-- Qdrant vector search per focus area
+Node 3: ContextAugmentationAgent.retrieve_knowledge() [RAG RETRIEVAL]
+       |-- Embed query with MiniLM-L6-v2 (384 dims)
+       |-- Qdrant cosine similarity search per focus area
+       |-- Top-K retrieval (most relevant memories)
        |-- Merge external + internal (deduplicate)
        v
 Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]

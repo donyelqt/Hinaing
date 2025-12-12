@@ -64,11 +64,13 @@ flowchart TB
                 LS & RD --> Docs[External Documents]
             end
 
-            subgraph Node3["Node 3: ContextAugmentationAgent (35%)"]
+            subgraph Node3["Node 3: ContextAugmentationAgent - RAG Retrieval (35%)"]
                 CTX1[ContextAugmentationAgent]
-                VS[Qdrant Vector Search]
-                CTX1 --> VS
-                VS --> IntDocs[Internal Documents]
+                EM1[MiniLM-L6-v2<br/>Query Embedding]
+                VS[Qdrant<br/>Cosine Similarity]
+                TopK[Top-K Results]
+                CTX1 --> EM1 --> VS --> TopK
+                TopK --> IntDocs[Internal Documents]
                 Docs --> Merge[Deduplicate & Merge]
                 IntDocs --> Merge
             end
@@ -182,9 +184,11 @@ sequenceDiagram
         RA->>RA: Diversity Merge (round-robin)
         API-->>Client: SSE: {stage: "retrieval", progress: 0.25}
         
-        Note over CTX: Node 3: ContextAugmentationAgent.retrieve_knowledge()
+        Note over CTX: Node 3: RAG Retrieval (Cosine Similarity)
         API->>CTX: retrieve_internal_knowledge(focus_areas)
-        CTX->>CTX: Qdrant vector search per focus area
+        CTX->>CTX: Embed query with MiniLM-L6-v2
+        CTX->>CTX: Qdrant cosine similarity search
+        CTX->>CTX: Top-K most relevant memories
         CTX-->>API: Internal + External (deduplicated)
         API-->>Client: SSE: {stage: "recall", progress: 0.35}
         

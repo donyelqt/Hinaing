@@ -71,8 +71,9 @@ Located in `backend/app/services/agents/credibility_agent.py`:
 Located in `backend/app/services/agents/context_agent.py`:
 - **SemanticChunker** – 400 chars, 100 overlap
 - **EmbeddingService** – MiniLM-L6-v2 (384 dimensions, CPU-optimized)
-- **VectorStore** – Qdrant with persistent disk storage
-- Dual functions: `retrieve_knowledge()` (recall) and `consolidate_memory()` (ingest)
+- **VectorStore** – Qdrant with **cosine similarity** search
+- `retrieve_knowledge()` (Node 3) – Embeds query → Cosine similarity search → Top-K retrieval
+- `consolidate_memory()` (Node 5) – Chunks → Embeds → Stores in Qdrant
 
 ### 6. ThemeRouterAgent
 Located in `backend/app/services/insights/agents.py`:

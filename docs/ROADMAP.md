@@ -51,11 +51,12 @@ This document tracks what has been delivered so far and the remaining work neede
 - LLM Pattern Recognition (20%) - Gemini misinformation detection
 - Tavily Web Verification (20%) - Real-time claim verification
 
-#### ContextAugmentationAgent
-- `retrieve_knowledge()` - Memory recall from Qdrant
-- `consolidate_memory()` - Ingest enriched documents
+#### ContextAugmentationAgent (RAG Pipeline)
+- `retrieve_knowledge()` (Node 3) - Query embedding → **Cosine similarity search** → Top-K retrieval
+- `consolidate_memory()` (Node 5) - Chunk → Embed → Store in Qdrant
 - SemanticChunker (400 chars, 100 overlap)
 - MiniLM-L6-v2 embeddings (384 dims)
+- Qdrant VectorStore with `Distance.COSINE`
 
 #### ThemeRouterAgent
 - Routes documents to 6 theme buckets
