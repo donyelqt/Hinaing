@@ -256,6 +256,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     
     Now processes BOTH External (Fresh) and Internal (Memory) documents together!
     MEMORY OPTIMIZATION: Added GC and memory logging for Railway debugging.
+    TIMEOUT PROTECTION: 150s total timeout for entire analysis node.
     """
     docs = state.get("documents", [])
     request = state["request"]
@@ -289,12 +290,25 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             _log_memory_usage("node4_after_credibility")
             return result
 
-    async with _node4_semaphore:
-        sentiment_docs, credibility_docs, theme_docs = await asyncio.gather(
-            run_sentiment(),
-            run_credibility(),
-            asyncio.to_thread(theme_router_agent.run, docs, request),
-        )
+    # TIMEOUT PROTECTION: 150 seconds max for entire analysis node
+    NODE4_TIMEOUT = 150  # seconds
+    
+    try:
+        async with _node4_semaphore:
+            sentiment_docs, credibility_docs, theme_docs = await asyncio.wait_for(
+                asyncio.gather(
+                    run_sentiment(),
+                    run_credibility(),
+                    asyncio.to_thread(theme_router_agent.run, docs, request),
+                ),
+                timeout=NODE4_TIMEOUT
+            )
+    except asyncio.TimeoutError:
+        logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using fallback")
+        # Fallback: Use docs as-is with neutral sentiment
+        sentiment_docs = [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs]
+        credibility_docs = docs
+        theme_docs = theme_router_agent.run(docs, request)  # Theme routing is fast
 
     # MEMORY OPTIMIZATION: Force garbage collection after heavy processing
     gc.collect()

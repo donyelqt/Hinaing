@@ -682,9 +682,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 setSessionId(startData.session_id);
             }
 
-            // Poll every 1.5 seconds until complete
-            const POLL_INTERVAL = 1500;
-            const MAX_POLLS = 60; // 90 seconds max
+            // Poll every 2 seconds until complete
+            const POLL_INTERVAL = 2000;
+            const MAX_POLLS = 90; // 180 seconds (3 min) max - accounts for rate limiting delays
             let pollCount = 0;
 
             const pollForStatus = async (): Promise<StreamEvent | null> => {

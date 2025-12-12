@@ -109,7 +109,7 @@ class TaskManager:
         now = datetime.now()
         expired = [
             task_id for task_id, state in self._tasks.items()
-            if now - state.updated_at > self._ttl
+            if state.status != TaskStatus.RUNNING and now - state.updated_at > self._ttl
         ]
         for task_id in expired:
             del self._tasks[task_id]

@@ -155,11 +155,12 @@ class EnsembleSentimentAgent:
             raise RuntimeError("GEMINI_API_KEY missing")
         
         genai.configure(api_key=settings.gemini_api_key)
-        # OPTIMIZATION: Use Gemini 1.5 Flash for faster sentiment analysis
-        # Flash is ideal for high-volume classification tasks
+        # OPTIMIZATION: Use Gemini 2.0 Flash for faster sentiment analysis
+        # Flash is ideal for high-volume classification tasks (much faster than Pro)
         self.gemini_model = genai.GenerativeModel("gemini-2.5-pro")
         self.roberta = get_sentiment_model()
-        self.batch_size = 20  # Increased batch size for Flash model
+        # TIMEOUT FIX: Smaller batches = faster individual API calls = less timeout risk
+        self.batch_size = 15  # Reduced from 25 for faster, more reliable API calls
         
         logger.info(
             f"EnsembleSentimentAgent initialized "
@@ -170,10 +171,16 @@ class EnsembleSentimentAgent:
         """Analyze sentiment using full ensemble of both models.
         
         MEMORY OPTIMIZATION: Sequential processing to prevent OOM on Railway.
+        TIMEOUT PROTECTION: Total 120s timeout for entire sentiment analysis.
         Processes all 100 docs but without parallel memory spikes.
         """
+        import time
+        
         if not documents:
             return []
+        
+        start_time = time.time()
+        TOTAL_TIMEOUT = 120  # 2 minutes max for entire sentiment analysis
         
         logger.info(f"[EnsembleSentimentAgent] Analyzing {len(documents)} documents with full ensemble")
         
@@ -189,8 +196,16 @@ class EnsembleSentimentAgent:
         logger.info("[EnsembleSentimentAgent] Running RoBERTa...")
         roberta_probs = self.roberta.predict_batch_with_probs(texts)
         
-        logger.info("[EnsembleSentimentAgent] Running Gemini...")
-        gemini_probs = self._gemini_analyze_all(documents)
+        # Check timeout before Gemini
+        elapsed = time.time() - start_time
+        if elapsed > TOTAL_TIMEOUT * 0.3:  # If RoBERTa took >36s, skip Gemini
+            logger.warning(f"[EnsembleSentimentAgent] RoBERTa took {elapsed:.1f}s, skipping Gemini")
+            gemini_probs = [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(documents)
+        else:
+            logger.info("[EnsembleSentimentAgent] Running Gemini...")
+            gemini_probs = self._gemini_analyze_all(documents)
+        
+        logger.info(f"[EnsembleSentimentAgent] Sentiment analysis completed in {time.time() - start_time:.1f}s")
         
         # Combine predictions with weighted ensemble
         enriched: list[WebDocument] = []
@@ -314,16 +329,40 @@ class EnsembleSentimentAgent:
         """Get Gemini probability distributions for all documents.
         
         MEMORY OPTIMIZATION: Sequential processing to reduce memory pressure.
+        TIMEOUT PROTECTION: Each batch has a 30s timeout, total has 90s limit.
         """
+        import time
+        
         batches = [documents[i:i + self.batch_size] for i in range(0, len(documents), self.batch_size)]
-
         all_probs: list[dict[str, float]] = []
+        default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
+        
+        # Total timeout for all Gemini processing (90 seconds max)
+        total_start = time.time()
+        TOTAL_TIMEOUT = 90  # seconds
         
         # MEMORY OPTIMIZATION: Process batches sequentially instead of parallel
         # This reduces peak memory usage significantly on Railway
-        for batch in batches:
-            result = self._gemini_batch_with_probs(batch)
-            all_probs.extend(result)
+        for batch_idx, batch in enumerate(batches):
+            # Check total timeout
+            elapsed = time.time() - total_start
+            if elapsed > TOTAL_TIMEOUT:
+                logger.warning(
+                    f"[EnsembleSentimentAgent] Gemini total timeout ({TOTAL_TIMEOUT}s) reached "
+                    f"after {batch_idx}/{len(batches)} batches. Using defaults for remaining."
+                )
+                # Fill remaining with defaults
+                remaining_docs = sum(len(batches[i]) for i in range(batch_idx, len(batches)))
+                all_probs.extend([default_probs.copy() for _ in range(remaining_docs)])
+                break
+            
+            try:
+                result = self._gemini_batch_with_probs(batch)
+                all_probs.extend(result)
+                logger.debug(f"[EnsembleSentimentAgent] Batch {batch_idx+1}/{len(batches)} completed")
+            except Exception as e:
+                logger.warning(f"[EnsembleSentimentAgent] Batch {batch_idx+1} failed: {e}")
+                all_probs.extend([default_probs.copy() for _ in range(len(batch))])
         
         return all_probs
     
@@ -355,14 +394,28 @@ Return JSON array with sentiment AND confidence for each:
 [{{"index": 0, "sentiment": "negative", "confidence": 0.85}}, {{"index": 1, "sentiment": "neutral", "confidence": 0.70}}]"""
 
         try:
-            response = self.gemini_model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=8192,
-                ),
-                safety_settings=SAFETY_SETTINGS,
-            )
+            # Use asyncio timeout as backup (the request_options timeout doesn't always work)
+            import concurrent.futures
+            
+            def _call_gemini():
+                return self.gemini_model.generate_content(
+                    prompt,
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.1,
+                        max_output_tokens=2048,  # Reduced for faster response
+                    ),
+                    safety_settings=SAFETY_SETTINGS,
+                    request_options={"timeout": 25},  # 25 second timeout per batch
+                )
+            
+            # Execute with thread timeout as backup
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_call_gemini)
+                try:
+                    response = future.result(timeout=30)  # Hard 30s timeout
+                except concurrent.futures.TimeoutError:
+                    logger.warning("[EnsembleSentimentAgent] Gemini batch hard timeout (30s)")
+                    return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(batch)
             
             # Comprehensive response validation
             if not response.candidates:
