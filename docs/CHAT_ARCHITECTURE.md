@@ -7,12 +7,58 @@ Hinaing provides two distinct chat interfaces with different agent architectures
 | Feature | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |---------|---------------------------|------------------------|
 | **Purpose** | Deep sentiment analysis | Quick Q&A |
-| **Endpoint** | `POST /chat/analyze` | `POST /chat/` |
-| **Response** | Streaming (SSE) | Sync JSON |
+| **Endpoint** | `POST /chat/analyze/start` | `POST /chat/` |
+| **Response** | Background Task + Polling | Sync JSON |
 | **Agent Count** | **13** (7 core + 6 theme) | **1** (ChatAgent) |
 | **Pipeline** | 7-node multi-agent | Single LLM + tool call |
 | **Latency** | 15-30 seconds | 2-5 seconds |
 | **Memory** | Persistent (Qdrant) | None |
+
+## Mobile-Resilient Architecture
+
+The Chat Analyzer uses a **Background Task + Polling** pattern that survives:
+- Mobile alt-tab / screen off
+- Network interruptions
+- Browser tab suspension
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as FastAPI
+    participant TM as TaskManager
+    participant Pipeline as 13-Agent Pipeline
+
+    Client->>API: POST /chat/analyze/start
+    API->>TM: create_task() → task_id
+    API->>Pipeline: submit_task(task_id, pipeline)
+    API-->>Client: { task_id, session_id }
+    
+    Note over Client: User can alt-tab, screen off
+    
+    loop Poll every 1.5s (max 60 polls)
+        Client->>API: GET /chat/analyze/status/{task_id}
+        API->>TM: get_task(task_id)
+        TM-->>API: { status, progress, stage, result? }
+        API-->>Client: TaskState
+        
+        alt status == "completed"
+            Note over Client: Display result
+        else status == "running"
+            Note over Client: Update progress UI
+        else status == "failed"
+            Note over Client: Show error
+        end
+    end
+```
+
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/chat/analyze/start` | POST | Start background analysis, returns `task_id` |
+| `/chat/analyze/status/{task_id}` | GET | Poll for progress and result |
+| `/chat/analyze` | POST | Legacy SSE streaming (deprecated) |
+| `/chat/analyze/sync` | POST | Synchronous (blocking) analysis |
 
 ## Agent Summary
 

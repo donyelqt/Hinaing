@@ -637,7 +637,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 content: m.content
             }));
 
-            const response = await fetch(`${apiBase}/chat/analyze`, {
+            // Step 1: Start the analysis task (returns immediately)
+            const startResponse = await fetch(`${apiBase}/chat/analyze/start`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -649,65 +650,99 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 })
             });
 
-            if (!response.ok) throw new Error("Analysis failed");
+            if (!startResponse.ok) throw new Error("Failed to start analysis");
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
+            const startData = await startResponse.json();
+            
+            // Handle immediate results (simple/followup intents)
+            if (startData.immediate_result) {
+                const result = startData.immediate_result;
+                if (startData.session_id) {
+                    setSessionId(startData.session_id);
+                }
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIdx = updated.length - 1;
+                    if (updated[lastIdx]?.isStreaming) {
+                        updated[lastIdx] = {
+                            role: "model",
+                            content: result.message,
+                            isStreaming: false,
+                            data: result.data
+                        };
+                    }
+                    return updated;
+                });
+                return;
+            }
 
-            if (!reader) throw new Error("No response stream");
+            // Step 2: Poll for progress (background task mode)
+            const taskId = startData.task_id;
+            if (startData.session_id) {
+                setSessionId(startData.session_id);
+            }
 
-            let finalResult: StreamEvent | null = null;
+            // Poll every 1.5 seconds until complete
+            const POLL_INTERVAL = 1500;
+            const MAX_POLLS = 60; // 90 seconds max
+            let pollCount = 0;
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const text = decoder.decode(value);
-                const lines = text.split('\n').filter(l => l.trim());
-
-                for (const line of lines) {
+            const pollForStatus = async (): Promise<StreamEvent | null> => {
+                while (pollCount < MAX_POLLS) {
+                    pollCount++;
+                    
                     try {
-                        const event: StreamEvent = JSON.parse(line);
-
-                        if (event.type === "progress") {
-                            setMessages((prev) => {
-                                const updated = [...prev];
-                                const lastIdx = updated.length - 1;
-                                if (updated[lastIdx]?.isStreaming) {
-                                    updated[lastIdx] = {
-                                        ...updated[lastIdx],
-                                        content: event.message,
-                                        streamProgress: event.progress,
-                                        streamStage: event.stage
-                                    };
-                                }
-                                return updated;
-                            });
-                        } else if (event.type === "result") {
-                            finalResult = event;
-                        } else if (event.type === "error") {
-                            setMessages((prev) => {
-                                const updated = [...prev];
-                                const lastIdx = updated.length - 1;
-                                if (updated[lastIdx]?.isStreaming) {
-                                    updated[lastIdx] = {
-                                        role: "model",
-                                        content: event.message,
-                                        isStreaming: false
-                                    };
-                                }
-                                return updated;
-                            });
+                        const statusResponse = await fetch(`${apiBase}/chat/analyze/status/${taskId}`);
+                        
+                        if (!statusResponse.ok) {
+                            if (statusResponse.status === 404) {
+                                throw new Error("Task expired. Please try again.");
+                            }
+                            throw new Error("Failed to get status");
                         }
-                    } catch (parseErr) {
-                        console.warn("Failed to parse stream line:", line);
+
+                        const status = await statusResponse.json();
+
+                        // Update progress UI
+                        setMessages((prev) => {
+                            const updated = [...prev];
+                            const lastIdx = updated.length - 1;
+                            if (updated[lastIdx]?.isStreaming) {
+                                updated[lastIdx] = {
+                                    ...updated[lastIdx],
+                                    content: status.message,
+                                    streamProgress: status.progress,
+                                    streamStage: status.stage
+                                };
+                            }
+                            return updated;
+                        });
+
+                        // Check if complete
+                        if (status.status === "completed") {
+                            return status.result as StreamEvent;
+                        }
+
+                        if (status.status === "failed") {
+                            throw new Error(status.error || "Analysis failed");
+                        }
+
+                        // Wait before next poll
+                        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+                        
+                    } catch (pollError) {
+                        console.error("Poll error:", pollError);
+                        throw pollError;
                     }
                 }
-            }
+                
+                throw new Error("Analysis timed out. Please try again.");
+            };
+
+            const finalResult = await pollForStatus();
 
             // Update with final result
             if (finalResult) {
-                // Capture session_id for follow-up questions
                 if (finalResult.data?.session_id) {
                     setSessionId(finalResult.data.session_id);
                 }
@@ -718,9 +753,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     if (updated[lastIdx]?.isStreaming) {
                         updated[lastIdx] = {
                             role: "model",
-                            content: finalResult!.message,
+                            content: finalResult.message,
                             isStreaming: false,
-                            data: finalResult!.data
+                            data: finalResult.data
                         };
                     }
                     return updated;
@@ -729,13 +764,14 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
 
         } catch (err) {
             console.error(err);
+            const errorMessage = err instanceof Error ? err.message : "Analysis failed";
             setMessages((prev) => {
                 const updated = [...prev];
                 const lastIdx = updated.length - 1;
                 if (updated[lastIdx]?.isStreaming) {
                     updated[lastIdx] = {
                         role: "model",
-                        content: "❌ Analysis failed. Please try again.",
+                        content: `❌ ${errorMessage}. Please try again.`,
                         isStreaming: false
                     };
                 }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import json
 import logging
 import os
@@ -15,6 +16,17 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 import asyncio
 from pydantic import ValidationError
+
+
+def _log_memory_usage(stage: str):
+    """Log current memory usage for debugging OOM issues on Railway."""
+    try:
+        import psutil
+        process = psutil.Process()
+        mem_mb = process.memory_info().rss / 1024 / 1024
+        logger.info(f"[memory] {stage}: {mem_mb:.1f} MB")
+    except ImportError:
+        pass  # psutil not available
 
 from ...core.config import get_settings
 from ...schemas.snapshot import (
@@ -237,10 +249,13 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     """Node 4: Unified Analysis (Sentiment + Credibility + Theme Routing).
     
     Now processes BOTH External (Fresh) and Internal (Memory) documents together!
+    MEMORY OPTIMIZATION: Added GC and memory logging for Railway debugging.
     """
     docs = state.get("documents", [])
     request = state["request"]
     start_time = time.perf_counter()
+    
+    _log_memory_usage("node4_start")
     
     if not docs:
         state["enriched"] = []
@@ -265,6 +280,10 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     sentiment_docs, credibility_docs, theme_docs = await asyncio.gather(
         sentiment_task, credibility_task, theme_task
     )
+    
+    # MEMORY OPTIMIZATION: Force garbage collection after heavy processing
+    gc.collect()
+    _log_memory_usage("node4_after_analysis")
     
     # Merge sentiment labels into credibility-enriched documents
     # Create a mapping of URL -> sentiment data

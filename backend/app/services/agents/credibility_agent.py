@@ -276,16 +276,19 @@ class LLMCredibilityAnalyzer:
             "gemini-2.5-flash",
             safety_settings=SAFETY_SETTINGS,
         )
-        self.batch_size = 12
+        self.batch_size = 10  # Reduced from 12 for memory
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
-        """Analyze all documents in batches in PARALLEL."""
+        """Analyze all documents in batches with controlled parallelism.
+        
+        MEMORY OPTIMIZATION: Reduced max_workers to prevent OOM on Railway.
+        """
         # Create batches
         batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
         
         results = []
-        # Execute batches in parallel threads
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        # MEMORY OPTIMIZATION: Reduced workers from 5 to 2
+        with ThreadPoolExecutor(max_workers=2) as executor:
             batch_results = list(executor.map(self._analyze_batch, batches))
             
         for res in batch_results:
@@ -865,7 +868,11 @@ class EnhancedCredibilityAgent:
             logger.warning("[credibility_agent] Tavily API key not set - Signal 7 disabled")
     
     async def run(self, documents: list[WebDocument]) -> list[WebDocument]:
-        """Assess credibility for all documents using 7 signals."""
+        """Assess credibility for all documents using 7 signals.
+        
+        Memory-optimized: Reduced concurrent API calls to prevent OOM on Railway.
+        Processes all 100 docs but with controlled parallelism.
+        """
         if not documents:
             return []
         
@@ -1082,15 +1089,16 @@ class EnhancedCredibilityAgent:
         self, 
         docs: list[WebDocument]
     ) -> list[tuple[float, str | None]]:
-        """Run fact checks with high concurrency.
+        """Run fact checks with controlled concurrency.
         
-        OPTIMIZATION: Increased concurrency to 15 and removed delays.
-        Google Fact Check API has generous rate limits.
+        MEMORY OPTIMIZATION: Reduced concurrency to prevent OOM on Railway.
+        Each httpx request holds memory until complete.
         """
         global _fact_check_api_warned
         
-        # OPTIMIZATION: Higher concurrency for faster parallel execution
-        semaphore = asyncio.Semaphore(15)
+        # MEMORY OPTIMIZATION: Lower concurrency to reduce memory pressure
+        # Each concurrent request holds ~5-10MB in buffers
+        semaphore = asyncio.Semaphore(5)  # Reduced from 15
         
         async def check_one(doc: WebDocument, idx: int) -> tuple[float, str | None]:
             async with semaphore:

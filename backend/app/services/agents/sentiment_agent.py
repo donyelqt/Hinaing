@@ -149,7 +149,11 @@ class EnsembleSentimentAgent:
         )
     
     def analyze_batch(self, documents: list[WebDocument]) -> list[WebDocument]:
-        """Analyze sentiment using full ensemble of both models."""
+        """Analyze sentiment using full ensemble of both models.
+        
+        MEMORY OPTIMIZATION: Sequential processing to prevent OOM on Railway.
+        Processes all 100 docs but without parallel memory spikes.
+        """
         if not documents:
             return []
         
@@ -162,9 +166,75 @@ class EnsembleSentimentAgent:
             snippet = sanitize_text(doc.snippet)
             texts.append(f"{title}. {snippet}"[:512])
         
-        # Run RoBERTa and Gemini in PARALLEL for speed
-        logger.info("[EnsembleSentimentAgent] Running RoBERTa + Gemini in parallel...")
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        # MEMORY OPTIMIZATION: Run RoBERTa first, then Gemini (sequential, not parallel)
+        # This prevents memory spikes from both models running simultaneously
+        logger.info("[EnsembleSentimentAgent] Running RoBERTa...")
+        roberta_probs = self.roberta.predict_batch_with_probs(texts)
+        
+        logger.info("[EnsembleSentimentAgent] Running Gemini...")
+        gemini_probs = self._gemini_analyze_all(documents)
+        
+        # Combine predictions with weighted ensemble
+        enriched: list[WebDocument] = []
+        
+        for idx, doc in enumerate(documents):
+            r_probs = roberta_probs[idx]
+            g_probs = gemini_probs[idx]
+            
+            # Weighted combination
+            combined = {
+                "negative": (ROBERTA_WEIGHT * r_probs["negative"]) + (GEMINI_WEIGHT * g_probs["negative"]),
+                "neutral": (ROBERTA_WEIGHT * r_probs["neutral"]) + (GEMINI_WEIGHT * g_probs["neutral"]),
+                "positive": (ROBERTA_WEIGHT * r_probs["positive"]) + (GEMINI_WEIGHT * g_probs["positive"]),
+            }
+            
+            final_label = max(combined, key=combined.get)
+            final_confidence = combined[final_label]
+            
+            roberta_label = max(r_probs, key=r_probs.get)
+            gemini_label = max(g_probs, key=g_probs.get)
+            
+            if roberta_label == gemini_label:
+                agreement = "full_agreement"
+            elif final_label == roberta_label:
+                agreement = "roberta_dominant"
+            elif final_label == gemini_label:
+                agreement = "gemini_dominant"
+            else:
+                agreement = "ensemble_decision"
+            
+            source_type = self._detect_source_type(doc)
+            
+            enriched.append(doc.model_copy(update={
+                "sentiment": final_label,
+                "metadata": {
+                    **(doc.metadata or {}),
+                    "sentiment_confidence": round(final_confidence, 3),
+                    "sentiment_method": "ensemble",
+                    "roberta_prediction": roberta_label,
+                    "roberta_confidence": round(max(r_probs.values()), 3),
+                    "gemini_prediction": gemini_label,
+                    "gemini_confidence": round(max(g_probs.values()), 3),
+                    "model_agreement": agreement,
+                    "content_source_type": source_type,
+                }
+            }))
+        
+        self._log_distribution(enriched)
+        return enriched
+    
+    def _original_analyze_batch(self, documents: list[WebDocument]) -> list[WebDocument]:
+        """Original parallel version - kept for reference."""
+        if not documents:
+            return []
+        
+        texts = []
+        for doc in documents:
+            title = sanitize_text(doc.title)
+            snippet = sanitize_text(doc.snippet)
+            texts.append(f"{title}. {snippet}"[:512])
+        
+        with ThreadPoolExecutor(max_workers=2) as executor:
             # Run RoBERTa in one thread (it's fast/local)
             roberta_future = executor.submit(self.roberta.predict_batch_with_probs, texts)
             # Run Gemini batches in parallel threads
@@ -223,19 +293,19 @@ class EnsembleSentimentAgent:
         return enriched
     
     def _gemini_analyze_all(self, documents: list[WebDocument]) -> list[dict[str, float]]:
-        """Get Gemini probability distributions for all documents in PARALLEL."""
+        """Get Gemini probability distributions for all documents.
+        
+        MEMORY OPTIMIZATION: Sequential processing to reduce memory pressure.
+        """
         batches = [documents[i:i + self.batch_size] for i in range(0, len(documents), self.batch_size)]
 
         all_probs: list[dict[str, float]] = []
         
-        # Execute batches in parallel using existing executor pattern
-        # Note: We use a new executor here to avoid deadlocks with the parent 
-        # (though parent waits on this, so it's safe, but cleaner to separate)
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            results = list(executor.map(self._gemini_batch_with_probs, batches))
-        
-        for res in results:
-            all_probs.extend(res)
+        # MEMORY OPTIMIZATION: Process batches sequentially instead of parallel
+        # This reduces peak memory usage significantly on Railway
+        for batch in batches:
+            result = self._gemini_batch_with_probs(batch)
+            all_probs.extend(result)
         
         return all_probs
     

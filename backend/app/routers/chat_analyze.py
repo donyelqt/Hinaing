@@ -1,10 +1,17 @@
 """Chat-based Sentiment Analysis using the same Multi-Agent Architecture.
 
 This endpoint provides a conversational interface that intelligently routes:
-1. Sentiment analysis requests → 6-agent pipeline
+1. Sentiment analysis requests → 13-agent pipeline (7 core + 6 theme)
 2. Quick Q&A requests → Simple LangSearch + Gemini
 
-Streaming progress updates are sent to the frontend.
+Supports two modes:
+1. Streaming (SSE) - Real-time progress updates
+2. Background Task + Polling - Resilient to mobile disconnections
+
+The polling mode is recommended for production as it survives:
+- Mobile alt-tab / screen off
+- Network interruptions
+- Browser tab suspension
 """
 from __future__ import annotations
 
@@ -22,6 +29,7 @@ from pydantic import BaseModel, Field
 from ..services.insights.graph import generate_snapshot
 from ..schemas.snapshot import SnapshotRequest, SnapshotResponse
 from ..services.agents.chat_agent import run_chat_agent
+from ..services.task_manager import get_task_manager, TaskStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat-analyze"])
@@ -594,4 +602,227 @@ async def chat_analyze_sync(request: ChatAnalyzeRequest):
     except Exception as exc:
         logger.exception("Chat analysis failed")
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# =============================================================================
+# BACKGROUND TASK + POLLING ENDPOINTS (Mobile-Resilient)
+# =============================================================================
+
+def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_areas: list[str]) -> dict:
+    """Format SnapshotResponse into JSON-serializable result dict."""
+    doc_count = len(response.sources) if response.sources else 0
+    formatted_results = format_results_for_chat(response)
+    
+    # Extract sentiment scores as percentages
+    sentiment_scores = None
+    if response.overall_sentiment and response.overall_sentiment.scores:
+        scores = response.overall_sentiment.scores
+        sentiment_scores = {
+            "positive": round(scores.get("positive", 0) * 100),
+            "negative": round(scores.get("negative", 0) * 100),
+            "neutral": round(scores.get("neutral", 0) * 100),
+        }
+    
+    # Extract insights for structured display
+    insights_data = []
+    if response.actionable_insights:
+        for insight in response.actionable_insights[:5]:
+            evidence_strs = [str(e) for e in (insight.evidence[:3] if insight.evidence else [])]
+            insights_data.append({
+                "category": str(insight.category) if insight.category else "",
+                "title": str(insight.title) if insight.title else "",
+                "detail": str(insight.detail) if insight.detail else "",
+                "evidence": evidence_strs,
+            })
+    
+    # Extract sources for structured display
+    sources_data = []
+    if response.sources:
+        for doc in response.sources:
+            meta = doc.metadata or {}
+            cred_score = meta.get("credibility_score")
+            sources_data.append({
+                "title": str(doc.title) if doc.title else "",
+                "snippet": str(doc.snippet)[:200] if doc.snippet else "",
+                "url": str(doc.url) if doc.url else None,
+                "sentiment": str(doc.sentiment) if doc.sentiment else None,
+                "credibility_score": float(cred_score) if cred_score is not None else None,
+                "credibility_tier": str(meta.get("credibility_tier")) if meta.get("credibility_tier") else None,
+                "verification_status": str(meta.get("verification_status")) if meta.get("verification_status") else None,
+            })
+    
+    # Compute credibility breakdown
+    high_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) >= 0.55)
+    low_cred = len(sources_data) - high_cred
+    avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
+    
+    return {
+        "type": "result",
+        "stage": "complete",
+        "message": formatted_results,
+        "progress": 1.0,
+        "data": {
+            "mode": "analyze",
+            "session_id": session_id,
+            "overall_sentiment": {
+                "label": response.overall_sentiment.label if response.overall_sentiment else "neutral",
+                "summary": response.overall_sentiment.summary if response.overall_sentiment else "",
+                "scores": sentiment_scores,
+            },
+            "insights": insights_data,
+            "sources": sources_data,
+            "credibility": {
+                "avg_score": round(avg_cred * 100),
+                "high_percent": round(high_cred / max(1, len(sources_data)) * 100),
+                "low_percent": round(low_cred / max(1, len(sources_data)) * 100),
+            },
+            "document_count": doc_count,
+            "insights_count": len(insights_data),
+            "alerts": response.alerts[:5] if response.alerts else [],
+        }
+    }
+
+
+@router.post("/analyze/start")
+async def start_analysis(request: ChatAnalyzeRequest):
+    """Start analysis as a background task (returns immediately).
+    
+    This endpoint is mobile-resilient: the analysis continues even if
+    the client disconnects. Poll /analyze/status/{task_id} for progress.
+    
+    Returns:
+        task_id: Unique identifier to poll for status
+        session_id: Session ID for follow-up questions
+    """
+    task_manager = get_task_manager()
+    task_manager.start_cleanup_loop()
+    
+    # Detect intent
+    intent = detect_intent(request.message, request.history)
+    session_id = request.session_id or str(uuid.uuid4())
+    
+    logger.info(f"[chat_analyze/start] Intent: {intent}, session: {session_id}")
+    
+    # For simple/followup intents, run synchronously (they're fast)
+    if intent in ("simple", "followup"):
+        # These are fast enough to run inline
+        try:
+            if intent == "simple":
+                response_text, sources = await run_chat_agent(
+                    message=request.message,
+                    history=request.history,
+                    jurisdiction="Baguio City"
+                )
+                return {
+                    "task_id": None,
+                    "session_id": session_id,
+                    "immediate_result": {
+                        "type": "result",
+                        "stage": "complete",
+                        "message": response_text,
+                        "progress": 1.0,
+                        "data": {"mode": "simple", "sources": sources}
+                    }
+                }
+            else:  # followup
+                cached = _session_cache.get(session_id)
+                if cached and "response" in cached:
+                    cached_response = cached["response"]
+                    analysis_context = ""
+                    if cached_response.overall_sentiment:
+                        analysis_context += f"Overall Sentiment: {cached_response.overall_sentiment.label}\n"
+                        analysis_context += f"Summary: {cached_response.overall_sentiment.summary}\n"
+                    
+                    augmented_message = (
+                        f"CONTEXT FROM PREVIOUS ANALYSIS: \n{analysis_context}\n\n"
+                        f"USER QUESTION: {request.message}"
+                    )
+                    response_text, sources = await run_chat_agent(
+                        message=augmented_message,
+                        history=request.history,
+                        jurisdiction="Baguio City"
+                    )
+                else:
+                    response_text, sources = await run_chat_agent(
+                        message=request.message,
+                        history=request.history,
+                        jurisdiction="Baguio City"
+                    )
+                
+                return {
+                    "task_id": None,
+                    "session_id": session_id,
+                    "immediate_result": {
+                        "type": "result",
+                        "stage": "complete",
+                        "message": response_text,
+                        "progress": 1.0,
+                        "data": {"mode": "followup", "sources": sources}
+                    }
+                }
+        except Exception as e:
+            logger.exception("Quick response failed")
+            raise HTTPException(status_code=500, detail=str(e)[:200])
+    
+    # For "analyze" intent, run as background task
+    focus_areas, time_window = parse_user_intent(request.message)
+    task_id = task_manager.create_task()
+    
+    # Create snapshot request
+    snapshot_request = SnapshotRequest(
+        focus_areas=focus_areas,
+        platforms=request.platforms,
+        time_window=time_window,
+    )
+    
+    # Progress callback that updates task manager
+    async def progress_callback(stage: str, message: str, progress: float):
+        task_manager.update_progress(task_id, stage, message, progress)
+    
+    # Coroutine that runs the pipeline and formats result
+    async def run_pipeline():
+        response = await generate_snapshot(snapshot_request, progress_callback=progress_callback)
+        
+        # Cache for follow-up questions
+        _session_cache[session_id] = {
+            "response": response,
+            "focus_areas": focus_areas,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return _format_snapshot_result(response, session_id, focus_areas)
+    
+    # Submit task for background execution
+    task_manager.submit_task(task_id, run_pipeline())
+    
+    return {
+        "task_id": task_id,
+        "session_id": session_id,
+        "focus_areas": focus_areas,
+        "time_window": time_window,
+    }
+
+
+@router.get("/analyze/status/{task_id}")
+async def get_analysis_status(task_id: str):
+    """Poll for analysis task status and progress.
+    
+    Returns:
+        status: "pending" | "running" | "completed" | "failed"
+        progress: 0.0 to 1.0
+        stage: Current pipeline stage
+        message: Human-readable status message
+        result: Full analysis result (only when status="completed")
+        error: Error message (only when status="failed")
+    """
+    task_manager = get_task_manager()
+    task = task_manager.get_task(task_id)
+    
+    if task is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not found. It may have expired (TTL: 10 minutes)."
+        )
+    
+    return task.to_dict()
 
