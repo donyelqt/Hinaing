@@ -51,7 +51,9 @@ if settings.langsmith_api_key:
 
 class SnapshotState(TypedDict, total=False):
     request: SnapshotRequest
-    documents: list[WebDocument]
+    documents: list[WebDocument]  # Combined External + Internal
+    internal_documents: list[WebDocument] # Internal Memory Recall
+    external_documents: list[WebDocument] # Fresh External Retrieval
     enriched: list[WebDocument]
     theme_documents: dict[str, list[WebDocument]]
     augmented_contexts: dict[str, AugmentedContext]
@@ -134,6 +136,7 @@ sentiment_agent = SentimentAgent()
 credibility_agent_node = CredibilityAgent()
 theme_router_agent = ThemeRouterAgent()
 query_orchestrator = QueryOrchestratorAgent()
+context_agent = ContextAugmentationAgent()
 
 
 async def orchestrate_queries(state: SnapshotState) -> SnapshotState:
@@ -167,69 +170,72 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
             logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
 
     duration_ms = (time.perf_counter() - start_time) * 1000
-    logger.info("[snapshot] Retrieval agent completed in %.1f ms with %d docs", duration_ms, len(documents))
-    state["documents"] = documents
+    logger.info("[snapshot] External retrieval completed in %.1f ms with %d docs", duration_ms, len(documents))
+    
+    state["external_documents"] = documents
+    # Initialize main documents list with external docs for now
+    state["documents"] = documents 
     return state
 
 
-async def augment_context(state: SnapshotState) -> SnapshotState:
-    """Augment theme context using RAG pipeline."""
-    theme_docs = state.get("theme_documents") or {}
-    if not theme_docs:
-        state["augmented_contexts"] = {}
-        logger.info("[snapshot] augment_context skipped (no theme docs)")
-        return state
-
-    # Use the shared source of truth from agent_tools to avoid split-brain during reloads
-    from . import agent_tools
-    current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
-    
+async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
+    """Node 3: Recall internal knowledge (RAG) based on focus areas."""
     request = state["request"]
-
-    # Determine active themes based on focus areas
-    active_themes = set(current_theme_groups.keys())
-    if request.focus_areas:
-        requested_focus = {f.lower() for f in request.focus_areas}
-        matched_themes = {
-            key for key, meta in current_theme_groups.items()
-            if requested_focus & meta.get("focus_values", set())
-        }
-        if matched_themes:
-            active_themes = matched_themes
-
-    agent = ContextAugmentationAgent()
-    augmented: dict[str, AugmentedContext] = {}
-
-    for theme_key, docs in theme_docs.items():
-        if not docs or theme_key not in active_themes:
-            continue
-        meta = current_theme_groups.get(theme_key)
-        label = meta["label"] if meta else theme_key.title()
+    focus = request.focus_areas
+    
+    start_time = time.perf_counter()
+    
+    internal_docs = []
+    if focus:
         try:
-            context = await agent.augment_context(
-                documents=docs,
-                theme=label,
-                time_window=request.time_window,
-                top_k=50,
-            )
-            augmented[theme_key] = context
+            internal_docs = await context_agent.retrieve_knowledge(focus_areas=focus, limit=20)
         except Exception as exc:
-            logger.warning("[snapshot] augment_context failed for %s: %s", label, exc)
-
-    state["augmented_contexts"] = augmented
-    logger.info("[snapshot] RAG augmented context for %d themes", len(augmented))
+            logger.warning("[snapshot] Internal retrieval failed: %s", exc)
+            
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info("[snapshot] Internal retrieval recall in %.1f ms with %d docs", duration_ms, len(internal_docs))
+    
+    state["internal_documents"] = internal_docs
+    
+    # Merge External + Internal into the main 'documents' list for Unified Analysis
+    # We put external first to prioritize them in lists, but analysis sees all
+    raw_combined = state.get("external_documents", []) + internal_docs
+    
+    # Deduplicate by URL (primary) and Title (secondary)
+    seen_urls = set()
+    seen_titles = set()
+    unique_docs = []
+    
+    for doc in raw_combined:
+        # Check URL uniqueness
+        if doc.url and doc.url in seen_urls:
+            continue
+            
+        # Check Title uniqueness (if URL missing or different but title same)
+        # Normalize title for check
+        norm_title = (doc.title or "").strip().lower()
+        if not norm_title: 
+            # If no title and no URL, we might skip or keep. Let's keep if it has snippet.
+            # But usually web docs have one or the other.
+            pass
+        elif norm_title in seen_titles:
+            continue
+            
+        if doc.url:
+            seen_urls.add(doc.url)
+        if norm_title:
+            seen_titles.add(norm_title)
+            
+        unique_docs.append(doc)
+    
+    state["documents"] = unique_docs
     return state
 
 
 async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
-    """OPTIMIZATION: Run sentiment, credibility, and theme routing in parallel.
+    """Node 4: Unified Analysis (Sentiment + Credibility + Theme Routing).
     
-    Previously these ran sequentially:
-    1. Sentiment (sync) ~54s
-    2. Credibility (async) ~33s  
-    3. Theme routing (sync) ~1s
-    
-    Now runs in parallel, reducing total time from ~88s to ~54s (max of the three).
+    Now processes BOTH External (Fresh) and Internal (Memory) documents together!
     """
     docs = state.get("documents", [])
     request = state["request"]
@@ -301,10 +307,59 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info(
-        "[snapshot] Parallel sentiment+credibility+themes completed in %.1f ms for %d docs",
+        "[snapshot] Unified Analysis completed in %.1f ms for %d total docs",
         duration_ms,
         len(docs),
     )
+    return state
+
+
+async def consolidate_memory(state: SnapshotState) -> SnapshotState:
+    """Node 5: Memory Consolidation (Self-Learning Ingestion).
+    
+    Takes FRESH external documents and saves them to the Vector Store.
+    Does NOT re-ingest internal memory documents.
+    """
+    # Only ingest docs that came from external sources
+    # We can identify them by checking against the external_documents list
+    # or relying on metadata if we propagated it cleanly.
+    # The safest is to rely on state["external_documents"] which is pure.
+    
+    fresh_docs = state.get("external_documents", [])
+    if not fresh_docs:
+        logger.info("[snapshot] No fresh documents to consolidate")
+        return state
+        
+    start_time = time.perf_counter()
+    
+    # We map sentiment/credibility data from 'enriched' back to 'fresh_docs' to save enhanced data?
+    # Ideally yes, but for now we just save the raw content + basic metadata.
+    # FUTURE UPGRADE: Save the Enriched/Scored version to memory!
+    # Let's try to match them up from 'enriched' list
+    
+    enriched_map = {
+        (d.url or d.title): d for d in state.get("enriched", [])
+    }
+    
+    docs_to_save = []
+    for raw_doc in fresh_docs:
+        key = raw_doc.url or raw_doc.title
+        if key in enriched_map:
+            # Use the enriched version which has sentiment/credibility
+            docs_to_save.append(enriched_map[key])
+        else:
+            docs_to_save.append(raw_doc)
+            
+    try:
+        count = await context_agent.consolidate_memory(docs_to_save)
+    except Exception as exc:
+        logger.warning("[snapshot] Memory consolidation failed: %s", exc)
+        count = 0
+        
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info("[snapshot] Consolidated %d new memories in %.1f ms", count, duration_ms)
+    
+    # No changes to state, just side-effect
     return state
 
 
@@ -331,49 +386,32 @@ MIN_RELEVANCE_THRESHOLD = 0.40
 def _synthesize_single_theme(
     theme_key: str,
     docs: list[WebDocument],
-    contexts: dict[str, AugmentedContext] | None,
+    contexts: dict[str, AugmentedContext] | None,     # Unused now but kept for sig compatibility if needed
 ) -> Insight | None:
     """Synthesize insight for a single theme."""
     from . import agent_tools
     current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
     meta = current_theme_groups.get(theme_key)
     label = meta["label"] if meta else theme_key.title()
-    context = (contexts or {}).get(theme_key)
-
-    # Check relevance threshold - skip themes with low relevance
-    if context and context.relevance_scores:
-        avg_score = sum(context.relevance_scores) / len(context.relevance_scores)
-        if avg_score < MIN_RELEVANCE_THRESHOLD:
-            logger.info(
-                f"[theme_insight] Skipping '{label}' - low relevance (avg={avg_score:.3f} < {MIN_RELEVANCE_THRESHOLD})"
-            )
-            return None
-
-    if context and context.relevant_chunks:
-        top_chunks = context.relevant_chunks[:50]
-        top_scores = context.relevance_scores[: len(top_chunks)]
-        enriched_docs = [
-            {
-                "title": chunk.source_title,
-                "snippet": chunk.content,
-                "url": str(chunk.source_url) if chunk.source_url else "",
-                "relevance_score": score,
-            }
-            for chunk, score in zip(top_chunks, top_scores)
-        ]
-    else:
-        # Ensure URL is string (HttpUrl -> str) for theme agent
-        enriched_docs = [
-            {
-                **doc.model_dump(),
-                "url": str(doc.url) if doc.url else "",
-            }
-            for doc in docs[:50]
-        ]
+    
+    # Filter docs for this theme (already done by router)
+    if not docs:
+        return None
+        
+    # We can improve this by checking which docs are internal vs external
+    internal_count = sum(1 for d in docs if (d.metadata or {}).get("source") == "internal_memory")
+    
+    enriched_docs = [
+        {
+            **doc.model_dump(),
+            "url": str(doc.url) if doc.url else "",
+        }
+        for doc in docs[:100]
+    ]
 
     evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
     try:
-        if len(docs) < 2:
+        if len(docs) < 1: # lowered threshold
             raise ValueError("skip_gemini_fallback")
         from ..agents.theme_agent import run_theme_agent
 
@@ -381,7 +419,8 @@ def _synthesize_single_theme(
             "You are a civic operations analyst for Baguio City. "
             f"Focus on the theme '{label}'. "
             "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
-            "Highlight actionable risk or opportunity from the provided documents."
+            f"You have {len(docs)} documents ({internal_count} historical/memory, {len(docs)-internal_count} fresh). "
+            "Highlight actionable risk or opportunity, connecting fresh news with historical patterns if present."
         )
         response = run_theme_agent(
             theme_label=label,
@@ -431,40 +470,29 @@ def _synthesize_single_theme(
 def theme_agents(state: SnapshotState) -> SnapshotState:
     """Run Gemini mini-agents per theme to craft insights in parallel."""
     theme_docs = state.get("theme_documents", {})
-    contexts = state.get("augmented_contexts", {})
+    # Contexts are no longer passed explicitly, implicitly in docs
+    contexts = {} 
     request = state["request"]
     start_time = time.perf_counter()
 
     from . import agent_tools
     current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
 
-    # Determine active themes based on focus areas
     active_themes = set(current_theme_groups.keys())
     if request.focus_areas:
         requested_focus = {f.lower() for f in request.focus_areas}
-        # Find themes that have at least one matching focus value
         matched_themes = {
             key for key, meta in current_theme_groups.items()
             if requested_focus & meta.get("focus_values", set())
         }
-        # If we found matches, strictly filter. If no matches (e.g. "general"), 
-        # we might want to keep all, but here we strictly respect the user's filter 
-        # if they provided specific known categories.
         if matched_themes:
             active_themes = matched_themes
         
-        logger.info(
-            "[snapshot] Filtering themes by focus areas: %s -> %s", 
-            request.focus_areas, active_themes
-        )
-
-    # Prepare tasks for parallel execution
     tasks = []
     for theme_key, docs in theme_docs.items():
         if docs and theme_key in active_themes:
             tasks.append((theme_key, docs))
     
-    # Run all theme agents in parallel using threads
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
     insights = []
@@ -483,9 +511,6 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
                 theme_key = futures[future]
                 logger.exception("Theme agent task failed for %s: %s", theme_key, exc)
     duration_ms = (time.perf_counter() - start_time) * 1000
-    logger.info(
-        "[snapshot] Theme agents generated %d insights in %.1f ms", len(insights), duration_ms
-    )
     state["theme_insights"] = insights
     return state
 
@@ -570,11 +595,11 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
     if theme_fallbacks:
         # Use theme insights as primary source (they're already balanced)
         logger.info("[snapshot] Using %d theme-generated insights", len(theme_fallbacks))
-        insights.extend(theme_fallbacks[:3])
+        insights.extend(theme_fallbacks)
     elif insights_payload:
         # Only use Gemini insights if no theme insights available
         logger.info("[snapshot] Using %d Gemini-generated insights", len(insights_payload))
-        for idx, payload in enumerate(insights_payload[:3], start=1):
+        for idx, payload in enumerate(insights_payload, start=1):
             try:
                 evidence_raw = payload.get("evidence")
                 match evidence_raw:
@@ -610,8 +635,6 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                     evidence=[str(doc.url) for doc in related[:2] if doc.url],
                 )
             )
-            if len(insights) >= 3:
-                break
 
     alerts: list[str] | None = None
     if request.include_alerts and scores["negative"] >= 0.45:
@@ -644,17 +667,18 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 graph = StateGraph(SnapshotState)
 graph.add_node("orchestrate_queries", orchestrate_queries)
 graph.add_node("fetch_documents", fetch_documents)
-# OPTIMIZATION: Combined sentiment + credibility + theme routing into single parallel node
-graph.add_node("label_sentiment_and_analyze", label_sentiment_and_analyze)
-graph.add_node("theme_agents", theme_agents)
-graph.add_node("augment_context", augment_context)
-graph.add_node("build_snapshot", build_snapshot)
+graph.add_node("retrieve_internal_knowledge", retrieve_internal_knowledge) # NODE 3: Memory Recall
+graph.add_node("label_sentiment_and_analyze", label_sentiment_and_analyze) # NODE 4: Unified Analysis
+graph.add_node("consolidate_memory", consolidate_memory) # NODE 5: Memory Ingestion
+graph.add_node("theme_agents", theme_agents) # NODE 6
+graph.add_node("build_snapshot", build_snapshot) # NODE 7
 
 graph.add_edge(START, "orchestrate_queries")
 graph.add_edge("orchestrate_queries", "fetch_documents")
-graph.add_edge("fetch_documents", "label_sentiment_and_analyze")
-graph.add_edge("label_sentiment_and_analyze", "augment_context")
-graph.add_edge("augment_context", "theme_agents")
+graph.add_edge("fetch_documents", "retrieve_internal_knowledge")
+graph.add_edge("retrieve_internal_knowledge", "label_sentiment_and_analyze")
+graph.add_edge("label_sentiment_and_analyze", "consolidate_memory")
+graph.add_edge("consolidate_memory", "theme_agents")
 graph.add_edge("theme_agents", "build_snapshot")
 graph.add_edge("build_snapshot", END)
 
@@ -682,12 +706,12 @@ async def generate_snapshot(
     )
     
     # Define progress stages with their weights
-    # OPTIMIZATION: Combined sentiment + credibility into single parallel stage
     stages = [
         ("query_orchestrator", "📡 Query Orchestrator: Generating search queries...", 0.1),
         ("retrieval", "🔍 Retrieval Agent: Fetching documents...", 0.25),
-        ("analyze", "⚡ Analyzing: Sentiment + Credibility + Themes (parallel)...", 0.55),
-        ("context", "🔗 Context Agent: Augmenting with RAG...", 0.75),
+        ("recall", "🧠 Internal Retrieval: Recalling memory...", 0.35),
+        ("analyze", "⚡ Analyzing: Unified Sentiment + Credibility...", 0.55),
+        ("memory", "💾 Memory: Consolidating new knowledge...", 0.70),
         ("themes", "🎯 Theme Agents: Generating insights...", 0.9),
     ]
     
@@ -700,25 +724,33 @@ async def generate_snapshot(
             await progress_callback("query_orchestrator", stages[0][1], stages[0][2])
         state = await orchestrate_queries(state)
         
-        # Stage 2: Retrieval
+        # Stage 2: External Retrieval
         if progress_callback:
             await progress_callback("retrieval", stages[1][1], stages[1][2])
         state = await fetch_documents(state)
-        doc_count = len(state.get("documents", []))
         
-        # Stage 3: Parallel Sentiment + Credibility + Theme Routing
+        # Stage 3: Internal Retrieval (Recall)
         if progress_callback:
-            await progress_callback("analyze", f"⚡ Analyzing {doc_count} docs: Sentiment + Credibility + Themes (parallel)...", stages[2][2])
+            await progress_callback("recall", stages[2][1], stages[2][2])
+        state = await retrieve_internal_knowledge(state)
+        
+        ext_count = len(state.get("external_documents", []))
+        int_count = len(state.get("internal_documents", []))
+        
+        # Stage 4: Unified Analysis
+        if progress_callback:
+            msg = f"⚡ Analyzing {ext_count} fresh + {int_count} memory docs..."
+            await progress_callback("analyze", msg, stages[3][2])
         state = await label_sentiment_and_analyze(state)
         
-        # Stage 4: Context Augmentation
+        # Stage 5: Memory Consolidation
         if progress_callback:
-            await progress_callback("context", stages[3][1], stages[3][2])
-        state = await augment_context(state)
+            await progress_callback("memory", stages[4][1], stages[4][2])
+        state = await consolidate_memory(state)
         
-        # Stage 5: Theme Agents
+        # Stage 6: Theme Agents
         if progress_callback:
-            await progress_callback("themes", stages[4][1], stages[4][2])
+            await progress_callback("themes", stages[5][1], stages[5][2])
         state = theme_agents(state)
         
         # Final: Build Snapshot

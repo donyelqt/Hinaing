@@ -26,6 +26,7 @@ torch = {version = "^2.0", source = "pytorch-cpu"}
 sentence-transformers = "^5.1.2"
 transformers = "^4.40.0"
 praw = "^7.8.1"
+langchain-core = "^0.2.0"
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"

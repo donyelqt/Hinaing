@@ -488,23 +488,70 @@ def route_documents_by_theme(
     documents: list[WebDocument],
     focus_areas: list[str] | None,
 ) -> dict[str, list[WebDocument]]:
-    """Cluster documents per configured theme."""
+    """Cluster documents per configured theme using strict content matching."""
     if THEME_GROUPS is None:
         raise RuntimeError("Theme groups not configured for agent tools")
 
     focus_values = {focus.lower() for focus in (focus_areas or [])}
     theme_docs: dict[str, list[WebDocument]] = {key: [] for key in THEME_GROUPS}
 
+    # Pre-compute expanded keywords for each theme to ensure robust matching
+    # Merges config keywords with our rich FOCUS_CONCERN_KEYWORDS
+    expanded_keywords = {}
+    for key, meta in THEME_GROUPS.items():
+        base_keywords = set(meta.get("keywords", []))
+        
+        # Add rich keywords if the theme key matches our hardcoded categories
+        # We try to match the theme key (e.g., "health") to FOCUS_CONCERN_KEYWORDS keys
+        rich_keywords = []
+        if key in FOCUS_CONCERN_KEYWORDS:
+            rich_keywords = FOCUS_CONCERN_KEYWORDS[key]
+        
+        # Flatten and clean rich keywords (e.g., "Baguio dengue" -> "dengue")
+        # Actually, full phrases are fine, but single words are more hit-friendly for simple check.
+        # Let's keep phrases but maybe also add significant tokens.
+        # For now, just add the full phrases and let 'in content' handle it.
+        # Also clean base_keywords to lowercase
+        final_set = {k.lower() for k in base_keywords}
+        for phrase in rich_keywords:
+            final_set.add(phrase.lower())
+            # Add specific actionable terms from phrase (optional, but "dengue" is better than "baguio dengue leak")
+            # Let's be careful not to over-match. "traffic" is good. "baguio" is bad.
+        
+        expanded_keywords[key] = final_set
+
     for doc in documents:
-        content = f"{doc.title} {doc.snippet}".lower()
+        # Normalize content for matching
+        content = f"{doc.title} {doc.snippet} {str(doc.url)}".lower()
+        
         for key, meta in THEME_GROUPS.items():
-            focus_match = bool(focus_values & set(meta.get("focus_values", set())))
-            keyword_match = any(word in content for word in meta.get("keywords", set()))
-            if focus_match or keyword_match:
+            # 1. Activation: Is this theme requested by the user?
+            # meta['focus_values'] usually contains same string as key, e.g. {'health'}
+            theme_focus = set(meta.get("focus_values", set()))
+            is_active_theme = bool(focus_values & theme_focus)
+            
+            if not is_active_theme:
+                continue
+
+            # 2. Matching: Does the document belong to this theme?
+            # We use the expanded keyword set for this theme
+            keywords = expanded_keywords.get(key, set())
+            
+            # Helper to check matches
+            match_found = False
+            for kw in keywords:
+                if kw in content:
+                    match_found = True
+                    break
+            
+            # Special case: If no specific keywords defined/found, maybe use strict mapping?
+            # But we populated keywords, so it should be fine.
+            
+            if match_found:
                 theme_docs[key].append(doc)
     
     # Log routing stats for debugging
     stats = {k: len(v) for k, v in theme_docs.items()}
-    logger.info("[theme_router] Routing stats: %s", stats)
+    logger.info("[theme_router] Routing stats (strict): %s", stats)
     
     return theme_docs

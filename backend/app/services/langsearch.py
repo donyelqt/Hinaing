@@ -153,6 +153,9 @@ class LangSearchClient:
             "24h": "oneDay",
             "3d": "oneWeek",
             "7d": "oneWeek",
+            "month": "oneMonth",
+            "30d": "oneMonth",
+            "year": "oneYear",
         }
         return mapping.get(time_window, "noLimit")
 

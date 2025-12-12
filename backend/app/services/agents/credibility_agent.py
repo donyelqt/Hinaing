@@ -273,7 +273,7 @@ class LLMCredibilityAnalyzer:
         genai.configure(api_key=settings.gemini_api_key)
         # Use Gemini 2.0 Flash for speed and efficiency
         self.model = genai.GenerativeModel(
-            "gemini-2.0-flash-exp",
+            "gemini-2.5-flash",
             safety_settings=SAFETY_SETTINGS,
         )
         self.batch_size = 12
@@ -337,7 +337,7 @@ Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential 
             )
             return self._parse_response(resp.text, len(batch))
         except Exception as e:
-            logger.warning(f"[llm_credibility] Gemini 2.0 Flash error: {e}")
+            logger.warning(f"[llm_credibility] Gemini Flash error: {e}")
             return [{"score": 0.50, "reasoning": "Analysis unavailable", "red_flags": []}] * len(batch)
     
     def _parse_response(self, text: str, count: int) -> list[dict]:

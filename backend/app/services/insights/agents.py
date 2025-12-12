@@ -20,7 +20,7 @@ from .agent_tools import (
 from ..agents.sentiment_agent import get_sentiment_agent
 
 # Maximum documents to process (controls cost and latency)
-MAX_DOCUMENTS = 50
+MAX_DOCUMENTS = 100
 
 logger = logging.getLogger(__name__)
 

@@ -287,46 +287,52 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
             try:
                 # Build context from cached response
                 cached_response = cached["response"]
-                context = format_results_for_chat(cached_response)
                 
-                # Use Gemini to answer based on context
-                from google import genai
-                from ..core.config import get_settings
+                # Context summary for the agent
+                analysis_context = ""
+                if cached_response.overall_sentiment:
+                    analysis_context += f"Overall Sentiment: {cached_response.overall_sentiment.label}\n"
+                    analysis_context += f"Summary: {cached_response.overall_sentiment.summary}\n"
                 
-                settings = get_settings()
-                client = genai.Client(api_key=settings.gemini_api_key)
-                
-                prompt = f"""Based on the following Baguio City sentiment analysis results, answer the user's question.
-
-ANALYSIS RESULTS:
-{context}
-
-USER QUESTION: {request.message}
-
-Provide a helpful, conversational response that directly addresses their question using the analysis data above. If the information isn't available in the analysis, say so politely."""
-
-                result = client.models.generate_content(
-                    model="gemini-2.0-flash-exp",
-                    contents=prompt
+                # Pass this context to the agent so it knows what was discussed
+                # The agent will then perform FRESH Web + RAG search for the new question
+                augmented_message = (
+                    f"CONTEXT FROM PREVIOUS ANALYSIS: \n{analysis_context}\n\n"
+                    f"USER QUESTION: {request.message}\n"
+                    f"(Use your tools to find fresh info if needed.)"
                 )
                 
-                answer = result.text if result.text else "I couldn't find specific information about that in the analysis."
+                # Run the Full Agentic Hybrid Search
+                response_text, sources = await run_chat_agent(
+                    message=augmented_message,
+                    history=request.history,
+                    jurisdiction="Baguio City",
+                    system_instruction=(
+                        "You are the **Synthesis Agent** (Node 7) of the Hinaing Multi-Agent System. "
+                        "You represent the collective insights of the full 7-node architecture (Sentiment, Credibility, etc.). "
+                        "You rely on the provided Context and your Tools to answer follow-up questions. "
+                        "Do NOT apologize. Act as the intelligent interface for the analysis."
+                    )
+                )
                 
                 yield json.dumps({
                     "type": "result",
                     "stage": "complete",
-                    "message": answer,
+                    "message": response_text,
                     "progress": 1.0,
-                    "data": {"mode": "followup"}
+                    "data": {
+                        "mode": "simple",  # Render as Simple Q&A (Text + Sources)
+                        "sources": sources
+                    }
                 }) + "\n"
                 
             except Exception as exc:
-                logger.exception("Follow-up failed: %s", exc)
-                # Fallback to simple chat
+                logger.exception("Follow-up agent failed: %s", exc)
+                # Fallback to simple chat (without augmented context if that failed)
                 yield json.dumps({
                     "type": "progress",
                     "stage": "fallback",
-                    "message": "🔄 Searching for answer...",
+                    "message": "🔄 Refrying search...",
                     "progress": 0.5
                 }) + "\n"
                 
@@ -345,8 +351,38 @@ Provide a helpful, conversational response that directly addresses their questio
                 }) + "\n"
             return
         else:
-            # No cached data, fall through to full analysis
-            intent = "analyze"
+            # Cache miss - Fallback to Agentic Search seamlessly
+            yield json.dumps({
+                "type": "progress",
+                "stage": "fallback",
+                "message": "🔄 Analysis context expired. Switching to Fast Agentic Search...",
+                "progress": 0.5
+            }) + "\n"
+            
+            try:
+                response_text, sources = await run_chat_agent(
+                    message=request.message,
+                    history=request.history,
+                    jurisdiction="Baguio City",
+                    system_instruction="You are an intelligent Agentic RAG assistant. The user is asking a follow-up, but the previous analysis context is lost. You MUST use your 'search_civic_data' tool to find the answer. Do NOT apologize. Do NOT say you cannot access the internet. USE THE TOOL."
+                )
+                
+                yield json.dumps({
+                    "type": "result",
+                    "stage": "complete",
+                    "message": response_text,
+                    "progress": 1.0,
+                    "data": {"mode": "simple_fallback", "sources": sources}
+                }) + "\n"
+            except Exception as e:
+                logger.error(f"Fallback agent failed: {e}")
+                yield json.dumps({
+                    "type": "error",
+                    "stage": "error",
+                    "message": "I lost the context and couldn't search for it. Please try analyzing again.",
+                    "progress": 0.0
+                }) + "\n"
+            return
     
     # intent == "analyze" - Full multi-agent pipeline
     focus_areas, time_window = parse_user_intent(request.message)

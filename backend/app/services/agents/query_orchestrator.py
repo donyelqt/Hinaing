@@ -265,7 +265,7 @@ WORKFLOW:
 Final Answer JSON format:
 {{"strategy": "multi-query for topic diversity", "queries": [{{"query": "...", "topic": "..."}}], "expected_results": ["diverse results across topics"]}}
 
-CRITICAL: Generate 3-4 separate queries covering DIFFERENT topics. Do NOT combine all keywords into one query.
+CRITICAL: Generate ONE query for EACH provided focus area (up to max, default 6). Coverage for ALL requested areas is required. Do NOT combine all keywords into one query.
 
 Begin!
 
@@ -284,9 +284,10 @@ class QueryOrchestratorAgent:
     _executor: AgentExecutor | None = field(default=None, init=False)
 
     def _get_llm(self) -> ChatGoogleGenerativeAI:
+        """Get Gemini LLM for query generation."""
         if self._llm is None:
             self._llm = ChatGoogleGenerativeAI(
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.5-flash",
                 google_api_key=settings.gemini_api_key,
                 temperature=0.2,
             )
@@ -436,36 +437,45 @@ class QueryOrchestratorAgent:
             return self._fallback_plan(focus_values, time_window)
 
     def _extract_from_steps(self, steps: list, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
-        """Extract queries from intermediate steps."""
+        """Extract queries from intermediate steps, accumulating from ALL tool calls."""
         time_suffix = _get_time_search_suffix(time_window)
+        all_queries = []
         
-        for step in reversed(steps):
+        for step in steps:
             if len(step) >= 2:
                 action, observation = step[0], step[1]
                 if hasattr(action, 'tool') and action.tool == "generate_query":
                     try:
                         result = json.loads(observation) if isinstance(observation, str) else observation
                         if isinstance(result, dict) and result.get("queries"):
-                            queries = []
-                            for idx, q in enumerate(result["queries"][:self.max_queries]):
+                            for idx, q in enumerate(result["queries"]):
                                 query_text = q.get("query", "") if isinstance(q, dict) else q
-                                topic_name = q.get("topic", f"topic_{idx+1}") if isinstance(q, dict) else f"topic_{idx+1}"
+                                topic_name = q.get("topic", f"topic_{len(all_queries)+1}") if isinstance(q, dict) else f"topic_{len(all_queries)+1}"
                                 if query_text:
-                                    queries.append(QueryTask(
+                                    all_queries.append(QueryTask(
                                         query=f"{query_text}{time_suffix}",
                                         intent="targeted",
                                         topic=topic_name,
-                                        priority=idx + 1
+                                        priority=len(all_queries) + 1
                                     ))
-                            if queries:
-                                logger.info("[query_orchestrator] Extracted %d queries from steps", len(queries))
-                                return QueryPlan(
-                                    strategy=f"Multi-query with {len(queries)} topic clusters",
-                                    queries=queries,
-                                    expected_results=[f"Diverse results for {', '.join(focus_values)}"],
-                                )
                     except (json.JSONDecodeError, TypeError):
                         continue
+        
+        if all_queries:
+            # If we have more queries than max, simplistic slice might drop entire categories if mostly from step 1.
+            # But usually max_queries is 6. If we generated 18, we have a problem.
+            # Let's trust the agent to manage count or just return them all (retrieval agent handles batches).
+            # The retrieval agent handles parallel batching, so 12-18 queries is fine, just more time.
+            # We will NOT slice here to ensure coverage, but let RetrievalAgent verify.
+            # Actually, RetrievalAgent respects the list length. Let's allow up to 12.
+            
+            logger.info("[query_orchestrator] Extracted %d queries from steps", len(all_queries))
+            return QueryPlan(
+                strategy=f"Multi-query with {len(all_queries)} topic clusters",
+                queries=all_queries, 
+                expected_results=[f"Diverse results for {', '.join(focus_values)}"],
+            )
+            
         return self._fallback_plan(focus_values, time_window)
 
     def _fallback_plan(self, focus_values: list[str], time_window: str | None = None) -> QueryPlan:

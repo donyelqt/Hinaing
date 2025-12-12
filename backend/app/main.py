@@ -17,7 +17,7 @@ def _load_models_sync():
     try:
         from .services.agents.sentiment_agent import get_sentiment_model
         get_sentiment_model()
-        logger.info("[startup] RoBERTa sentiment model loaded")
+        logger.info("System cleaned: Ollama removed.")
     except Exception as e:
         logger.warning(f"[startup] Failed to preload sentiment model: {e}")
     

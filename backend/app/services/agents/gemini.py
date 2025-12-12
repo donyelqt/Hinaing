@@ -153,9 +153,9 @@ def run_gemini_agent(
     executor = get_gemini_agent()
     if documents:
         doc_lines = []
-        for doc in documents[:50]:  # Process up to 50 documents
+        for doc in documents[:120]:  # Process up to 120 documents (full context)
             title = sanitize_text(doc.get('title', 'Untitled'))
-            snippet = sanitize_text(doc.get('snippet', ''))[:250]  # More context per doc
+            snippet = sanitize_text(doc.get('snippet', ''))[:300]  # Deep context per doc
             sentiment = doc.get('sentiment', 'neutral')
             doc_lines.append(f"- [{sentiment}] {title} :: {snippet}")
         context_block = "\n".join(doc_lines)

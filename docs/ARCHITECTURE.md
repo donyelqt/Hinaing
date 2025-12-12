@@ -191,26 +191,58 @@ graph LR
         SUPA[Supabase<br/>Database]
     end
 
-    subgraph Agents["Agent Layer"]
-        QOA[Query Orchestrator]
-        RTA[Retrieval Agent]
-        SNA[Sentiment Agent]
-        CRA[Credibility Agent]
-        TRA[Theme Router]
-        CTA[Context Agent]
-        THA[Theme Agents x6]
-        CHAT["Chat Agent<br/>(Baseline Control)"]
+    subgraph LangGraphNodes["LangGraph Pipeline (7 Nodes - Self Learning)"]
+        NODE1[Node 1: Query Orchestrator]
+        NODE2[Node 2: External Retrieval<br/>(Web/FB/Reddit)]
+        NODE3[Node 3: Internal Retrieval<br/>(Memory Recall)]
+        
+        subgraph NODE4["Node 4: Unified Analysis (asyncio.gather)"]
+            SNA[Sentiment Agent]
+            CRA[Credibility Agent]
+            TRA[Theme Router]
+        end
+        
+        NODE5[Node 5: Context Agent<br/>(Memory Consolidation)]
+        
+        subgraph NODE6["Node 6: Theme Agents (ThreadPool)"]
+            TH1[Infrastructure]
+            TH2[Health]
+            TH3[Safety]
+            TH4[Tourism]
+            TH5[Economy]
+            TH6[Environment]
+        end
+        
+        NODE7[Node 7: Build Snapshot<br/>Narrative Generation]
     end
 
-    LS --> RTA & CHAT
-    FB --> RTA
-    GEMINI --> QOA & SNA & THA & CHAT
-    ROBERTA --> SNA
-    MINILM --> CTA
-    QDRANT --> CTA
-    SUPA --> RTA
+    subgraph Control["Control Group"]
+        CHAT[Chat Agent<br/>ReAct Loop]
+    end
 
-    QOA --> RTA --> SNA --> CRA & TRA --> CTA --> THA
+    %% External connections
+    LS --> NODE2
+    LS --> CHAT
+    FB --> NODE2
+    SUPA --> NODE2
+    GEMINI --> NODE1
+    GEMINI --> SNA
+    GEMINI --> TH1 & TH2 & TH3 & TH4 & TH5 & TH6
+    GEMINI --> NODE7
+    GEMINI --> CHAT
+    ROBERTA --> SNA
+    MINILM --> NODE3
+    MINILM --> NODE5
+    QDRANT --> NODE3
+    QDRANT --> NODE5
+
+    %% Pipeline flow
+    NODE1 --> NODE2
+    NODE2 --> NODE3
+    NODE3 --> NODE4
+    NODE4 --> NODE5
+    NODE5 --> NODE6
+    NODE6 --> NODE7
 ```
 
 ## Theme Groups

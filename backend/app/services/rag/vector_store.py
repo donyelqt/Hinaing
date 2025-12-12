@@ -31,8 +31,8 @@ class VectorStore:
         """Initialize Qdrant client and collection."""
         settings = get_settings()
         
-        # Use in-memory Qdrant for development, can switch to server for production
-        self.client = QdrantClient(path=":memory:")  # or url="http://localhost:6333"
+        # Use persistent storage on disk
+        self.client = QdrantClient(path="qdrant_data")  # Persists data to ./qdrant_data
         self.embedding_service = get_embedding_service()
         
         # Create collection if it doesn't exist
@@ -205,3 +205,14 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {}
+
+
+# Global instance
+_instance: VectorStore | None = None
+
+def get_vector_store() -> VectorStore:
+    """Get singleton VectorStore instance."""
+    global _instance
+    if _instance is None:
+        _instance = VectorStore()
+    return _instance

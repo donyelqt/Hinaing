@@ -154,7 +154,7 @@ class GeminiClient:
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         doc_lines = []
-        for idx, doc in enumerate(documents[:50], start=1):
+        for idx, doc in enumerate(documents[:120], start=1):
             title = sanitize_text(doc.get('title'))
             snippet = sanitize_text(doc.get('snippet'))
             sentiment = doc.get('sentiment', 'neutral')
