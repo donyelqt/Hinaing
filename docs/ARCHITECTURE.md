@@ -316,6 +316,9 @@ graph LR
     NODE4 --> NODE5
     NODE5 --> NODE6
     NODE6 --> NODE7
+    
+    %% Theme Router routes to Theme Agents
+    TRA -.->|routes docs| TH1 & TH2 & TH3 & TH4 & TH5 & TH6
 ```
 
 ## Theme Groups
