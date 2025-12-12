@@ -1,13 +1,13 @@
 # Thesis Findings
 
 ## Overview
-The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **12 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating a cyclic learning loop that improves analysis quality over time.
+The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating a cyclic learning loop that improves analysis quality over time.
 
-## Agent Summary (12 Total)
+## Agent Summary (13 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
-| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ## Current Capabilities
@@ -131,10 +131,10 @@ KEYWORD_CLUSTERS = {
 
 ### 6. Comparative Architecture Analysis (Control vs Novel)
 
-| Feature | Chat Agent (Control - 1 Agent) | Sentiment Generator (Novel - 12 Agents) |
+| Feature | Chat Agent (Control - 1 Agent) | Sentiment Generator (Novel - 13 Agents) |
 |---------|-------------------------------|----------------------------------------|
 | Architecture | Agentic RAG (ReAct) | 7-Node Multi-Agent Graph |
-| Agent Count | 1 | **12** (6 core + 6 theme) |
+| Agent Count | 1 | **13** (7 core + 6 theme) |
 | Execution | Serial | Parallelized (3 agents + 6 theme agents) |
 | Data Scope | Atomic (~5 results) | Holistic (50+ documents) |
 | Output | Unstructured Text | Structured Intelligence |
@@ -144,8 +144,8 @@ KEYWORD_CLUSTERS = {
 
 ## Novel Contributions
 
-1. **7-Node Multi-Agent Self-Learning Architecture (12 Agents)**
-   - Cyclic graph with 6 core agents + 6 theme agents
+1. **7-Node Multi-Agent Self-Learning Architecture (13 Agents)**
+   - Cyclic graph with 7 core agents + 6 theme agents
    - **ContextAugmentationAgent** handles both recall (Node 3) and consolidation (Node 5)
    - Verified self-reference loop
 
@@ -169,7 +169,7 @@ KEYWORD_CLUSTERS = {
    - TourismAgent, EconomyAgent, EnvironmentAgent
    - ThreadPoolExecutor for parallel execution
 
-## Architecture Flow (12 Agents)
+## Architecture Flow (13 Agents)
 
 ```
 SnapshotRequest
@@ -209,7 +209,8 @@ Node 6: 6 Theme Agents in PARALLEL
        |-- EconomyAgent
        |-- EnvironmentAgent
        v
-Node 7: CoordinatorAgent (GeminiClient)
+Node 7: CoordinatorAgent
+       |-- CoordinatorAgent.run()
        |-- Narrative generation (Gemini 2.5 Pro)
        |-- Assemble SnapshotResponse
        v
@@ -220,12 +221,12 @@ SnapshotResponse
 
 | Agent | Model | Reason |
 |-------|-------|--------|
-| QueryOrchestratorAgent | gemini-2.5-flash | Fast ReAct reasoning |
-| SentimentAgent (LLM part) | gemini-2.5-pro | Context-aware, 60% weight |
-| CredibilityAgent | gemini-2.5-flash | Fast pattern detection |
-| 6 Theme Agents | gemini-2.5-flash | Fast insight generation |
-| CoordinatorAgent | gemini-2.5-pro | Comprehensive narrative |
-| Chat Agent (Control) | gemini-2.0-flash-exp | Fast Q&A |
+| QueryOrchestratorAgent | `gemini-2.5-flash` | Fast ReAct reasoning |
+| SentimentAgent (LLM part) | `gemini-2.5-pro` | Context-aware, 60% weight |
+| CredibilityAgent | `gemini-2.5-flash` | Fast pattern detection |
+| ThemeAgent ×6 | `gemini-2.5-pro` | Theme-specific insight generation |
+| CoordinatorAgent | `gemini-2.5-pro` | Comprehensive narrative |
+| ChatAgent (Control) | `gemini-2.5-flash` | Fast Q&A |
 
 ## Gaps and Next Steps
 
@@ -254,7 +255,7 @@ SnapshotResponse
 
 | Aspect | Status | Evidence |
 |--------|--------|----------|
-| Multi-Agent Architecture | Defensible | 12 Agents in 7-Node Graph |
+| Multi-Agent Architecture | Defensible | 13 Agents in 7-Node Graph |
 | Agent Specialization | Defensible | Each agent has distinct role |
 | Data Persistence | Defensible | Qdrant on Disk |
 | Accuracy | Defensible | Multi-Agent Consensus |

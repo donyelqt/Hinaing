@@ -1,12 +1,12 @@
 # Hinaing Docs
 
-This directory houses the thesis documentation for **Hinaing**, a **12-agent multi-agent system** with real-time intelligent search and self-learning RAG for context-aware public opinion analysis in Baguio City.
+This directory houses the thesis documentation for **Hinaing**, a **13-agent multi-agent system** with real-time intelligent search and self-learning RAG for context-aware public opinion analysis in Baguio City.
 
-## Agent Summary (12 Total)
+## Agent Summary (13 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
-| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ## Contents
@@ -31,13 +31,13 @@ This directory houses the thesis documentation for **Hinaing**, a **12-agent mul
 |------|----------|----------|
 | 1 | **QueryOrchestratorAgent** | ReAct reasoning with KEYWORD_CLUSTERS for 6 diverse queries |
 | 2 | **RetrievalAgent** | LangSearch + Facebook + Reddit ingestion |
-| 3 | **ContextAugmentationAgent** | Qdrant vector search for memory recall |
+| 3 | **ContextAugmentationAgent** | Qdrant cosine similarity search for memory recall |
 | 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel analysis (asyncio.gather) |
 | 5 | **ContextAugmentationAgent** | Ingest enriched documents to vector store |
-| 6 | **6 Theme Agents** | Parallel Gemini agents for domain-specific insights |
-| 7 | **CoordinatorAgent** | Narrative generation with Gemini 2.5 Pro |
+| 6 | **ThemeAgent ×6** | `run_theme_agent()` ×6 via ThreadPoolExecutor |
+| 7 | **CoordinatorAgent** | `coordinator_agent.run()` for narrative generation |
 
-## Architecture Highlights (12 Agents)
+## Architecture Highlights (13 Agents)
 
 ### 1. QueryOrchestratorAgent (ReAct)
 Located in `backend/app/services/agents/query_orchestrator.py`:
@@ -80,10 +80,10 @@ Located in `backend/app/services/insights/agents.py`:
 - Routes documents to 6 theme buckets based on keywords
 - Runs in parallel with SentimentAgent and CredibilityAgent
 
-### 7. Six Theme Agents
+### 7. ThemeAgent (×6 Parallel Execution)
 Located in `backend/app/services/agents/theme_agent.py`:
-- **InfrastructureAgent**, **HealthAgent**, **SafetyAgent**
-- **TourismAgent**, **EconomyAgent**, **EnvironmentAgent**
+- Single `run_theme_agent()` function called 6 times with different theme labels
+- Themes: Infrastructure, Health & Wellness, Public Safety, Tourism & Events, Business & Economy, Environment
 - ThreadPoolExecutor with 6 workers for parallel execution
 
 ### 8. ChatAgent (Control Group)
@@ -158,7 +158,8 @@ Located in `backend/app/services/agents/chat_agent.py`:
 | CredibilityAgent | `backend/app/services/agents/credibility_agent.py` |
 | ContextAugmentationAgent | `backend/app/services/agents/context_agent.py` |
 | ThemeRouterAgent | `backend/app/services/insights/agents.py` |
-| 6 Theme Agents | `backend/app/services/agents/theme_agent.py` |
+| ThemeAgent (×6) | `backend/app/services/agents/theme_agent.py` |
+| CoordinatorAgent | `backend/app/services/agents/coordinator_agent.py` |
 | ChatAgent (Control) | `backend/app/services/agents/chat_agent.py` |
 | LangGraph Pipeline | `backend/app/services/insights/graph.py` |
 

@@ -8,9 +8,9 @@ Multi-Agentic AI system with real-time intelligent search and RAG for context-aw
 
 | Category | Agents | Notes |
 |----------|--------|-------|
-| **Core Pipeline Agents** | 6 | Query Orchestrator, Retrieval, Sentiment, Credibility, Context, Theme Router |
+| **Core Pipeline Agents** | 7 | QueryOrchestrator, Retrieval, Sentiment, Credibility, Context, ThemeRouter, Coordinator |
 | **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
-| **Total** | **12** | 6 main + 6 theme-specific |
+| **Total** | **13** | 7 core + 6 theme-specific |
 
 > **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather` in a single unified analysis node, reducing latency significantly.
 
@@ -18,12 +18,12 @@ Multi-Agentic AI system with real-time intelligent search and RAG for context-aw
 
 | Component | Model | Reason |
 |-----------|-------|--------|
-| **Narrative Summary** | `gemini-2.5-pro` | Comprehensive topic coverage |
-| **Query Orchestrator** | `gemini-2.5-flash` | Fast ReAct loop for query planning |
-| **Sentiment Agent (LLM)** | `gemini-2.5-pro` | Context-aware classification, 60% ensemble weight |
-| **Credibility Agent** | `gemini-2.5-flash` | Fast content quality scoring |
-| **Theme Agents (6x)** | `gemini-2.5-flash` | Fast insight generation |
-| **Chat Agent** | `gemini-2.0-flash-exp` | Fast Q&A responses |
+| **CoordinatorAgent** | `gemini-2.5-pro` | Comprehensive narrative generation |
+| **QueryOrchestratorAgent** | `gemini-2.5-flash` | Fast ReAct loop for query planning |
+| **SentimentAgent (LLM)** | `gemini-2.5-pro` | Context-aware classification, 60% ensemble weight |
+| **CredibilityAgent** | `gemini-2.5-flash` | Fast content quality scoring |
+| **ThemeAgent (×6)** | `gemini-2.5-pro` | Theme-specific insight generation |
+| **ChatAgent** | `gemini-2.5-flash` | Fast Q&A responses |
 | **RoBERTa** | `twitter-roberta-base-sentiment-latest` | Local model, 40% ensemble weight |
 | **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Local 384-dim vectors for RAG |
 
@@ -59,7 +59,7 @@ The system implements a cyclic learning architecture where fresh external data i
 │                                          │ (Consolidate)│                  │
 │                                          └──────────────┘                  │
 │                                                                             │
-│  TOTAL: 12 AGENTS (6 Core + 6 Theme)                                       │
+│  TOTAL: 13 AGENTS (7 Core + 6 Theme)                                       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,8 +72,8 @@ The system implements a cyclic learning architecture where fresh external data i
 | 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K | Qdrant, MiniLM-L6-v2, `retrieve_knowledge()` |
 | 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
 | 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant | SemanticChunker, VectorStore, `consolidate_memory()` |
-| 6 | **6 Theme Agents** (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | 6x parallel Gemini calls, ThreadPoolExecutor |
-| 7 | **Coordinator** (GeminiClient) | Assemble final response with narrative | Gemini 2.5 Pro narrative generation |
+| 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | `run_theme_agent()` ×6 via ThreadPoolExecutor |
+| 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Pro |
 
 ## System Flow Diagram
 
@@ -152,8 +152,8 @@ flowchart TB
                 TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
             end
 
-            subgraph Node7["Node 7: Coordinator Agent"]
-                GC[GeminiClient<br/>gemini-2.5-pro]
+            subgraph Node7["Node 7: CoordinatorAgent"]
+                GC[CoordinatorAgent<br/>gemini-2.5-pro]
                 NR[Narrative Generation]
                 GC --> NR
                 SR[SnapshotResponse]
@@ -161,7 +161,8 @@ flowchart TB
             end
 
             Node1 --> Node2 --> Node3 --> Node4
-            Node4 --> Node5 --> Node6 --> Node7
+            Node4 --> Node5 --> Node6
+            TI --> GC
         end
     end
 
@@ -191,7 +192,7 @@ sequenceDiagram
     participant MEM as Memory (Qdrant)
     participant ANALYZE as Unified Analysis
     participant TA as Theme Agents
-    participant GC as GeminiClient
+    participant GC as CoordinatorAgent
 
     Client->>API: POST /insights/snapshot
     API->>QO: SnapshotRequest
@@ -287,6 +288,8 @@ graph LR
         end
         
         NODE7[Node 7: Build Snapshot<br/>Narrative Generation]
+        
+        TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> NODE7
     end
 
     %% External connections
@@ -391,17 +394,17 @@ KEYWORD_CLUSTERS = {
 
 **Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating.
 
-## Data Flow Summary (12 Agents)
+## Data Flow Summary (13 Agents)
 
 ```
 SnapshotRequest
     → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS)
     → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit)
-    → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Memory Recall)
+    → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Cosine Similarity)
     → Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
     → Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk → Embed → Store)
-    → Node 6: 6 ThemeAgents in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
-    → Node 7: CoordinatorAgent (Narrative Generation with Gemini 2.5 Pro)
+    → Node 6: ThemeAgent ×6 in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
+    → Node 7: CoordinatorAgent.run() (Narrative Generation with Gemini 2.5 Pro)
     → SnapshotResponse
 ```
 
@@ -448,6 +451,7 @@ SnapshotRequest
 | Credibility Agent | `backend/app/services/agents/credibility_agent.py` |
 | Context Agent | `backend/app/services/agents/context_agent.py` |
 | Theme Agent | `backend/app/services/agents/theme_agent.py` |
+| Coordinator Agent | `backend/app/services/agents/coordinator_agent.py` |
 | RAG Chunker | `backend/app/services/rag/chunker.py` |
 | RAG Embeddings | `backend/app/services/rag/embeddings.py` |
 | RAG Vector Store | `backend/app/services/rag/vector_store.py` |

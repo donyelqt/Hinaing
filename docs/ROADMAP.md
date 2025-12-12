@@ -4,16 +4,16 @@
 
 This document tracks what has been delivered so far and the remaining work needed to reach the "thesis-grade" target.
 
-## Agent Summary (12 Total)
+## Agent Summary (13 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
-| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ## Completed Work
 
-### 7-Node Multi-Agent Architecture (12 Agents) - Dec 12, 2025
+### 7-Node Multi-Agent Architecture (13 Agents) - Dec 12, 2025
 
 | Node | Agent(s) | Status |
 |------|----------|--------|
@@ -63,11 +63,11 @@ This document tracks what has been delivered so far and the remaining work neede
 - Keyword-based matching with FOCUS_CONCERN_KEYWORDS
 - Runs in parallel with SentimentAgent and CredibilityAgent
 
-#### 6 Theme Agents
-- InfrastructureAgent, HealthAgent, SafetyAgent
-- TourismAgent, EconomyAgent, EnvironmentAgent
+#### ThemeAgent (×6 Parallel)
+- Single `run_theme_agent()` function called 6 times
+- Themes: Infrastructure, Health & Wellness, Public Safety, Tourism & Events, Business & Economy, Environment
 - ThreadPoolExecutor with 6 workers
-- Gemini 2.5 Flash for fast insight generation
+- Gemini 2.5 Pro for theme-specific insight generation
 
 ### Chat Systems
 - **Chat Analyzer** - Streaming SSE with 12-agent pipeline
@@ -170,17 +170,17 @@ This document tracks what has been delivered so far and the remaining work neede
    - Automated periodic snapshots
    - Trend detection over time
 
-## Architecture Summary (12 Agents)
+## Architecture Summary (13 Agents)
 
 ```
 SnapshotRequest
     -> Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS)
     -> Node 2: RetrievalAgent (LangSearch + Facebook + Reddit)
-    -> Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Memory)
+    -> Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Cosine Similarity)
     -> Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
     -> Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk -> Embed -> Store)
-    -> Node 6: 6 Theme Agents in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
-    -> Node 7: CoordinatorAgent (Narrative Generation)
+    -> Node 6: ThemeAgent ×6 in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
+    -> Node 7: CoordinatorAgent.run() (Narrative Generation)
     -> SnapshotResponse
 ```
 
@@ -188,7 +188,7 @@ SnapshotRequest
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| Total Agents | 12 | 12+ |
+| Total Agents | 13 | 13+ |
 | Documents per request | 50-100 | 100+ |
 | Latency (full pipeline) | 30-60s | <30s |
 | Theme agents (parallel) | 6 | 6 |

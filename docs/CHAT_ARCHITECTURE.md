@@ -4,23 +4,23 @@
 
 Hinaing provides two distinct chat interfaces with different agent architectures:
 
-| Feature | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+| Feature | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |---------|---------------------------|------------------------|
 | **Purpose** | Deep sentiment analysis | Quick Q&A |
 | **Endpoint** | `POST /chat/analyze` | `POST /chat/` |
 | **Response** | Streaming (SSE) | Sync JSON |
-| **Agent Count** | **12** (6 core + 6 theme) | **1** (ChatAgent) |
+| **Agent Count** | **13** (7 core + 6 theme) | **1** (ChatAgent) |
 | **Pipeline** | 7-node multi-agent | Single LLM + tool call |
 | **Latency** | 15-30 seconds | 2-5 seconds |
 | **Memory** | Persistent (Qdrant) | None |
 
 ## Agent Summary
 
-### Chat Analyzer Agents (12 Total)
+### Chat Analyzer Agents (13 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
-| **Core Pipeline** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Core Pipeline** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ### AI Assistant Agent (1 Total)
@@ -31,7 +31,7 @@ Hinaing provides two distinct chat interfaces with different agent architectures
 
 ---
 
-## Chat Analyzer System Flow (12 Agents)
+## Chat Analyzer System Flow (13 Agents)
 
 ```mermaid
 flowchart TB
@@ -50,7 +50,7 @@ flowchart TB
             ID --> |"followup"| Followup
         end
 
-        subgraph Pipeline["7-Node Multi-Agent Pipeline (12 Agents)"]
+        subgraph Pipeline["7-Node Multi-Agent Pipeline (13 Agents)"]
             subgraph Node1["Node 1: QueryOrchestratorAgent (10%)"]
                 QO[QueryOrchestratorAgent]
                 QO --> |KEYWORD_CLUSTERS| QP[QueryPlan<br/>6 diverse queries]
@@ -144,7 +144,7 @@ flowchart TB
 
 ---
 
-## Chat Analyzer Sequence Diagram (12 Agents)
+## Chat Analyzer Sequence Diagram (13 Agents)
 
 ```mermaid
 sequenceDiagram
@@ -222,7 +222,7 @@ sequenceDiagram
         
         Note over CO: Node 7: CoordinatorAgent
         API->>CO: build_snapshot()
-        CO->>CO: Narrative generation (Gemini 2.5 Pro)
+        CO->>CO: CoordinatorAgent.run() (Gemini 2.5 Pro)
         
         API-->>Client: SSE: {type: "result", data: AnalysisData}
         
@@ -286,7 +286,7 @@ flowchart TB
 
 ## Agent Comparison: Chat Analyzer vs AI Assistant
 
-| Aspect | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+| Aspect | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |--------|---------------------------|------------------------|
 | **QueryOrchestratorAgent** | ✅ ReAct with 3 tools | ❌ None |
 | **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ❌ LangSearch only (via tool) |
@@ -334,7 +334,7 @@ flowchart TD
 
 ---
 
-## Streaming Response Format (12 Agents)
+## Streaming Response Format (13 Agents)
 
 ```mermaid
 sequenceDiagram
@@ -342,7 +342,7 @@ sequenceDiagram
     participant Server
 
     Server->>Client: {type: "progress", stage: "start", progress: 0.0}
-    Note right of Server: Starting 12-agent pipeline
+    Note right of Server: Starting 13-agent pipeline
     Server->>Client: {type: "progress", stage: "query_orchestrator", progress: 0.1}
     Note right of Server: QueryOrchestratorAgent
     Server->>Client: {type: "progress", stage: "retrieval", progress: 0.25}
@@ -361,7 +361,7 @@ sequenceDiagram
 
 ---
 
-## Component Architecture (12 Agents)
+## Component Architecture (13 Agents)
 
 ```mermaid
 graph LR
@@ -386,12 +386,12 @@ graph LR
         CA_SA[SentimentAgent]
         CA_CR[CredibilityAgent]
         CA_TR[ThemeRouterAgent]
-        CA_T1[InfrastructureAgent]
-        CA_T2[HealthAgent]
-        CA_T3[SafetyAgent]
-        CA_T4[TourismAgent]
-        CA_T5[EconomyAgent]
-        CA_T6[EnvironmentAgent]
+        CA_T1[ThemeAgent: Infrastructure]
+        CA_T2[ThemeAgent: Health]
+        CA_T3[ThemeAgent: Safety]
+        CA_T4[ThemeAgent: Tourism]
+        CA_T5[ThemeAgent: Economy]
+        CA_T6[ThemeAgent: Environment]
         CA_CO[CoordinatorAgent]
     end
 
@@ -452,9 +452,9 @@ backend/
 
 ## Performance Comparison
 
-| Metric | Chat Analyzer (12 Agents) | AI Assistant (1 Agent) |
+| Metric | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |--------|---------------------------|------------------------|
-| Agent Count | **12** | **1** |
+| Agent Count | **13** | **1** |
 | Avg Latency | 15-30s | 2-5s |
 | Documents Processed | Up to 100 | Up to 5 |
 | LLM Calls | 8-12 | 1-2 |
@@ -485,5 +485,5 @@ flowchart LR
 
 Chat Analyzer maintains in-memory session cache:
 - Stores analysis results by `session_id`
-- Enables follow-up questions without re-running 12-agent pipeline
+- Enables follow-up questions without re-running 13-agent pipeline
 - Uses Gemini RAG on cached `SnapshotResponse`

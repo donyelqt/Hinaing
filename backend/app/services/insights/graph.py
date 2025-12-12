@@ -34,6 +34,7 @@ from .agents import (
 )
 from ..agents.query_orchestrator import QueryOrchestratorAgent
 from ..agents.context_agent import ContextAugmentationAgent
+from ..agents.coordinator_agent import get_coordinator_agent
 from ..langsearch import LangSearchClient
 from ..nlp.gemini import gemini_client, GeminiClient
 from ..agents.gemini import run_gemini_agent
@@ -563,17 +564,19 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 
     summary_text = None
     insights_payload: list[dict[str, str]] = []
-    if gemini_client.is_available and docs:
-        logger.info("[snapshot] Invoking Gemini for narrative", extra={"docs_used": len(docs)})
+    coordinator_agent = get_coordinator_agent()
+    if coordinator_agent.is_available and docs:
+        logger.info("[snapshot] CoordinatorAgent generating narrative", extra={"docs_used": len(docs)})
         try:
-            summary_text, insights_payload = await gemini_client.analyze_snapshot(
+            summary_text, insights_payload = await coordinator_agent.run(
                 window=request.time_window,
                 focus_areas=request.focus_areas,
                 documents=[doc.model_dump() for doc in docs],
+                theme_insights=[i.model_dump() for i in state.get("theme_insights", [])],
             )
-            logger.info("[snapshot] Gemini call completed successfully")
+            logger.info("[snapshot] CoordinatorAgent completed successfully")
         except Exception as exc:
-            logger.exception("[snapshot] Gemini call failed: %s", exc)
+            logger.exception("[snapshot] CoordinatorAgent failed: %s", exc)
             summary_text = None
             insights_payload = []
 

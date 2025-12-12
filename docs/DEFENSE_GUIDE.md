@@ -3,13 +3,13 @@
 ## The Core Argument
 **"We are not competing with Gemini or ChatGPT on General Intelligence. We are competing on Hyper-Local Situational Awareness with Self-Learning Memory."**
 
-Your thesis contribution is not the model (the brain), but the **Cognitive Architecture** (the 7-node workflow with **12 specialized agents**) designed specifically for Civic Analysis with persistent learning.
+Your thesis contribution is not the model (the brain), but the **Cognitive Architecture** (the 7-node workflow with **13 specialized agents**) designed specifically for Civic Analysis with persistent learning.
 
-## Agent Summary (12 Total)
+## Agent Summary (13 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
-| **Core Pipeline Agents** | 6 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent |
+| **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ---
@@ -41,8 +41,8 @@ You have built three systems to prove your point.
 
 | Feature | **AI Assistant (Baseline)** | **Chat Analyzer (Conversational)** | **Sentiment Generator (Dashboard)** |
 |---------|----------------------------|-----------------------------------|-------------------------------------|
-| **Agent Count** | **1** (ChatAgent) | **12** (6 core + 6 theme) | **12** (6 core + 6 theme) |
-| **Technology** | Agentic RAG | Streaming 12-Agent Pipeline | **7-Node Self-Learning Graph** |
+| **Agent Count** | **1** (ChatAgent) | **13** (7 core + 6 theme) | **13** (7 core + 6 theme) |
+| **Technology** | Agentic RAG | Streaming 13-Agent Pipeline | **7-Node Self-Learning Graph** |
 | **Input** | User question (Reactive) | Natural language query | Focus areas (Proactive) |
 | **Workflow** | Linear (Search -> Summarize) | 7-Node with SSE Progress | **7-Node Cyclic (with Memory)** |
 | **Output** | Unstructured Text | Structured Cards + Progress | **Dashboard (Charts, Scores)** |
@@ -52,11 +52,11 @@ You have built three systems to prove your point.
 | **Documents** | ~5 results | Up to 50 | Up to 100 |
 | **Purpose** | "What is happening?" | "Analyze this topic" | "What **matters** right now?" |
 
-**The Win:** "We demonstrated that for Policy Making, the **12-Agent Self-Learning Architecture** provides 10x more actionable depth than standard approaches. Furthermore, the system **learns from each run** via ContextAugmentationAgent's memory loop, improving future analyses."
+**The Win:** "We demonstrated that for Policy Making, the **13-Agent Self-Learning Architecture** provides 10x more actionable depth than standard approaches. Furthermore, the system **learns from each run** via ContextAugmentationAgent's memory loop, improving future analyses."
 
 ---
 
-## 3. The 7-Node Self-Learning Architecture (12 Agents)
+## 3. The 7-Node Self-Learning Architecture (13 Agents)
 
 This is your **key differentiator**. Explain it clearly:
 
@@ -85,11 +85,12 @@ Node 5: ContextAugmentationAgent.consolidate_memory() [LEARNING]  <-- NOVEL
     |-- Embed with MiniLM-L6-v2
     |-- Store in Qdrant for future recall
     v
-Node 6: 6 Theme Agents in PARALLEL
-    |-- InfrastructureAgent, HealthAgent, SafetyAgent
-    |-- TourismAgent, EconomyAgent, EnvironmentAgent
+Node 6: ThemeAgent ×6 in PARALLEL
+    |-- run_theme_agent() called 6 times via ThreadPoolExecutor
+    |-- Themes: Infrastructure, Health, Safety, Tourism, Economy, Environment
     v
 Node 7: CoordinatorAgent
+    |-- CoordinatorAgent.run()
     |-- Narrative generation (Gemini 2.5 Pro)
     |-- Final response assembly
 ```
@@ -185,7 +186,7 @@ This visual contrast proves your hypothesis immediately.
 
 ---
 
-## 8. Novel Contributions Summary (12 Agents)
+## 8. Novel Contributions Summary (13 Agents)
 
 | Contribution | Agent(s) | Evidence |
 |--------------|----------|----------|
@@ -194,15 +195,15 @@ This visual contrast proves your hypothesis immediately.
 | RAG Memory with Cosine Similarity | **ContextAugmentationAgent** | `context_agent.py`, `vector_store.py` - Qdrant + MiniLM |
 | Hybrid Sentiment Ensemble | **SentimentAgent** | `sentiment_agent.py` - RoBERTa + Gemini |
 | 5-Signal Credibility Framework | **CredibilityAgent** | `credibility_agent.py` - Multi-signal verification |
-| Parallel Theme Analysis | **6 Theme Agents** | `theme_agent.py` - ThreadPoolExecutor |
+| Parallel Theme Analysis | **ThemeAgent ×6** | `theme_agent.py` - `run_theme_agent()` ×6 via ThreadPoolExecutor |
 | Domain-Specific Grounding | **ThemeRouterAgent** | FOCUS_CONCERN_KEYWORDS for Baguio |
 
 ---
 
 ## 9. Defense Readiness Checklist
 
-- [x] **Architecture:** Defensible (7-Node Cyclic Graph with **12 Agents**)
-- [x] **Agent Count:** 12 total (6 core + 6 theme)
+- [x] **Architecture:** Defensible (7-Node Cyclic Graph with **13 Agents**)
+- [x] **Agent Count:** 13 total (7 core + 6 theme)
 - [x] **Self-Learning:** Verified (ContextAugmentationAgent Memory Loop)
 - [x] **RAG Pipeline:** Cosine similarity search in Qdrant (Node 3)
 - [x] **Credibility:** Defensible (5-Signal Ensemble)
@@ -214,8 +215,8 @@ This visual contrast proves your hypothesis immediately.
 
 ## 10. Closing Statement
 
-> "Hinaing is not just another AI chatbot. It is a **12-Agent Specialized Cognitive Architecture** for Civic Situational Awareness.
+> "Hinaing is not just another AI chatbot. It is a **13-Agent Specialized Cognitive Architecture** for Civic Situational Awareness.
 >
-> **QueryOrchestratorAgent** plans diverse queries, **RetrievalAgent** fetches from multiple sources, **ContextAugmentationAgent** recalls past knowledge via cosine similarity search, **CredibilityAgent** verifies with 5 signals, **SentimentAgent** quantifies opinion, **6 Theme Agents** generate domain insights, and **CoordinatorAgent** synthesizes actionable intelligence.
+> **QueryOrchestratorAgent** plans diverse queries, **RetrievalAgent** fetches from multiple sources, **ContextAugmentationAgent** recalls past knowledge via cosine similarity search, **CredibilityAgent** verifies with 5 signals, **SentimentAgent** quantifies opinion, **ThemeAgent** (×6) generates domain insights in parallel, and **CoordinatorAgent** synthesizes the final narrative.
 >
 > This is the future of AI-assisted governance: not generic assistants, but **domain-specific, self-learning multi-agent systems** that grow smarter with every analysis."
