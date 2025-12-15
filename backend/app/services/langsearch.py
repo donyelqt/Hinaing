@@ -116,33 +116,16 @@ class LangSearchClient:
                 logger.exception("LangSearch semantic rerank failed; returning original ranking: %s", exc)
                 return documents
 
-    # Official Baguio City Facebook pages to include in web searches
-    BAGUIO_FACEBOOK_PAGES = [
-        "BaguioCityPIO",           # Baguio City Public Information Office
-        "baboratoryph",            # Baguio Laboratory
-        "BaguioCityGovernment",    # Baguio City Government
-        "baboratory",              # Baguio Laboratory alt
-    ]
-
     @staticmethod
     def _enrich_query(query: str, focus_areas: list[str] | None) -> str:
-        """Enrich query to include Baguio Facebook pages in web search results.
+        """Keep query clean for precise search results.
         
-        Adds OR clauses for official Baguio City Facebook pages so that
-        relevant posts from these pages appear in web search results.
+        Previously added Facebook page filters which diluted search precision.
+        Now returns the query as-is for accurate results.
         """
-        # Build Facebook page site filters
-        fb_pages = [
-            "BaguioCityPIO",
-            "baboratoryph", 
-            "BaguioCityGovernment",
-        ]
-        fb_filters = " OR ".join([f"site:facebook.com/{page}" for page in fb_pages])
-        
-        # Combine original query with Facebook page filters
-        # This searches for the query terms AND includes results from FB pages
-        enriched = f"{query} OR ({fb_filters})"
-        return enriched
+        # Return query unchanged for precise, accurate search results
+        # The semantic reranker will handle relevance scoring
+        return query
 
     @staticmethod
     def _map_freshness(time_window: str | None) -> str | None:

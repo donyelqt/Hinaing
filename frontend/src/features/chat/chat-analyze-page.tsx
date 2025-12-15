@@ -28,6 +28,8 @@ interface AnalysisInsight {
 interface SimpleSource {
     title: string;
     url: string | null;
+    type?: string;
+    sentiment?: string;
 }
 
 interface AnalysisData {
@@ -552,17 +554,33 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {/* Sources for Simple Q&A mode */}
                 {(msg.data?.mode === "simple" || msg.data?.mode === "simple_fallback") && msg.data.sources && msg.data.sources.length > 0 && (
                     <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100/50">
-                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sources</p>
+                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                            {(msg.data.sources as SimpleSource[]).some(s => s.type === "SENTIMENT") ? "📊 Sentiment Sources" : "Sources"}
+                        </p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                            {(msg.data.sources as SimpleSource[]).slice(0, 4).map((source, idx) => (
+                            {(msg.data.sources as SimpleSource[]).slice(0, 12).map((source, idx) => (
                                 source.url && (
                                     <a
                                         key={idx}
                                         href={source.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1 sm:gap-1.5 rounded-md bg-slate-50 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs text-slate-600 transition hover:bg-slate-100 hover:text-blue-600 border border-slate-200 active:scale-95"
+                                        className={clsx(
+                                            "flex items-center gap-1 sm:gap-1.5 rounded-md px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs transition border active:scale-95",
+                                            source.type === "SENTIMENT" 
+                                                ? source.sentiment === "positive" 
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                                    : source.sentiment === "negative"
+                                                        ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-blue-600"
+                                        )}
                                     >
+                                        {source.sentiment && (
+                                            <span className="shrink-0">
+                                                {source.sentiment === "positive" ? "🟢" : source.sentiment === "negative" ? "🔴" : "⚪"}
+                                            </span>
+                                        )}
                                         <span className="truncate max-w-[100px] sm:max-w-[150px]">{source.title}</span>
                                         <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-50 shrink-0" />
                                     </a>

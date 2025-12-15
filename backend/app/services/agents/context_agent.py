@@ -18,6 +18,7 @@ class ContextAugmentationAgent:
     Now supports 7-Node Self-Learning Architecture:
     - retrieve_knowledge: Recall internal memory (Node 3)
     - consolidate_memory: Ingest new knowledge (Node 5)
+    - search_with_sentiment: Q&A sentiment-aware search (Chat Agent)
     """
     
     def __init__(self):
@@ -310,6 +311,79 @@ class ContextAugmentationAgent:
             total_documents=0
         )
     
+    async def search_with_sentiment(
+        self,
+        query: str,
+        limit: int = 20,
+        sentiment_filter: str | None = None
+    ) -> tuple[list[WebDocument], dict]:
+        """Search memory with sentiment aggregation for Q&A mode.
+        
+        Returns documents AND sentiment breakdown from stored analysis.
+        
+        Args:
+            query: Search query
+            limit: Max documents to return
+            sentiment_filter: Optional filter ("positive", "negative", "neutral")
+            
+        Returns:
+            Tuple of (documents, sentiment_stats)
+        """
+        logger.info(f"Sentiment-aware search for: {query[:50]}...")
+        
+        # Search vector store
+        results = await self.vector_store.search(query=query, k=limit * 2)  # Get more to filter
+        
+        if not results:
+            return [], {"positive": 0, "negative": 0, "neutral": 0, "total": 0}
+        
+        # Reconstruct documents with sentiment
+        documents = []
+        sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+        
+        for result in results:
+            chunk = result.chunk
+            meta = chunk.metadata.copy() if chunk.metadata else {}
+            meta["_score"] = result.score
+            meta["_source_type"] = "memory_sentiment"
+            
+            # Extract sentiment from stored metadata
+            sentiment = meta.get("sentiment", "neutral")
+            
+            # Apply filter if specified
+            if sentiment_filter and sentiment != sentiment_filter:
+                continue
+            
+            # Count sentiment
+            if sentiment in sentiment_counts:
+                sentiment_counts[sentiment] += 1
+            
+            doc = WebDocument(
+                title=chunk.source_title or meta.get("title", "Memory"),
+                snippet=chunk.content,
+                url=chunk.source_url or meta.get("url"),
+                published_at=datetime.fromisoformat(meta["created_at"]) if meta.get("created_at") else None,
+                sentiment=sentiment,
+                metadata=meta
+            )
+            documents.append(doc)
+            
+            if len(documents) >= limit:
+                break
+        
+        # Calculate stats
+        total = sum(sentiment_counts.values())
+        sentiment_stats = {
+            **sentiment_counts,
+            "total": total,
+            "positive_pct": round(sentiment_counts["positive"] / max(total, 1) * 100),
+            "negative_pct": round(sentiment_counts["negative"] / max(total, 1) * 100),
+            "neutral_pct": round(sentiment_counts["neutral"] / max(total, 1) * 100),
+        }
+        
+        logger.info(f"Sentiment search: {total} docs, {sentiment_stats}")
+        return documents, sentiment_stats
+
     async def clear_cache(self):
         """Clear vector store cache."""
         await self.vector_store.clear()

@@ -19,6 +19,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ...core.config import get_settings
+from ...core.telemetry import measure_performance
 from ...schemas.snapshot import SnapshotRequest
 from ...schemas.query import QueryPlan, QueryTask
 from ...services.insights.agent_tools import FOCUS_CONCERN_KEYWORDS
@@ -339,6 +340,7 @@ class QueryOrchestratorAgent:
             )
         return self._executor
 
+    @measure_performance(component="QueryOrchestratorAgent", operation="run_planning")
     def run(self, request: SnapshotRequest) -> QueryPlan:
         """Generate an optimized query plan using ReAct reasoning."""
         focus_values = request.focus_areas or [self.fallback_focus]

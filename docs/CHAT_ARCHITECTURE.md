@@ -335,14 +335,14 @@ flowchart TB
 | Aspect | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |--------|---------------------------|------------------------|
 | **QueryOrchestratorAgent** | ✅ ReAct with 3 tools | ❌ None |
-| **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ❌ LangSearch only (via tool) |
-| **ContextAugmentationAgent** | ✅ Memory recall + consolidation | ❌ None |
+| **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ⚠️ LangSearch + Memory |
+| **ContextAugmentationAgent** | ✅ Memory recall + consolidation | ⚠️ Memory recall only (via tool) |
 | **SentimentAgent** | ✅ RoBERTa + Gemini ensemble | ❌ None |
 | **CredibilityAgent** | ✅ 5-signal framework | ❌ None |
 | **ThemeRouterAgent** | ✅ 6 theme buckets | ❌ None |
 | **6 Theme Agents** | ✅ Parallel Gemini | ❌ None |
 | **ChatAgent** | ❌ Not used | ✅ Single agent |
-| **Memory** | ✅ Qdrant persistent | ❌ None |
+| **Memory** | ✅ Qdrant persistent | ✅ Read-only RAG |
 | **Parallelization** | ✅ Nodes 4 + 6 | ❌ None |
 
 ---
