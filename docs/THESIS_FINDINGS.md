@@ -27,7 +27,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 s
 
 ### 1. Multi-Agent Self-Learning Architecture Verified (Dec 12, 2025)
 
-**Hypothesis:** The 12-agent system can improve its analysis by referencing its own past memories.
+**Hypothesis:** The 13-agent system can improve its analysis by referencing its own past memories.
 
 **Verified Outcome:** CONFIRMED
 
@@ -140,7 +140,7 @@ KEYWORD_CLUSTERS = {
 | Output | Unstructured Text | Structured Intelligence |
 | Memory | None | Persistent (Qdrant) |
 
-**Finding:** The single-agent Chat Agent answers single questions but fails to provide strategic situational awareness. The 12-agent Sentiment Generator identifies, quantifies, and visualizes emerging risks without user prompting.
+**Finding:** The single-agent Chat Agent answers single questions but fails to provide strategic situational awareness. The 13-agent Sentiment Generator identifies, quantifies, and visualizes emerging risks without user prompting.
 
 ## Novel Contributions
 
@@ -231,7 +231,7 @@ SnapshotResponse
 ## Gaps and Next Steps
 
 ### Completed
-- [x] 7-Node Multi-Agent Architecture (12 agents)
+- [x] 7-Node Multi-Agent Architecture (13 agents)
 - [x] QueryOrchestratorAgent with Multi-Query Diversity
 - [x] SentimentAgent with Ensemble (RoBERTa + Gemini)
 - [x] CredibilityAgent with 5-Signal Framework
