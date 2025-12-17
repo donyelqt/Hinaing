@@ -1,6 +1,6 @@
 # Hinaing Docs
 
-This directory houses the thesis documentation for **Hinaing**, a **13-agent multi-agent system** with real-time intelligent search and self-learning RAG for context-aware public opinion analysis in Baguio City.
+This directory houses the thesis documentation for **Hinaing**, a **13-agent multi-agent system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
 
 ## Agent Summary (13 Total)
 
