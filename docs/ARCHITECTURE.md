@@ -2,7 +2,7 @@
 
 ## Overview
 
-Multi-Agentic AI system with real-time intelligent search and RAG for context-aware public opinion analysis in Baguio City. Features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation.
+Multi-Agentic AI system with real-time intelligent search and and self learning RAG for context-aware public opinion analysis in Baguio City. Features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation.
 
 ## Agent Count Summary
 
