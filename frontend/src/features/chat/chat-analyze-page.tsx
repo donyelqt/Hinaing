@@ -5,6 +5,7 @@ import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, 
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
 import { ActivePage } from "../shared/types/navigation";
+import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 
 // --- Types ---
 
@@ -16,6 +17,7 @@ interface AnalysisSource {
     credibility_score?: number | null;
     credibility_tier?: string | null;
     verification_status?: string | null;
+    metadata?: Record<string, any>;
 }
 
 interface AnalysisInsight {
@@ -342,43 +344,62 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
 
                     {showSources && (
                         <div className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2 max-h-[250px] sm:max-h-[300px] overflow-y-auto overflow-x-hidden -mx-1 px-1">
-                            {data.sources.map((source, i) => (
-                                <div key={i} className="border border-slate-100 rounded-lg p-2 sm:p-3 bg-slate-50 overflow-hidden">
-                                    <div className="flex items-start justify-between gap-1.5 sm:gap-2">
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">{source.title}</p>
-                                            <p className="text-[10px] sm:text-xs text-slate-500 line-clamp-2 mt-0.5">{source.snippet}</p>
+                            {data.sources.map((source, i) => {
+                                const meta = source.metadata ?? {};
+                                return (
+                                    <div key={i} className="border border-slate-100 rounded-lg p-2 sm:p-3 bg-slate-50 overflow-hidden">
+                                        <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+                                            <div className="flex-1 min-w-0 overflow-hidden">
+                                                <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">{source.title}</p>
+                                                <p className="text-[10px] sm:text-xs text-slate-500 line-clamp-2 mt-0.5">{source.snippet}</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-0.5 sm:gap-1 shrink-0">
+                                                {source.sentiment && (
+                                                    <span className={clsx(
+                                                        "text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-medium whitespace-nowrap",
+                                                        source.sentiment === "positive" && "bg-emerald-100 text-emerald-700",
+                                                        source.sentiment === "negative" && "bg-rose-100 text-rose-700",
+                                                        source.sentiment === "neutral" && "bg-slate-100 text-slate-600"
+                                                    )}>
+                                                        {source.sentiment}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col items-end gap-0.5 sm:gap-1 shrink-0">
-                                            {source.sentiment && (
-                                                <span className={clsx(
-                                                    "text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-medium whitespace-nowrap",
-                                                    source.sentiment === "positive" && "bg-emerald-100 text-emerald-700",
-                                                    source.sentiment === "negative" && "bg-rose-100 text-rose-700",
-                                                    source.sentiment === "neutral" && "bg-slate-100 text-slate-600"
-                                                )}>
-                                                    {source.sentiment}
-                                                </span>
-                                            )}
-                                            {source.credibility_score && (
-                                                <span className="text-[9px] sm:text-[10px] text-slate-500 whitespace-nowrap">
-                                                    {Math.round(source.credibility_score * 100)}%
-                                                </span>
-                                            )}
-                                        </div>
+                                        {source.url && (
+                                            <a
+                                                href={source.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[9px] sm:text-[10px] text-blue-600 hover:underline mt-1 inline-block truncate max-w-full"
+                                            >
+                                                View Source →
+                                            </a>
+                                        )}
+                                        
+                                        {/* Verification Badge Component */}
+                                        {/* Show badge if we have metadata OR fallback to basic credibility_score */}
+                                        {(meta.credibility_score !== undefined || source.credibility_score !== undefined) && (
+                                            <VerificationBadge
+                                                credibilityScore={
+                                                    typeof meta.credibility_score === 'number' ? meta.credibility_score :
+                                                    typeof source.credibility_score === 'number' ? source.credibility_score :
+                                                    null
+                                                }
+                                                credibilityTier={typeof meta.credibility_tier === 'string' ? meta.credibility_tier : null}
+                                                misinfoRisk={typeof meta.misinfo_risk === 'string' ? meta.misinfo_risk : null}
+                                                corroboratingSources={typeof meta.corroborating_sources === 'number' ? meta.corroborating_sources : 0}
+                                                tavilyVerifiedSources={Array.isArray(meta.tavily_verified_sources) ? meta.tavily_verified_sources : []}
+                                                tavilyVerificationStatus={typeof meta.tavily_verification_status === 'string' ? meta.tavily_verification_status : null}
+                                                redFlags={Array.isArray(meta.red_flags) ? meta.red_flags as string[] : []}
+                                                factCheckRating={typeof meta.fact_check_rating === 'string' ? meta.fact_check_rating : null}
+                                                llmReasoning={typeof meta.llm_reasoning === 'string' ? meta.llm_reasoning : ''}
+                                                credibilityBreakdown={typeof meta.credibility_breakdown === 'object' && meta.credibility_breakdown !== null ? meta.credibility_breakdown as Record<string, number> : {}}
+                                            />
+                                        )}
                                     </div>
-                                    {source.url && (
-                                        <a
-                                            href={source.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[9px] sm:text-[10px] text-blue-600 hover:underline mt-1 inline-block truncate max-w-full"
-                                        >
-                                            View Source →
-                                        </a>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -752,7 +773,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
 
             // Poll every 2 seconds until complete
             const POLL_INTERVAL = 2000;
-            const MAX_POLLS = 90; // 180 seconds (3 min) max - accounts for rate limiting delays
+            const MAX_POLLS = 300; // 600 seconds (10 min) max - accounts for rate limiting, semantic routing, and 6 theme agents
             let pollCount = 0;
 
             const pollForStatus = async (): Promise<StreamEvent | null> => {
@@ -804,7 +825,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     }
                 }
                 
-                throw new Error("Analysis timed out. Please try again.");
+                throw new Error("Analysis is taking longer than expected (10+ min). Your backend may still be processing. Check your backend logs or try a narrower query.");
             };
 
             const finalResult = await pollForStatus();

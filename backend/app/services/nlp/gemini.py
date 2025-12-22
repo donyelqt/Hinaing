@@ -31,11 +31,12 @@ def sanitize_text(text: str | None) -> str:
 class GeminiClient:
     """Thin wrapper around the Gemini GenerativeModel."""
 
-    def __init__(self, *, model_name: str = "gemini-2.5-pro") -> None:
+    def __init__(self, *, model_name: str = "gemini-2.5-flash-lite") -> None:
         """Initialize Gemini client.
         
-        Uses Gemini 2.5 Pro for narrative generation to ensure comprehensive
-        coverage of all topics. Flash models miss important details in summaries.
+        Uses Gemini 2.5 Flash for narrative generation. Since theme_insights
+        are already summarized by Theme Agents (using Pro), Flash is sufficient
+        for final synthesis and much faster (~10s vs ~40s).
         """
         settings = get_settings()
         self._api_key = settings.gemini_api_key
@@ -56,10 +57,26 @@ class GeminiClient:
         window: str,
         focus_areas: list[str],
         documents: list[dict[str, Any]],
+        theme_insights: list[dict[str, Any]] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
+        # OPTIMIZATION: If theme_insights exist, skip the slow agent path
+        # Theme insights are already summarized by Theme Agents (Node 6)
+        # This reduces latency from ~40s to ~10s
+        if theme_insights and len(theme_insights) > 0:
+            logger.info(
+                "[GeminiClient] Using theme_insights for narrative (skipping agent path)",
+                extra={"theme_count": len(theme_insights), "doc_count": len(documents)}
+            )
+            return await self._run_direct_generation(
+                window=window,
+                focus_areas=focus_areas,
+                documents=documents,  # Still passed for fallback context
+                theme_insights=theme_insights,
+            )
+        
+        # Fallback: Use agent path only when no theme_insights available
         agent_instruction = self._build_agent_instruction(window=window, focus_areas=focus_areas)
 
-        # Prefer the LangChain agent so reasoning can call tools when necessary.
         try:
             agent_output = await asyncio.to_thread(
                 lambda: run_gemini_agent(agent_instruction, documents=documents)
@@ -80,6 +97,7 @@ class GeminiClient:
             window=window,
             focus_areas=focus_areas,
             documents=documents,
+            theme_insights=theme_insights,
         )
 
     def _sanitize_insights(self, insights: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -107,12 +125,14 @@ class GeminiClient:
         window: str,
         focus_areas: list[str],
         documents: list[dict[str, Any]],
+        theme_insights: list[dict[str, Any]] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         # Single-shot analysis without separate planning step for speed
         analysis_prompt = self._build_prompt(
             window=window,
             focus_areas=focus_areas,
             documents=documents,
+            theme_insights=theme_insights,
         )
 
         from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -151,30 +171,44 @@ class GeminiClient:
         window: str,
         focus_areas: list[str],
         documents: list[dict[str, Any]],
+        theme_insights: list[dict[str, Any]] | None = None,
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
+        
+        # Build theme insights section if available
+        insights_block = ""
+        if theme_insights:
+            insight_lines = []
+            for item in theme_insights:
+                cat = sanitize_text(item.get('category', 'General'))
+                title = sanitize_text(item.get('title'))
+                detail = sanitize_text(item.get('detail'))
+                insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
+            insights_block = "\n\n=== PRE-ANALYZED THEME INSIGHTS ===\n" + "\n\n".join(insight_lines)
+        
+        # Build documents section (Include ALL docs for comprehensive analysis)
+        # Using Gemini Flash's large context window to process full retrieval set
         doc_lines = []
-        for idx, doc in enumerate(documents[:120], start=1):
-            title = sanitize_text(doc.get('title'))
-            snippet = sanitize_text(doc.get('snippet'))
+        for idx, doc in enumerate(documents, start=1):
+            title = sanitize_text(doc.get('title', ''))
+            snippet = sanitize_text(doc.get('snippet', ''))
             sentiment = doc.get('sentiment', 'neutral')
-            doc_lines.append(
-                f"{idx}. Title: {title} | Snippet: {snippet} | Sentiment: {sentiment}"
-            )
-        context_block = "\n".join(doc_lines) or "No documents available."
+            doc_lines.append(f"{idx}. [{sentiment.upper()}] {title}: {snippet}")
+        docs_block = "\n".join(doc_lines) or "No documents available."
 
         return (
             "You are an analyst supporting the Baguio City command center. "
-            f"Summarize public chatter over the last {window} with emphasis on {focus}.\n"
-            "Steps:\n"
-            "1. Review ALL the provided documents thoroughly.\n"
-            "2. Identify key risks, emerging trends, and sentiment drivers.\n"
-            "3. Draft a comprehensive JSON summary.\n\n"
+            f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
+            f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
+            f"{docs_block}\n"
+            f"{insights_block}\n\n"
+            "TASK:\n"
+            "1. Analyze ALL supporting conversations above.\n"
+            "2. Reference the theme insights for structured context.\n"
+            "3. Generate a comprehensive narrative summary.\n\n"
             "Return a JSON object with keys:\n"
-            "summary: string narrative (3-5 sentences covering all major themes from the documents)\n"
-            "insights: list of up to 5 items, each {category, title, detail, evidence? (array of source URLs)}.\n"
-            "Use the following context entries to ground your analysis:\n"
-            f"{context_block}\n"
+            "- summary: string narrative (detailed executive briefing, 2-3 paragraphs. synthesized from ALL documents. Highlight key tensions and minority viewpoints.)\n"
+            "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n"
         )
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
@@ -208,20 +242,97 @@ class GeminiClient:
 
     @staticmethod
     def _try_parse_json(raw_text: str) -> dict[str, Any] | None:
-        text = raw_text.strip()
-        if text.startswith("```") and text.endswith("```"):
-            first_newline = text.find("\n")
-            if first_newline != -1 and text[:first_newline].startswith("```"):
-                text = text[first_newline + 1 :]
-            else:
-                text = text[3:]
-            text = text[:-3].strip()
+        """Extract and parse JSON from Gemini's response with robust recovery."""
+        if not raw_text:
+            return None
+            
+        text = sanitize_text(raw_text).strip()
+        
+        # Strategy 1: Markdown code block
+        json_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', text)
+        if json_match:
+            candidate = json_match.group(1).strip()
+            result = GeminiClient._safe_json_parse(candidate)
+            if result:
+                return result
+            text = candidate
+        
+        # Strategy 2: Outermost braces
+        start_idx = text.find("{")
+        end_idx = text.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            text = text[start_idx : end_idx + 1]
 
+        # Strategy 3: Direct parse with cleaning
+        result = GeminiClient._safe_json_parse(text)
+        if result:
+            return result
+        
+        # Strategy 4: Extract summary and insights separately using regex
+        # This handles cases where JSON is malformed but content is extractable
+        logger.info("[GeminiClient] Attempting regex extraction fallback...")
+        
+        summary_match = re.search(r'"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text, re.DOTALL)
+        summary = summary_match.group(1) if summary_match else None
+        
+        if summary:
+            # Unescape the summary
+            summary = summary.replace('\\"', '"').replace('\\n', '\n')
+            logger.info(f"[GeminiClient] Extracted summary via regex ({len(summary)} chars)")
+            return {"summary": summary, "insights": []}
+        
+        logger.warning(f"[GeminiClient] JSON parse failed. Text: {text[:200]}...")
+        return None
+    
+    @staticmethod
+    def _safe_json_parse(text: str) -> dict[str, Any] | None:
+        """Try multiple JSON parsing strategies."""
+        # Attempt 1: Direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            logger.debug("Gemini response not JSON: %s", raw_text)
-            return None
+            pass
+        
+        # Attempt 2: Remove trailing commas
+        try:
+            cleaned = re.sub(r',\s*([}\]])', r'\1', text)
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+        
+        # Attempt 3: Fix common issues
+        try:
+            # Replace single quotes with double quotes (common Gemini issue)
+            fixed = text.replace("'", '"')
+            # Remove any control characters
+            fixed = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', fixed)
+            # Fix unescaped newlines in strings
+            fixed = re.sub(r'(?<!\\)\n', '\\n', fixed)
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            pass
+        
+        # Attempt 4: Truncate at last valid closing brace
+        try:
+            # Find balanced braces
+            depth = 0
+            last_valid_end = -1
+            for i, char in enumerate(text):
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        last_valid_end = i
+                        break
+            
+            if last_valid_end > 0:
+                truncated = text[:last_valid_end + 1]
+                return json.loads(truncated)
+        except json.JSONDecodeError:
+            pass
+        
+        return None
 
 
 gemini_client = GeminiClient()

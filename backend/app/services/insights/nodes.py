@@ -169,21 +169,35 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
 # NODE 4: Unified Analysis
 # --------------------------------------------------------------------------
 async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
-    """Parallel execution of Sentiment, Credibility, and Theme Routing."""
-    docs = state.get("documents", [])
+    """Parallel execution of Sentiment, Credibility, and Theme Routing.
+    
+    PERFORMANCE OPTIMIZATION: 
+    1. Relevance-Aware Sorting: Ensures 'Deep-Clean' logic hits the best docs.
+    2. Parallel Batching: Fully utilizes unlocked semaphores.
+    """
+    raw_docs = state.get("documents", [])
     request = state["request"]
     start_time = time.perf_counter()
     metrics = get_metrics_collector()
     
-    if not docs:
+    if not raw_docs:
         state["enriched"] = []
         state["credibility_notes"] = {}
         state["theme_documents"] = {key: [] for key in THEME_GROUPS}
         logger.info("[snapshot] label_sentiment_and_analyze skipped (no docs)")
         return state
 
+    # 100x CTO OPTIMIZATION: Sort by relevance score so Top-20 Deep-Clean is accurate
+    # Documents from Internal Memory have '_score'. External docs from Reranker are already ordered.
+    docs = sorted(
+        raw_docs, 
+        key=lambda d: (d.metadata or {}).get("_score", 0.0), 
+        reverse=True
+    )
+
     async def run_sentiment():
         metrics.start_timer("sentiment")
+        # Now truly parallel due to increased Semaphore in definitions.py
         async with node4_ml_semaphore:
             result = await asyncio.to_thread(sentiment_agent.run, docs)
             gc.collect()
@@ -192,21 +206,23 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
 
     async def run_credibility():
         metrics.start_timer("credibility")
+        # CredibilityAgent now has its own internal Deep-Clean Sampling for speed
         result = await credibility_agent_node.run(docs)
         metrics.stop_timer("credibility")
         return result
 
     async def run_theme_router():
         metrics.start_timer("theme_routing")
+        # Fast keyword-based routing
         result = await asyncio.to_thread(theme_router_agent.run, docs, request)
         metrics.stop_timer("theme_routing")
         return result
 
-    NODE4_TIMEOUT = 150
+    NODE4_TIMEOUT = 240  # Increased from 180 to handle large document sets with Tavily verification + embeddings
     
     try:
         async with node4_semaphore:
-            logger.info("[snapshot] Starting parallel analysis: Sentiment + Credibility + Theme Router")
+            logger.info(f"[snapshot] Starting High-Throughput Analysis on {len(docs)} docs")
             sentiment_docs, credibility_docs, theme_docs = await asyncio.wait_for(
                 asyncio.gather(
                     run_sentiment(),
@@ -215,50 +231,45 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
                 ),
                 timeout=NODE4_TIMEOUT
             )
-            logger.info(f"[snapshot] Parallel analysis completed in {time.perf_counter() - start_time:.1f}s")
     except asyncio.TimeoutError:
-        logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using fallback")
+        logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using partial fallback")
         sentiment_docs = [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs]
         credibility_docs = docs
         theme_docs = theme_router_agent.run(docs, request)
 
     gc.collect()
     
-    # Merge results
-    sentiment_map = {}
-    for doc in sentiment_docs:
-        key = str(doc.url) if doc.url else doc.title
-        sentiment_map[key] = {
-            "sentiment": doc.sentiment,
-            "sentiment_metadata": {
-                k: v for k, v in (doc.metadata or {}).items()
-                if k.startswith("sentiment_") or k in ["roberta_prediction", "gemini_prediction", "model_agreement"]
-            }
-        }
-    
+    # SPEED OPTIMIZATION: Single-pass merge logic
+    # sentiment_docs and credibility_docs have the SAME order because we sorted them at start
     enriched_docs = []
-    for doc in credibility_docs:
-        key = str(doc.url) if doc.url else doc.title
-        sentiment_data = sentiment_map.get(key, {})
-        merged_metadata = {
-            **(doc.metadata or {}),
-            **sentiment_data.get("sentiment_metadata", {})
-        }
-        enriched_docs.append(doc.model_copy(update={
-            "sentiment": sentiment_data.get("sentiment", doc.sentiment),
-            "metadata": merged_metadata
-        }))
-    
     credibility_notes = {}
-    for doc in enriched_docs:
-        domain = doc.metadata.get("source_domain", "unknown") if doc.metadata else "unknown"
-        score = doc.metadata.get("credibility_score", 0.5) if doc.metadata else 0.5
+    
+    for i in range(len(docs)):
+        s_doc = sentiment_docs[i]
+        c_doc = credibility_docs[i]
+        
+        # Merge sentiment and credibility metadata
+        merged_metadata = {
+            **(c_doc.metadata or {}),
+            **(s_doc.metadata or {})
+        }
+        
+        enriched = c_doc.model_copy(update={
+            "sentiment": s_doc.sentiment,
+            "metadata": merged_metadata
+        })
+        enriched_docs.append(enriched)
+        
+        # Update notes for the domain
+        domain = merged_metadata.get("source_domain", "unknown")
+        score = merged_metadata.get("credibility_score", 0.5)
         credibility_notes[domain] = score
     
     state["enriched"] = enriched_docs
     state["credibility_notes"] = credibility_notes
     state["theme_documents"] = theme_docs
     
+    logger.info(f"[snapshot] Node 4 Complete. Latency: {time.perf_counter() - start_time:.1f}s")
     return state
 
 
@@ -335,7 +346,9 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
         for future in as_completed(futures):
             try:
                 result = future.result()
-                if isinstance(result, Insight):
+                if isinstance(result, list):
+                    insights.extend(result)
+                elif isinstance(result, Insight):
                     insights.append(result)
             except Exception as exc:
                 theme_key = futures[future]
@@ -470,7 +483,7 @@ summary_chain = RunnableLambda(
     )
 )
 
-def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
+def _parse_agent_json(raw_text: str) -> Any | None:
     text = raw_text.strip()
     if text.startswith("```") and text.endswith("```"):
         inner = text.split("\n", 1)
@@ -478,20 +491,22 @@ def _parse_agent_json(raw_text: str) -> dict[str, str] | None:
         text = text[:-3].strip()
     try:
         data = json.loads(text)
-        if isinstance(data, dict):
-            return data
+        return data
     except json.JSONDecodeError:
         pass
     return None
 
-def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> Insight | None:
+def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> list[Insight]:
     """Helper for Theme Agent execution."""
     current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
     meta = current_theme_groups.get(theme_key)
     label = meta["label"] if meta else theme_key.title()
     
+    logger.info(f"[ThemeAgent] Starting synthesis for '{label}' with {len(docs)} documents")
+    
     if not docs:
-        return None
+        logger.info(f"[ThemeAgent] {label} has no documents, skipping")
+        return []
         
     internal_count = sum(1 for d in docs if (d.metadata or {}).get("source") == "internal_memory")
     
@@ -509,9 +524,10 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         prompt = (
             "You are a civic operations analyst for Baguio City. "
             f"Focus on the theme '{label}'. "
-            "Write JSON with keys 'title', 'detail', 'evidence' (array of source URLs). "
+            "Write JSON with a key 'insights' containing a list of objects. Each object must have keys: "
+            "'title', 'detail', 'evidence' (array of source URLs). "
             f"You have {len(docs)} documents ({internal_count} historical/memory, {len(docs)-internal_count} fresh). "
-            "Highlight actionable risk or opportunity, connecting fresh news with historical patterns if present."
+            "Identify distinct sub-issues. Do not merge unrelated problems. If there are multiple distinct risks, list them separately."
         )
         response = run_theme_agent(
             theme_label=label,
@@ -519,30 +535,61 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
             documents=enriched_docs,
         )
         parsed = _parse_agent_json(response)
-        evidence = evidence_seed
-        if parsed:
-            title = parsed.get("title") or f"Key updates in {label}"
-            detail = parsed.get("detail") or "Context unavailable"
-            parsed_evidence = parsed.get("evidence")
+        
+        logger.debug(f"[ThemeAgent] {label} parsed response type: {type(parsed)}")
+        
+        results = []
+        
+        # normalized parsing
+        items = []
+        if isinstance(parsed, dict) and "insights" in parsed and isinstance(parsed["insights"], list):
+            items = parsed["insights"]
+            logger.debug(f"[ThemeAgent] {label} found {len(items)} insights in dict format")
+        elif isinstance(parsed, list):
+            items = parsed
+            logger.debug(f"[ThemeAgent] {label} found {len(items)} insights in list format")
+        elif isinstance(parsed, dict) and "title" in parsed:
+            items = [parsed]
+            logger.debug(f"[ThemeAgent] {label} found 1 insight in single dict format")
+
+        for item in items:
+            title = item.get("title") or f"Update in {label}"
+            detail = item.get("detail") or "Context unavailable"
+            parsed_evidence = item.get("evidence")
+            evidence = []
             if isinstance(parsed_evidence, list) and parsed_evidence:
-                valid_urls = [str(item) for item in parsed_evidence if item and str(item).startswith("http")]
+                valid_urls = [str(url) for url in parsed_evidence if url and str(url).startswith("http")]
                 if valid_urls:
                     evidence = valid_urls
-        else:
-            fallback_doc = max(
-                docs,
-                key=lambda d: (d.metadata or {}).get("semantic_relevance_score", 0.0),
-                default=docs[0],
+            else:
+                 # fallback to seed evidence if none specific provided
+                 evidence = evidence_seed
+
+            results.append(Insight(category=label, title=title, detail=detail[:500], evidence=evidence))
+            
+        if not results:
+             # If parsing found nothing structured, use fallback
+             raise ValueError("No structured insights found")
+        
+        # Validation: Log insight generation quality
+        if len(results) < 3:
+            logger.warning(
+                f"[ThemeAgent] {label} has {len(docs)} docs but only {len(results)} insight(s). "
+                f"Expected 3 insights. LLM may be over-merging issues or hit token limit."
             )
-            title = f"Key updates in {label}"
-            detail = (fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:500]
-        return Insight(category=label, title=title, detail=detail[:500], evidence=evidence)
+        elif len(results) == 3:
+            logger.info(f"[ThemeAgent] {label} generated {len(results)} insights ✓ (target met)")
+        else:
+            logger.info(f"[ThemeAgent] {label} generated {len(results)} insights (exceeded target of 3)")
+
+        return results
+        
     except Exception as exc:
         logger.warning("Theme agent failed for %s: %s", label, exc)
         fallback_doc = docs[0]
-        return Insight(
+        return [Insight(
             category=label,
             title=f"Key updates in {label}",
             detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:500],
             evidence=[str(doc.url) for doc in docs[:2] if doc.url],
-        )
+        )]

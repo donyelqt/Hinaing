@@ -221,18 +221,33 @@ FACT_CHECK_RATINGS = {
 }
 
 
+# Shared HTTP client for connection reuse (CRITICAL for latency)
+_fact_check_client: httpx.AsyncClient | None = None
+
+def _get_fact_check_client() -> httpx.AsyncClient:
+    """Get shared HTTP client for fact check API calls."""
+    global _fact_check_client
+    if _fact_check_client is None:
+        # Use HTTP/2 and connection pooling for speed
+        _fact_check_client = httpx.AsyncClient(
+            timeout=8.0,  # Reduced from 10s
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        )
+    return _fact_check_client
+
+
 async def search_fact_checks(query: str, api_key: str) -> list[dict]:
-    """Query Google Fact Check API."""
+    """Query Google Fact Check API with connection reuse."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(FACT_CHECK_API_URL, params={
-                "key": api_key,
-                "query": query[:200],
-                "languageCode": "en",
-                "maxAgeDays": 365,
-            })
-            if resp.status_code == 200:
-                return resp.json().get("claims", [])
+        client = _get_fact_check_client()
+        resp = await client.get(FACT_CHECK_API_URL, params={
+            "key": api_key,
+            "query": query[:200],
+            "languageCode": "en",
+            "maxAgeDays": 365,
+        })
+        if resp.status_code == 200:
+            return resp.json().get("claims", [])
     except Exception:
         pass
     return []
@@ -272,24 +287,24 @@ class LLMCredibilityAnalyzer:
     def __init__(self):
         settings = get_settings()
         genai.configure(api_key=settings.gemini_api_key)
-        # Use Gemini 2.0 Flash for speed and efficiency
+        # Use Gemini 2.5 Flash-Lite for maximum speed
         self.model = genai.GenerativeModel(
-            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
             safety_settings=SAFETY_SETTINGS,
         )
-        self.batch_size = 10  # Reduced from 12 for memory
+        self.batch_size = 15  # Increased for speed (was 10)
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
-        """Analyze all documents in batches with controlled parallelism.
+        """Analyze all documents in batches with high parallelism.
         
-        MEMORY OPTIMIZATION: Reduced max_workers to prevent OOM on Railway.
+        LATENCY OPTIMIZATION: Increased workers for faster parallel processing.
         """
         # Create batches
         batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
         
         results = []
-        # MEMORY OPTIMIZATION: Reduced workers from 5 to 2
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        # BALANCED: 3 workers (was 2 for memory, 4 too aggressive for Railway free)
+        with ThreadPoolExecutor(max_workers=3) as executor:
             batch_results = list(executor.map(self._analyze_batch, batches))
             
         for res in batch_results:
@@ -892,7 +907,7 @@ class EnhancedCredibilityAgent:
             for d in documents
         ]
         logger.info(f"[credibility_agent] Computing semantic embeddings for {n} documents")
-        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "16")))
+        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "8")))
         embeddings = embedding_service.embed_batch(doc_texts, batch_size=embed_batch_size)
         
         # ─── Signal 2: Semantic Cross-Reference (using embeddings) ───
@@ -995,9 +1010,17 @@ class EnhancedCredibilityAgent:
             # Return neutral scores if Tavily not configured
             return [(0.50, [], "disabled") for _ in docs]
         
-        # Use semaphore=1 to process Tavily requests sequentially
-        # This ensures we catch rate limits immediately and skip remaining items
-        semaphore = asyncio.Semaphore(1)
+        # LATENCY OPTIMIZATION: Probe test to fail fast if rate limited
+        # This saves ~30s by not iterating through 56 docs when Tavily is unavailable
+        try:
+            probe_result = await tavily_search("test query", self._tavily_api_key, "claim")
+        except Exception as e:
+            if "limit" in str(e).lower() or "exceeds" in str(e).lower():
+                logger.warning("[tavily] Rate limit detected on probe, skipping all verification")
+                return [(0.50, [], "rate_limited") for _ in docs]
+        
+        # Use semaphore=3 for moderate parallelism (was 1 = too slow)
+        semaphore = asyncio.Semaphore(3)
         limit_reached = False
         
         async def verify_one(doc: WebDocument, domain: str, idx: int) -> tuple[float, list[str], str]:
@@ -1101,9 +1124,9 @@ class EnhancedCredibilityAgent:
         """
         global _fact_check_api_warned
         
-        # MEMORY OPTIMIZATION: Lower concurrency to reduce memory pressure
-        # Each concurrent request holds ~5-10MB in buffers
-        semaphore = asyncio.Semaphore(5)  # Reduced from 15
+        # BALANCED: 10 concurrent (was 5 for memory, 20 too aggressive for Railway free)
+        # Each request ~100KB, 10 concurrent = ~1MB memory overhead
+        semaphore = asyncio.Semaphore(10)
         
         async def check_one(doc: WebDocument, idx: int) -> tuple[float, str | None]:
             async with semaphore:

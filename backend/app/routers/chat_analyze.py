@@ -189,7 +189,7 @@ def format_results_for_chat(response) -> str:
     # Key Insights with full detail and evidence
     if response.actionable_insights:
         lines.append("### Key Insights")
-        for i, insight in enumerate(response.actionable_insights[:5], 1):
+        for i, insight in enumerate(response.actionable_insights, 1):
             lines.append(f"\n**{i}. {insight.title}** ({insight.category})")
             # Full detail (not truncated)
             if insight.detail:
@@ -471,7 +471,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         # Extract insights for structured display
         insights_data = []
         if response.actionable_insights:
-            for insight in response.actionable_insights[:5]:
+            for insight in response.actionable_insights:
                 # Ensure evidence URLs are strings
                 evidence_strs = [str(e) for e in (insight.evidence[:3] if insight.evidence else [])]
                 insights_data.append({
@@ -626,7 +626,7 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
     # Extract insights for structured display
     insights_data = []
     if response.actionable_insights:
-        for insight in response.actionable_insights[:5]:
+        for insight in response.actionable_insights:
             evidence_strs = [str(e) for e in (insight.evidence[:3] if insight.evidence else [])]
             insights_data.append({
                 "category": str(insight.category) if insight.category else "",
@@ -649,6 +649,19 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
                 "credibility_score": float(cred_score) if cred_score is not None else None,
                 "credibility_tier": str(meta.get("credibility_tier")) if meta.get("credibility_tier") else None,
                 "verification_status": str(meta.get("verification_status")) if meta.get("verification_status") else None,
+                # Include full metadata for VerificationBadge component
+                "metadata": {
+                    "credibility_score": float(cred_score) if cred_score is not None else None,
+                    "credibility_tier": str(meta.get("credibility_tier")) if meta.get("credibility_tier") else None,
+                    "misinfo_risk": str(meta.get("misinfo_risk")) if meta.get("misinfo_risk") else None,
+                    "corroborating_sources": int(meta.get("corroborating_sources", 0)),
+                    "tavily_verified_sources": list(meta.get("tavily_verified_sources", [])),
+                    "tavily_verification_status": str(meta.get("tavily_verification_status")) if meta.get("tavily_verification_status") else None,
+                    "red_flags": list(meta.get("red_flags", [])),
+                    "fact_check_rating": str(meta.get("fact_check_rating")) if meta.get("fact_check_rating") else None,
+                    "llm_reasoning": str(meta.get("llm_reasoning", "")),
+                    "credibility_breakdown": dict(meta.get("credibility_breakdown", {})),
+                }
             })
     
     # Compute credibility breakdown

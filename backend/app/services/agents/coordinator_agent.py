@@ -73,6 +73,7 @@ class CoordinatorAgent:
                 window=window,
                 focus_areas=focus_areas,
                 documents=documents,
+                theme_insights=theme_insights, # Pass summarized insights
             )
             logger.info("[CoordinatorAgent] Narrative generation complete")
             return summary, insights

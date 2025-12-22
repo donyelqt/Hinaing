@@ -16,8 +16,8 @@ from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
 _RERANK_MODEL = "langsearch-reranker-v1"
-_MAX_RETRIES = 4
-_RETRY_DELAY = 2.0  # seconds, exponential backoff: 2s, 4s, 8s, 16s
+_MAX_RETRIES = 5
+_RETRY_DELAY = 0.3  # Faster initial retry; backoff: 0.3s, 0.6s, 1.2s, 2.4s, 4.8s
 
 
 class LangSearchClient:

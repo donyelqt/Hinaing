@@ -64,37 +64,60 @@ class RetrievalAgent:
                     len(queries_to_run),
                 )
                 
-                # OPTIMIZATION: Run queries in parallel batches of 2 with minimal delay
+                # REBALANCED STRATEGY: Batch + Moderate Timeout
+                # We cannot fire 6 queries at once or we get 429'd and drop topics.
+                # We cannot use 10s timeout or we drop retrying queries.
+                # Solution: Batches of 3 (Safe for API) + 20s Timeout (Safe for Retries)
+                
                 async def fetch_query(task, idx):
                     topic = task.topic or f"topic_{idx}"
                     try:
-                        docs = await search_web_documents(
-                            request,
-                            custom_query=task.query,
-                            limit=10,
+                        # Increased to 20s to allow for at least 3 retry cycles
+                        docs = await asyncio.wait_for(
+                            search_web_documents(
+                                request,
+                                custom_query=task.query,
+                                limit=10,
+                            ),
+                            timeout=20.0
                         )
                         for doc in docs:
                             doc.metadata = {**(doc.metadata or {}), "_source_topic": topic}
                         logger.info("[retrieval_agent] query '%s' returned %d docs", topic, len(docs))
                         return topic, docs
+                    except asyncio.TimeoutError:
+                        logger.warning("[retrieval_agent] query '%s' timed out (20s)", topic)
+                        return topic, []
                     except Exception as exc:
                         logger.warning("[retrieval_agent] query '%s' failed: %s", topic, exc)
                         return topic, []
                 
-                # Run in parallel batches of 3 to respect rate limits while being fast
+                # OPTIMIZED: Smaller batches with staggered starts
+                # Batch of 3 is safer for rate limits while still parallel
                 batch_size = 3
                 for batch_start in range(0, len(queries_to_run), batch_size):
-                    batch = queries_to_run[batch_start:batch_start + batch_size]
+                    current_batch = queries_to_run[batch_start:batch_start + batch_size]
                     
-                    # Add small delay between batches (not between individual queries)
+                    logger.info("[retrieval_agent] executing batch %d-%d of %d", 
+                               batch_start+1, batch_start+len(current_batch), len(queries_to_run))
+                    
+                    # Longer delay between batches for rate limit recovery
                     if batch_start > 0:
-                        await asyncio.sleep(1.5)  # Brief pause between batches for rate limits
+                        await asyncio.sleep(1.0)
+
+                    # Staggered start: 250ms apart within batch
+                    # Total batch overhead: ~500ms, queries still run in parallel
+                    async def staggered_fetch(task, idx, stagger_delay):
+                        if stagger_delay > 0:
+                            await asyncio.sleep(stagger_delay)
+                        return await fetch_query(task, batch_start + idx)
                     
-                    # Run batch in parallel
-                    tasks = [fetch_query(task, batch_start + i) for i, task in enumerate(batch)]
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    batch_results = await asyncio.gather(
+                        *[staggered_fetch(task, i, i * 0.25) for i, task in enumerate(current_batch)],
+                        return_exceptions=True
+                    )
                     
-                    for result in results:
+                    for result in batch_results:
                         if isinstance(result, tuple):
                             topic, docs = result
                             topic_results.setdefault(topic, []).extend(docs)
@@ -253,7 +276,9 @@ class CredibilityAgent:
 
 @dataclass
 class ThemeRouterAgent:
-    """Agent that clusters documents per configured theme group."""
+    """Semantic agent that routes documents to themes using embeddings + keyword fallback."""
+    
+    _semantic_agent = None  # Lazy-loaded semantic router
 
     def run(self, documents: Sequence[WebDocument], request: SnapshotRequest) -> dict[str, list[WebDocument]]:
         logger.info(
@@ -261,4 +286,12 @@ class ThemeRouterAgent:
             len(documents),
             request.focus_areas,
         )
-        return route_documents_by_theme(list(documents), request.focus_areas)
+        
+        # Lazy-load semantic router on first use
+        if self._semantic_agent is None:
+            from ..agents.theme_router_agent import get_theme_router_agent
+            from .definitions import THEME_GROUPS
+            self.__class__._semantic_agent = get_theme_router_agent(THEME_GROUPS)
+        
+        # Use semantic routing
+        return self._semantic_agent.run(list(documents), request)

@@ -59,10 +59,9 @@ KEYWORD_CLUSTERS: dict[str, list[list[str]]] = {
         ["Baguio hotel issue", "Baguio accommodation problem", "Baguio tour package complaint"],
     ],
     "economy": [
-        ["Baguio vendor issue", "Baguio vendor displacement", "Baguio market problem"],
+       
         ["Baguio mallification protest", "SM Baguio expansion", "Baguio student protest market"],
-        ["Baguio business closure", "Baguio unemployment", "Baguio job hiring"],
-        ["Baguio public market", "Baguio cost of living", "Baguio livelihood program"],
+       
     ],
     "environment": [
         ["Baguio tree cutting", "Baguio pine trees", "Baguio green space"],
@@ -163,7 +162,7 @@ def generate_query(input_str: str) -> str:
         })
 
     queries = []
-    for cluster in clusters[:6]:  # Max 6 queries for full topic coverage
+    for cluster in clusters[:15]:  # Max 6 queries for full topic coverage
         keywords = cluster.get("keywords", [])
         topic = cluster.get("topic", "general")
         
@@ -234,13 +233,118 @@ def evaluate_query(input_str: str) -> str:
     })
 
 
+def expand_contextual_queries(input_str: str) -> str:
+    """Generate contextual/seasonal queries based on current date and focus areas.
+    
+    This tool adds INTELLIGENCE to the agent by generating queries that static
+    keyword clusters would miss - seasonal events, holidays, weather patterns, etc.
+    
+    Args:
+        input_str: JSON with 'focus_areas', 'current_date', and optionally 'time_window'
+    
+    Returns:
+        Contextual queries relevant to the current time period
+    """
+    try:
+        data = json.loads(input_str)
+        focus_areas = data.get("focus_areas", [])
+        current_date = data.get("current_date", datetime.now().strftime("%B %Y"))
+    except json.JSONDecodeError:
+        return "Error: Invalid JSON input"
+    
+    # Determine current context
+    now = datetime.now()
+    month = now.month
+    
+    # Seasonal/contextual mappings for Baguio City
+    contextual_keywords = []
+    
+    # Holiday seasons
+    if month == 12:
+        contextual_keywords.extend([
+            {"query": "Baguio Christmas traffic 2024", "topic": "holiday-traffic", "reason": "December holiday rush"},
+            {"query": "Baguio New Year celebration safety", "topic": "holiday-safety", "reason": "New Year events"},
+            {"query": "Baguio holiday tourist crowd", "topic": "holiday-tourism", "reason": "Peak tourist season"},
+        ])
+    elif month == 1:
+        contextual_keywords.extend([
+            {"query": "Baguio Panagbenga preparation 2025", "topic": "festival-prep", "reason": "Panagbenga planning"},
+            {"query": "Baguio post-holiday cleanup", "topic": "post-holiday", "reason": "Post-New Year issues"},
+        ])
+    elif month == 2:
+        contextual_keywords.extend([
+            {"query": "Baguio Panagbenga festival 2025", "topic": "panagbenga", "reason": "Panagbenga Festival month"},
+            {"query": "Baguio flower festival crowd", "topic": "festival-crowd", "reason": "Festival overcrowding"},
+            {"query": "Baguio Valentine tourism", "topic": "valentine-tourism", "reason": "Valentine's Day tourism"},
+        ])
+    elif month in [3, 4, 5]:
+        contextual_keywords.extend([
+            {"query": "Baguio summer crowd 2025", "topic": "summer-tourism", "reason": "Summer vacation season"},
+            {"query": "Baguio Holy Week traffic", "topic": "holy-week", "reason": "Holy Week travel"},
+            {"query": "Baguio water shortage summer", "topic": "summer-water", "reason": "Dry season water issues"},
+        ])
+    elif month in [6, 7, 8, 9, 10]:
+        contextual_keywords.extend([
+            {"query": "Baguio typhoon update", "topic": "typhoon", "reason": "Typhoon season"},
+            {"query": "Baguio landslide rainy season", "topic": "rainy-landslide", "reason": "Monsoon landslide risk"},
+            {"query": "Baguio flooding news", "topic": "rainy-flood", "reason": "Rainy season flooding"},
+            {"query": "Baguio school enrollment issue", "topic": "enrollment", "reason": "School opening season"},
+        ])
+    elif month == 11:
+        contextual_keywords.extend([
+            {"query": "Baguio All Saints Day crowd", "topic": "undas", "reason": "Undas/All Saints Day"},
+            {"query": "Baguio Christmas preparation", "topic": "christmas-prep", "reason": "Early Christmas rush"},
+        ])
+    
+    # Filter by focus areas if specified
+    if focus_areas:
+        focus_lower = [f.lower() for f in focus_areas]
+        filtered = []
+        
+        # Map topics to focus areas
+        topic_focus_map = {
+            "holiday-traffic": ["infrastructure", "tourism", "safety"],
+            "holiday-safety": ["safety"],
+            "holiday-tourism": ["tourism", "economy"],
+            "festival-prep": ["tourism", "infrastructure"],
+            "panagbenga": ["tourism", "economy", "safety"],
+            "festival-crowd": ["tourism", "safety", "infrastructure"],
+            "valentine-tourism": ["tourism", "economy"],
+            "summer-tourism": ["tourism", "economy", "infrastructure"],
+            "holy-week": ["tourism", "infrastructure", "safety"],
+            "summer-water": ["infrastructure", "health", "environment"],
+            "typhoon": ["safety", "infrastructure", "environment"],
+            "rainy-landslide": ["safety", "infrastructure", "environment"],
+            "rainy-flood": ["safety", "infrastructure", "environment"],
+            "enrollment": ["infrastructure", "economy"],
+            "undas": ["tourism", "safety", "infrastructure"],
+            "christmas-prep": ["tourism", "economy", "infrastructure"],
+            "post-holiday": ["environment", "infrastructure"],
+        }
+        
+        for kw in contextual_keywords:
+            topic = kw.get("topic", "")
+            relevant_areas = topic_focus_map.get(topic, [])
+            if any(area in focus_lower for area in relevant_areas):
+                filtered.append(kw)
+        
+        contextual_keywords = filtered if filtered else contextual_keywords[:2]
+    
+    return json.dumps({
+        "contextual_queries": contextual_keywords[:3],  # Max 3 contextual queries
+        "current_context": current_date,
+        "reasoning": f"Generated {len(contextual_keywords[:3])} contextual queries based on {current_date} seasonal patterns",
+        "instruction": "Add these to your final query list for time-relevant coverage"
+    })
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ReAct Agent
 # ─────────────────────────────────────────────────────────────────────────────
 
 REACT_PROMPT = PromptTemplate.from_template("""You are a search query optimization agent for Baguio City civic monitoring.
 
-Your task: Create MULTIPLE DIVERSE search queries to ensure broad topic coverage.
+Your task: Create MULTIPLE DIVERSE search queries combining STATIC clusters AND CONTEXTUAL/SEASONAL queries.
 
 Tools available:
 {tools}
@@ -258,15 +362,19 @@ Thought: I have crafted diverse queries.
 Final Answer: [JSON with strategy and queries]
 
 WORKFLOW:
-1. Use analyze_focus_areas to get keyword CLUSTERS (grouped by topic)
-2. Use generate_query with the clusters to create MULTIPLE queries (one per topic cluster)
-3. Optionally use evaluate_query to verify topic diversity
-4. Output Final Answer with ALL queries
+1. Use analyze_focus_areas to get keyword CLUSTERS (static coverage)
+2. Use generate_query with ALL clusters at once
+3. Use expand_contextual_queries to get SEASONAL/TIME-RELEVANT queries (this is CRITICAL for intelligent search)
+4. COMBINE both static and contextual queries in Final Answer
+
+IMPORTANT: The expand_contextual_queries tool adds INTELLIGENCE by generating queries based on:
+- Current month/season (typhoon season, summer, Christmas, Panagbenga)
+- Holidays and events
+- Weather patterns
+This is what makes the agent SMART - static clusters alone are not enough!
 
 Final Answer JSON format:
-{{"strategy": "multi-query for topic diversity", "queries": [{{"query": "...", "topic": "..."}}], "expected_results": ["diverse results across topics"]}}
-
-CRITICAL: Generate ONE query for EACH provided focus area (up to max, default 6). Coverage for ALL requested areas is required. Do NOT combine all keywords into one query.
+{{"strategy": "hybrid: static clusters + contextual expansion", "queries": [{{"query": "...", "topic": "...", "type": "static|contextual"}}], "expected_results": ["diverse results across topics and time-relevant events"]}}
 
 Begin!
 
@@ -288,7 +396,7 @@ class QueryOrchestratorAgent:
         """Get Gemini LLM for query generation."""
         if self._llm is None:
             self._llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model="gemini-2.5-flash-lite",
                 google_api_key=settings.gemini_api_key,
                 temperature=0.2,
             )
@@ -312,6 +420,16 @@ class QueryOrchestratorAgent:
                     "Generate diverse search queries from keyword clusters. "
                     "Input: JSON with 'clusters' list from analyze_focus_areas. "
                     "Returns multiple queries for topic diversity."
+                ),
+            ),
+            Tool(
+                name="expand_contextual_queries",
+                func=expand_contextual_queries,
+                description=(
+                    "Generate CONTEXTUAL/SEASONAL queries based on current date. "
+                    "Input: JSON with 'focus_areas' list and 'current_date' string. "
+                    "Returns time-relevant queries (holidays, weather, events) that static clusters miss. "
+                    "CRITICAL: Always use this tool to add intelligent, time-aware queries!"
                 ),
             ),
             Tool(
@@ -342,110 +460,120 @@ class QueryOrchestratorAgent:
 
     @measure_performance(component="QueryOrchestratorAgent", operation="run_planning")
     def run(self, request: SnapshotRequest) -> QueryPlan:
-        """Generate an optimized query plan using ReAct reasoning."""
+        """Generate query plan using TRUE ReAct agentic reasoning.
+        
+        AGENTIC STRATEGY (ReAct Pattern):
+        1. Agent analyzes focus areas using tools
+        2. Agent generates diverse queries through reasoning loop
+        3. Agent evaluates query coverage before finalizing
+        
+        The agent autonomously decides:
+        - How many queries to generate
+        - Which keyword clusters to prioritize
+        - Whether to add seasonal/contextual queries
+        """
         focus_values = request.focus_areas or [self.fallback_focus]
         time_window = request.time_window or "24h"
+        time_suffix = _get_time_search_suffix(time_window)
+        current_date = datetime.now().strftime("%B %Y")
 
         logger.info(
-            "[query_orchestrator] Starting ReAct optimization",
-            extra={"focus": focus_values, "window": time_window},
+            "[query_orchestrator] Starting ReAct Agentic Planning",
+            extra={"focus": focus_values, "calendar": current_date},
         )
 
-        input_text = (
-            f"Create an optimized search query for Baguio City civic monitoring. "
-            f"Focus areas: {', '.join(focus_values)}. "
-            f"Time window: {time_window}. "
-            f"The query should include ALL relevant concern keywords for comprehensive retrieval."
-        )
-
+        # Build the ReAct agent executor
         try:
             executor = self._build_executor()
-            result = executor.invoke({"input": input_text})
             
-            final_output = result.get("output", "")
+            # Invoke ReAct reasoning loop
+            agent_input = (
+                f"Create diverse search queries for Baguio City civic monitoring.\n"
+                f"Focus areas: {', '.join(focus_values)}\n"
+                f"Time window: {time_window}\n"
+                f"Current date: {current_date}\n"
+                f"IMPORTANT: Use analyze_focus_areas first, then generate_query for EACH cluster, "
+                f"then evaluate_query to verify coverage."
+            )
+            
+            result = executor.invoke({"input": agent_input})
+            
+            # Extract queries from agent output or intermediate steps
+            output = result.get("output", "")
             steps = result.get("intermediate_steps", [])
-            logger.info(f"[query_orchestrator] ReAct completed in {len(steps)} steps")
             
-            plan = self._parse_output(final_output, focus_values, steps, time_window)
+            # Try to parse Final Answer JSON
+            parsed_plan = self._parse_react_output(output, focus_values, time_suffix)
+            if parsed_plan and parsed_plan.queries:
+                logger.info(f"[query_orchestrator] ReAct produced {len(parsed_plan.queries)} queries")
+                return parsed_plan
             
-        except Exception as exc:
-            logger.warning("[query_orchestrator] ReAct failed, using fallback: %s", exc)
-            plan = self._fallback_plan(focus_values, time_window)
-
-        logger.info(
-            "[query_orchestrator] Optimized query ready",
-            extra={"strategy": plan.strategy[:80]},
-        )
-        return plan
-
-    def _parse_output(self, output: str, focus_values: list[str], steps: list | None = None, time_window: str | None = None) -> QueryPlan:
-        """Parse ReAct output into QueryPlan with multiple diverse queries."""
-        time_suffix = _get_time_search_suffix(time_window)
+            # Fallback: extract from intermediate steps
+            step_plan = self._extract_from_steps(steps, focus_values, time_window)
+            if step_plan and step_plan.queries:
+                logger.info(f"[query_orchestrator] Extracted {len(step_plan.queries)} queries from steps")
+                return step_plan
+                
+        except Exception as e:
+            logger.warning(f"[query_orchestrator] ReAct agent failed: {e}")
         
+        # Ultimate fallback: deterministic query generation
+        logger.info("[query_orchestrator] Using fallback query generation")
+        return self._fallback_plan(focus_values, time_window)
+    
+    def _parse_react_output(self, output: str, focus_values: list[str], time_suffix: str) -> QueryPlan | None:
+        """Parse the Final Answer from ReAct agent."""
         try:
-            # Extract JSON from output
+            # Try to find JSON in output
             if "```json" in output:
                 json_str = output.split("```json")[1].split("```")[0].strip()
-            elif "```" in output:
-                json_str = output.split("```")[1].split("```")[0].strip()
-            else:
+            elif "{" in output and "}" in output:
                 start = output.find("{")
                 end = output.rfind("}") + 1
-                if start >= 0 and end > start:
-                    json_str = output[start:end]
-                else:
-                    if steps:
-                        return self._extract_from_steps(steps, focus_values, time_window)
-                    raise ValueError("No JSON found")
-
+                json_str = output[start:end]
+            else:
+                return None
+            
             data = json.loads(json_str)
-            
             queries = []
-            for idx, q in enumerate(data.get("queries", [])):
-                if isinstance(q, str):
-                    query_text = q
-                    topic_name = f"topic_{idx+1}"
-                else:
-                    query_text = q.get("query", "")
-                    topic_name = q.get("topic", f"topic_{idx+1}")
-                
-                if query_text:
-                    query_with_time = f"{query_text}{time_suffix}"
-                    queries.append(QueryTask(
-                        query=query_with_time, 
-                        intent="targeted",
-                        topic=topic_name,
-                        priority=idx + 1
-                    ))
-
-            if not queries:
-                if steps:
-                    return self._extract_from_steps(steps, focus_values, time_window)
-                return self._fallback_plan(focus_values, time_window)
-
-            logger.info("[query_orchestrator] Generated %d diverse queries with time suffix: %s", 
-                       len(queries), time_suffix or "(none)")
             
-            return QueryPlan(
-                strategy=data.get("strategy", f"Multi-query diversity for {', '.join(focus_values)}"),
-                queries=queries[:self.max_queries],
-                expected_results=data.get("expected_results", [])[:3],
-            )
+            for q in data.get("queries", []):
+                query_text = q.get("query", "")
+                if query_text:
+                    queries.append(QueryTask(
+                        query=f"({query_text}){time_suffix}" if time_suffix not in query_text else query_text,
+                        intent=q.get("intent", "targeted"),
+                        topic=q.get("topic", "general"),
+                        priority=len(queries) + 1
+                    ))
+            
+            if queries:
+                return QueryPlan(
+                    strategy=data.get("strategy", f"ReAct-planned for {', '.join(focus_values)}"),
+                    queries=queries,
+                    expected_results=data.get("expected_results", [f"Diverse coverage for {', '.join(focus_values)}"])
+                )
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.debug(f"[query_orchestrator] Failed to parse ReAct output: {e}")
+        
+        return None
 
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning("[query_orchestrator] Parse failed: %s", exc)
-            if steps:
-                return self._extract_from_steps(steps, focus_values, time_window)
-            return self._fallback_plan(focus_values, time_window)
+    def _parse_output(self, output: str, focus_values: list[str], steps: list | None = None, time_window: str | None = None) -> QueryPlan:
+        """(Deprecated) Parse ReAct output."""
+        return self.run(SnapshotRequest(focus_areas=focus_values, time_window=time_window))
 
     def _extract_from_steps(self, steps: list, focus_values: list[str], time_window: str | None = None) -> QueryPlan:
         """Extract queries from intermediate steps, accumulating from ALL tool calls."""
         time_suffix = _get_time_search_suffix(time_window)
         all_queries = []
+        static_count = 0
+        contextual_count = 0
         
         for step in steps:
             if len(step) >= 2:
                 action, observation = step[0], step[1]
+                
+                # Extract from generate_query (static clusters)
                 if hasattr(action, 'tool') and action.tool == "generate_query":
                     try:
                         result = json.loads(observation) if isinstance(observation, str) else observation
@@ -460,22 +588,38 @@ class QueryOrchestratorAgent:
                                         topic=topic_name,
                                         priority=len(all_queries) + 1
                                     ))
+                                    static_count += 1
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                
+                # Extract from expand_contextual_queries (seasonal/contextual)
+                elif hasattr(action, 'tool') and action.tool == "expand_contextual_queries":
+                    try:
+                        result = json.loads(observation) if isinstance(observation, str) else observation
+                        if isinstance(result, dict) and result.get("contextual_queries"):
+                            for q in result["contextual_queries"]:
+                                query_text = q.get("query", "") if isinstance(q, dict) else q
+                                topic_name = q.get("topic", "contextual") if isinstance(q, dict) else "contextual"
+                                if query_text:
+                                    all_queries.append(QueryTask(
+                                        query=f"({query_text}){time_suffix}",
+                                        intent="trend",  # Contextual queries are trend-focused
+                                        topic=f"ctx-{topic_name}",
+                                        priority=len(all_queries) + 1
+                                    ))
+                                    contextual_count += 1
                     except (json.JSONDecodeError, TypeError):
                         continue
         
         if all_queries:
-            # If we have more queries than max, simplistic slice might drop entire categories if mostly from step 1.
-            # But usually max_queries is 6. If we generated 18, we have a problem.
-            # Let's trust the agent to manage count or just return them all (retrieval agent handles batches).
-            # The retrieval agent handles parallel batching, so 12-18 queries is fine, just more time.
-            # We will NOT slice here to ensure coverage, but let RetrievalAgent verify.
-            # Actually, RetrievalAgent respects the list length. Let's allow up to 12.
-            
-            logger.info("[query_orchestrator] Extracted %d queries from steps", len(all_queries))
+            logger.info(
+                "[query_orchestrator] Extracted %d queries from steps (static=%d, contextual=%d)", 
+                len(all_queries), static_count, contextual_count
+            )
             return QueryPlan(
-                strategy=f"Multi-query with {len(all_queries)} topic clusters",
+                strategy=f"Hybrid: {static_count} static + {contextual_count} contextual queries",
                 queries=all_queries, 
-                expected_results=[f"Diverse results for {', '.join(focus_values)}"],
+                expected_results=[f"Diverse results for {', '.join(focus_values)} with seasonal awareness"],
             )
             
         return self._fallback_plan(focus_values, time_window)
