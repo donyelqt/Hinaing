@@ -114,7 +114,7 @@ class RoBERTaSentimentModel:
                 clean = "neutral content"
             sanitized.append(clean[:512])
 
-        batch_size = max(1, int(os.getenv("ROBERTA_BATCH_SIZE", "8")))
+        batch_size = max(1, int(os.getenv("ROBERTA_BATCH_SIZE", "16")))
 
         results: list[dict[str, float]] = []
 

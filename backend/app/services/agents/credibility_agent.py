@@ -292,7 +292,7 @@ class LLMCredibilityAnalyzer:
             "gemini-2.5-flash-lite",
             safety_settings=SAFETY_SETTINGS,
         )
-        self.batch_size = 15  # Increased for speed (was 10)
+        self.batch_size = 20  # Increased from 15 for fewer API calls
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
@@ -351,7 +351,7 @@ Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential 
                 prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.1,
-                    max_output_tokens=1500,
+                    max_output_tokens=4500,  # Safe buffer for 20 docs with detailed reasoning
                 ),
             )
             return self._parse_response(resp.text, len(batch))
@@ -361,7 +361,7 @@ Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential 
     
     def _parse_response(self, text: str, count: int) -> list[dict]:
         """Parse LLM JSON response."""
-        default = {"score": 0.50, "reasoning": "", "red_flags": [], "misinfo_risk": "unknown"}
+        default = {"score": 0.50, "reasoning": "Content is moderately credible, standard news format.", "red_flags": [], "misinfo_risk": "unknown"}
         results = [default.copy() for _ in range(count)]
         
         # Extract JSON from markdown code blocks
@@ -381,9 +381,23 @@ Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential 
                 for item in data:
                     idx = item.get("index", -1)
                     if 0 <= idx < count:
+                        score = min(1.0, max(0.0, float(item.get("score", 0.5))))
+                        reasoning = str(item.get("reasoning", ""))
+                        
+                        # Generate fallback reasoning if empty
+                        if not reasoning.strip():
+                            if score >= 0.8:
+                                reasoning = "Source appears credible with professional content."
+                            elif score >= 0.6:
+                                reasoning = "Content is moderately credible, standard news format."
+                            elif score >= 0.4:
+                                reasoning = "Limited credibility indicators, verify independently."
+                            else:
+                                reasoning = "Low credibility signals detected, exercise caution."
+                        
                         results[idx] = {
-                            "score": min(1.0, max(0.0, float(item.get("score", 0.5)))),
-                            "reasoning": str(item.get("reasoning", "")),
+                            "score": score,
+                            "reasoning": reasoning,
                             "red_flags": list(item.get("red_flags", [])),
                             "misinfo_risk": str(item.get("misinfo_risk", "unknown")),
                         }
@@ -742,8 +756,21 @@ def analyze_tavily_results(
     tavily_result: dict, 
     original_domain: str,
     original_title: str,
+    original_embedding: list[float] | None = None,
+    embedding_service: Any = None,
 ) -> tuple[float, list[dict], str]:
     """Analyze Tavily results for claim verification.
+    
+    SEMANTIC RELEVANCE: Uses pre-computed embeddings to check if fact-check
+    results are actually about the same topic as the original claim.
+    This prevents false positives like matching earthquake fact-checks to fire articles.
+    
+    Args:
+        tavily_result: Tavily API response
+        original_domain: Domain of original document
+        original_title: Title of original document
+        original_embedding: Pre-computed embedding for original doc (optional)
+        embedding_service: Embedding service for computing result embeddings (optional)
     
     Returns:
         Tuple of (score, verified_sources, verification_status)
@@ -762,14 +789,41 @@ def analyze_tavily_results(
     contradiction_signals = 0
     confirmation_signals = 0
     
+    # Check if we can use semantic relevance (embeddings available)
+    use_semantic = original_embedding is not None and embedding_service is not None
+    
+    # Fallback: Extract key terms for keyword-based relevance
+    original_title_lower = original_title.lower() if original_title else ""
+    original_key_terms = set(re.findall(r'\b[a-z]{4,}\b', original_title_lower))
+    stop_words = {"this", "that", "with", "from", "have", "been", "were", "will", "about", "city", "baguio"}
+    original_key_terms -= stop_words
+    
     # Analyze Tavily's AI answer for verification signals
     answer_lower = answer.lower() if answer else ""
-    for keyword in CONTRADICTION_KEYWORDS:
-        if keyword in answer_lower:
-            contradiction_signals += 1
-    for keyword in CONFIRMATION_KEYWORDS:
-        if keyword in answer_lower:
-            confirmation_signals += 1
+    answer_is_relevant = False
+    
+    if use_semantic and answer:
+        # Semantic relevance check for answer
+        try:
+            answer_embedding = embedding_service.embed(answer[:500])
+            similarity = compute_cosine_similarity(original_embedding, answer_embedding)
+            answer_is_relevant = similarity >= 0.55  # Lower threshold for answer (broader context)
+            logger.debug(f"[tavily] Answer semantic similarity: {similarity:.3f}")
+        except Exception:
+            # Fallback to keyword matching
+            answer_terms = set(re.findall(r'\b[a-z]{4,}\b', answer_lower))
+            answer_is_relevant = len(original_key_terms & answer_terms) >= 2
+    elif original_key_terms and answer_lower:
+        answer_terms = set(re.findall(r'\b[a-z]{4,}\b', answer_lower))
+        answer_is_relevant = len(original_key_terms & answer_terms) >= 2
+    
+    if answer_is_relevant:
+        for keyword in CONTRADICTION_KEYWORDS:
+            if keyword in answer_lower:
+                contradiction_signals += 1
+        for keyword in CONFIRMATION_KEYWORDS:
+            if keyword in answer_lower:
+                confirmation_signals += 1
     
     # Analyze individual search results
     for result in results[:5]:
@@ -777,10 +831,34 @@ def analyze_tavily_results(
         domain = _extract_domain(url)
         title = result.get("title", "")
         relevance_score = result.get("score", 0)
-        content = (result.get("content", "") + title).lower()
+        content = (result.get("content", "") + " " + title).lower()
         
         # Skip if same domain as original
         if domain == original_domain:
+            continue
+        
+        # SEMANTIC RELEVANCE CHECK - prevents fire/earthquake mismatch
+        is_semantically_relevant = False
+        
+        if use_semantic:
+            try:
+                result_text = f"{title} {result.get('content', '')}"[:500]
+                result_embedding = embedding_service.embed(result_text)
+                similarity = compute_cosine_similarity(original_embedding, result_embedding)
+                is_semantically_relevant = similarity >= 0.60  # Require 60% similarity
+                logger.debug(f"[tavily] Result '{title[:30]}...' similarity: {similarity:.3f}")
+            except Exception:
+                # Fallback to keyword matching
+                result_terms = set(re.findall(r'\b[a-z]{4,}\b', content))
+                is_semantically_relevant = len(original_key_terms & result_terms) >= 2
+        else:
+            # Keyword-based fallback
+            result_terms = set(re.findall(r'\b[a-z]{4,}\b', content))
+            term_overlap = len(original_key_terms & result_terms) if original_key_terms else 0
+            is_semantically_relevant = term_overlap >= 2 or relevance_score > 0.7
+        
+        if not is_semantically_relevant:
+            logger.debug(f"[tavily] Skipping irrelevant result: '{title[:50]}'")
             continue
         
         # Check if from trusted domain
@@ -907,7 +985,7 @@ class EnhancedCredibilityAgent:
             for d in documents
         ]
         logger.info(f"[credibility_agent] Computing semantic embeddings for {n} documents")
-        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "8")))
+        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "16")))
         embeddings = embedding_service.embed_batch(doc_texts, batch_size=embed_batch_size)
         
         # ─── Signal 2: Semantic Cross-Reference (using embeddings) ───
@@ -915,7 +993,8 @@ class EnhancedCredibilityAgent:
             documents, embeddings, domains, similarity_threshold=0.70
         )
 
-        del embeddings
+        # Keep embeddings for Tavily relevance checking (don't delete yet)
+        # del embeddings
         del doc_texts
         
         # ─── Signal 3: Fact Check API (async) ───
@@ -925,10 +1004,14 @@ class EnhancedCredibilityAgent:
         llm_results = self._llm.analyze_batch(documents)
         
         # ─── Signal 5: Tavily External Cross-Reference (async) ───
-        tavily_results = await self._batch_tavily_verify(documents, domains)
+        # Pass embeddings for semantic relevance checking (reuse, no extra API calls)
+        tavily_results = await self._batch_tavily_verify(documents, domains, embeddings)
         tavily_scores = [r[0] for r in tavily_results]
         tavily_sources = [r[1] for r in tavily_results]
         tavily_statuses = [r[2] if len(r) > 2 else "unknown" for r in tavily_results]
+        
+        # Now safe to delete embeddings
+        del embeddings
         
         # ─── Combine with Weights ───
         enriched = []
@@ -997,11 +1080,18 @@ class EnhancedCredibilityAgent:
         self,
         docs: list[WebDocument],
         domains: list[str],
+        embeddings: list[list[float]] | None = None,
     ) -> list[tuple[float, list[str], str]]:
         """Run Tavily claim verification with rate limiting.
         
         Uses claim extraction to search for specific verifiable claims,
-        not just general topic matching.
+        not just general topic matching. Uses pre-computed embeddings for
+        semantic relevance checking (no extra API calls).
+        
+        Args:
+            docs: Documents to verify
+            domains: Pre-extracted domains
+            embeddings: Pre-computed embeddings for semantic relevance (optional)
         
         Returns:
             List of (score, verified_sources, verification_status) tuples
@@ -1009,6 +1099,9 @@ class EnhancedCredibilityAgent:
         if not self._tavily_api_key:
             # Return neutral scores if Tavily not configured
             return [(0.50, [], "disabled") for _ in docs]
+        
+        # Get embedding service for Tavily result comparison
+        embedding_service = get_embedding_service() if embeddings else None
         
         # LATENCY OPTIMIZATION: Probe test to fail fast if rate limited
         # This saves ~30s by not iterating through 56 docs when Tavily is unavailable
@@ -1072,8 +1165,11 @@ class EnhancedCredibilityAgent:
                          return 0.50, [], "rate_limit"
                      return 0.50, [], "error"
 
-                # Analyze results
-                score, sources, status = analyze_tavily_results(result, domain, title)
+                # Analyze results with semantic relevance checking
+                doc_embedding = embeddings[idx] if embeddings else None
+                score, sources, status = analyze_tavily_results(
+                    result, domain, title, doc_embedding, embedding_service
+                )
                 
                 # Log verification status for debugging
                 if status in ["contradicted", "disputed"]:

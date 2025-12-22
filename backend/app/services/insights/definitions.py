@@ -30,9 +30,9 @@ class SnapshotState(TypedDict, total=False):
     rag_relevance_scores: list[float]
 
 # Concurrency configurations - Increased for 100x CTO Performance
-_node4_max_concurrency = max(1, int(os.getenv("NODE4_MAX_CONCURRENCY", "2")))
+_node4_max_concurrency = max(1, int(os.getenv("NODE4_MAX_CONCURRENCY", "32")))
 node4_semaphore = asyncio.Semaphore(_node4_max_concurrency)
-_node4_ml_max_concurrency = max(1, int(os.getenv("NODE4_ML_MAX_CONCURRENCY", "2")))
+_node4_ml_max_concurrency = max(1, int(os.getenv("NODE4_ML_MAX_CONCURRENCY", "32")))
 node4_ml_semaphore = asyncio.Semaphore(_node4_ml_max_concurrency)
 
 # Theme Definitions

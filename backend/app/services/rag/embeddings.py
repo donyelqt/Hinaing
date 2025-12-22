@@ -24,7 +24,7 @@ def sanitize_text(text: str | None) -> str:
     return cleaned.strip() or "empty"
 
 # Optimize CPU threading for Railway containers (typically 1-2 vCPUs)
-CPU_THREADS = int(os.getenv("EMBEDDING_CPU_THREADS", "2"))
+CPU_THREADS = int(os.getenv("EMBEDDING_CPU_THREADS", "4"))
 torch.set_num_threads(CPU_THREADS)
 torch.set_num_interop_threads(1)
 

@@ -30,7 +30,7 @@ ENV PYTHONUNBUFFERED=1 \
     # PyTorch CPU optimizations
     OMP_NUM_THREADS=2 \
     MKL_NUM_THREADS=2 \
-    EMBEDDING_CPU_THREADS=2 \
+    EMBEDDING_CPU_THREADS=4 \
     # Disable tokenizers parallelism to avoid deadlocks in containers
     TOKENIZERS_PARALLELISM=false \
     # Transformers cache directory (for RoBERTa model)

@@ -93,27 +93,27 @@ class RetrievalAgent:
                         return topic, []
                 
                 # OPTIMIZED: Smaller batches with staggered starts
-                # Batch of 3 is safer for rate limits while still parallel
-                batch_size = 3
+                # Batch of 2 is safer for rate limits (reduced from 3)
+                batch_size = 2
                 for batch_start in range(0, len(queries_to_run), batch_size):
                     current_batch = queries_to_run[batch_start:batch_start + batch_size]
                     
                     logger.info("[retrieval_agent] executing batch %d-%d of %d", 
                                batch_start+1, batch_start+len(current_batch), len(queries_to_run))
                     
-                    # Longer delay between batches for rate limit recovery
+                    # Longer delay between batches for rate limit recovery (increased from 1.0s)
                     if batch_start > 0:
-                        await asyncio.sleep(1.0)
+                        await asyncio.sleep(1.5)
 
-                    # Staggered start: 250ms apart within batch
-                    # Total batch overhead: ~500ms, queries still run in parallel
+                    # Staggered start: 400ms apart within batch (increased from 250ms)
+                    # Total batch overhead: ~400ms, queries still run in parallel
                     async def staggered_fetch(task, idx, stagger_delay):
                         if stagger_delay > 0:
                             await asyncio.sleep(stagger_delay)
                         return await fetch_query(task, batch_start + idx)
                     
                     batch_results = await asyncio.gather(
-                        *[staggered_fetch(task, i, i * 0.25) for i, task in enumerate(current_batch)],
+                        *[staggered_fetch(task, i, i * 0.4) for i, task in enumerate(current_batch)],
                         return_exceptions=True
                     )
                     

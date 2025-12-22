@@ -46,9 +46,9 @@ def run_theme_agent(
     model = genai.GenerativeModel("gemini-2.5-flash")
     
     # Build context with sanitized text - INCLUDE URLs for evidence
-    # OPTIMIZATION: Show more documents (15 instead of 5) for better insight diversity
+    # OPTIMIZATION: Reduced to 10 docs to prevent MAX_TOKENS truncation
     doc_lines = []
-    for doc in documents[:15]:
+    for doc in documents[:10]:
         title = sanitize_text(doc.get('title', 'Untitled'))
         snippet = sanitize_text(doc.get('snippet', ''))[:200]
         url = sanitize_text(doc.get('url', ''))
@@ -78,7 +78,7 @@ Theme: {theme_label}
 
 Task: Analyze the documents below and generate EXACTLY 3 DISTINCT insights.
 
-Documents ({len(documents[:15])} shown):
+Documents ({len(documents[:10])} shown):
 {context_block}
 
 CRITICAL REQUIREMENTS:
@@ -142,7 +142,7 @@ JSON:"""
             full_prompt,
             generation_config=genai.GenerationConfig(
                 temperature=0.1,
-                max_output_tokens=4000,  # Increased from 3000 to handle multiple insights with 15 docs
+                max_output_tokens=8000,  # Increased to prevent MAX_TOKENS truncation
             ),
             safety_settings=safety_settings,
         )
