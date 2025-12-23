@@ -209,12 +209,30 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                 </h3>
                 
                 {data.overall_sentiment?.summary && (
-                    <p className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4">
-                        <span className="sm:hidden">
+                    <div className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4 space-y-2 sm:space-y-3">
+                        {/* Mobile: truncated with expand */}
+                        <div className="sm:hidden">
                             <ExpandableText text={data.overall_sentiment.summary} maxLength={200} />
-                        </span>
-                        <span className="hidden sm:inline">{data.overall_sentiment.summary}</span>
-                    </p>
+                        </div>
+                        {/* Desktop: formatted paragraphs with bold topics */}
+                        <div className="hidden sm:block space-y-3 leading-relaxed">
+                            {data.overall_sentiment.summary.split(/\n\n+/).map((paragraph, idx) => {
+                                // Handle **Bold:** pattern for topic headers
+                                const parts = paragraph.split(/\*\*([^*]+)\*\*/);
+                                return (
+                                    <p key={idx} className="text-justify">
+                                        {parts.map((part, partIdx) => 
+                                            partIdx % 2 === 1 ? (
+                                                <span key={partIdx} className="font-semibold text-blue-700">{part}</span>
+                                            ) : (
+                                                <span key={partIdx}>{part}</span>
+                                            )
+                                        )}
+                                    </p>
+                                );
+                            })}
+                        </div>
+                    </div>
                 )}
 
                 {/* Sentiment Scores */}

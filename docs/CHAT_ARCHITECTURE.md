@@ -112,7 +112,7 @@ flowchart TB
 
             subgraph Node3["Node 3: ContextAugmentationAgent - RAG Retrieval (35%)"]
                 CTX1[ContextAugmentationAgent]
-                EM1[MiniLM-L6-v2<br/>Query Embedding]
+                EM1[BGE-small-en-v1.5<br/>Query Embedding]
                 VS[Qdrant<br/>Cosine Similarity]
                 TopK[Top-K Results]
                 CTX1 --> EM1 --> VS --> TopK
@@ -134,7 +134,7 @@ flowchart TB
             subgraph Node5["Node 5: ContextAugmentationAgent (70%)"]
                 CTX2[ContextAugmentationAgent]
                 CH[Semantic Chunker]
-                EM[MiniLM-L6 Embeddings]
+                EM[BGE Embeddings]
                 VS2[Qdrant Store]
                 CTX2 --> CH --> EM --> VS2
             end
@@ -165,7 +165,7 @@ flowchart TB
         end
 
         subgraph Output["Node 7: CoordinatorAgent"]
-            NR[CoordinatorAgent<br/>Gemini 2.5 Pro]
+            NR[CoordinatorAgent<br/>Gemini 2.5 Flash-Lite]
             SR[SnapshotResponse]
             NR --> SR
         end
@@ -232,7 +232,7 @@ sequenceDiagram
         
         Note over CTX: Node 3: RAG Retrieval (Cosine Similarity)
         API->>CTX: retrieve_internal_knowledge(focus_areas)
-        CTX->>CTX: Embed query with MiniLM-L6-v2
+        CTX->>CTX: Embed query with BGE-small-en-v1.5
         CTX->>CTX: Qdrant cosine similarity search
         CTX->>CTX: Top-K most relevant memories
         CTX-->>API: Internal + External (deduplicated)
@@ -268,7 +268,7 @@ sequenceDiagram
         
         Note over CO: Node 7: CoordinatorAgent
         API->>CO: build_snapshot()
-        CO->>CO: CoordinatorAgent.run() (Gemini 2.5 Pro)
+        CO->>CO: CoordinatorAgent.run() (Gemini 2.5 Flash-Lite)
         
         API-->>Client: SSE: {type: "result", data: AnalysisData}
         
@@ -422,7 +422,7 @@ graph LR
 
     subgraph Models["ML Models"]
         ROBERTA[RoBERTa<br/>Sentiment]
-        MINILM[MiniLM-L6<br/>Embeddings]
+        BGE[BGE-small<br/>Embeddings]
     end
 
     subgraph ChatAnalyze["Chat Analyzer (12 Agents)"]
@@ -452,7 +452,7 @@ graph LR
     TAVILY --> CA_CR
     GFACT --> CA_CR
     ROBERTA --> CA_SA
-    MINILM --> CA_CTX
+    BGE --> CA_CTX
 
     CA_QO --> CA_RA --> CA_CTX
     CA_CTX --> CA_SA & CA_CR & CA_TR
@@ -486,7 +486,7 @@ backend/
 │   │   │   └── agent_tools.py   # Tool implementations
 │   │   ├── rag/
 │   │   │   ├── chunker.py       # Semantic chunking
-│   │   │   ├── embeddings.py    # MiniLM service
+│   │   │   ├── embeddings.py    # BGE service
 │   │   │   └── vector_store.py  # Qdrant client
 │   │   ├── ingestion/
 │   │   │   ├── reddit.py        # PRAW integration

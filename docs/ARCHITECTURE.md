@@ -18,14 +18,14 @@ Multi-Agentic AI system with real-time intelligent search and and self learning 
 
 | Component | Model | Reason |
 |-----------|-------|--------|
-| **CoordinatorAgent** | `gemini-2.5-pro` | Comprehensive narrative generation |
-| **QueryOrchestratorAgent** | `gemini-2.5-flash` | Fast ReAct loop for query planning |
-| **SentimentAgent (LLM)** | `gemini-2.5-pro` | Context-aware classification, 60% ensemble weight |
-| **CredibilityAgent** | `gemini-2.5-flash` | Fast content quality scoring |
-| **ThemeAgent (×6)** | `gemini-2.5-pro` | Theme-specific insight generation |
+| **CoordinatorAgent** | `gemini-2.5-flash-lite` | Fast narrative generation (theme insights pre-summarized) |
+| **QueryOrchestratorAgent** | `gemini-2.5-flash-lite` | Fast ReAct loop for query planning |
+| **SentimentAgent (LLM)** | `gemini-2.5-flash-lite` | Context-aware classification, 60% ensemble weight |
+| **CredibilityAgent** | `gemini-2.5-flash-lite` | Fast content quality scoring |
+| **ThemeAgent (×6)** | `gemini-2.5-flash-lite` | Theme-specific insight generation |
 | **ChatAgent** | `gemini-2.5-flash` | Fast Q&A responses |
 | **RoBERTa** | `twitter-roberta-base-sentiment-latest` | Local model, 40% ensemble weight |
-| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Local 384-dim vectors for RAG |
+| **Embeddings** | `BAAI/bge-small-en-v1.5` | Local 384-dim vectors for RAG (upgraded from MiniLM) |
 
 ## 7-Node Self-Learning Pipeline
 
@@ -69,11 +69,11 @@ The system implements a cyclic learning architecture where fresh external data i
 |------|----------|----------|----------------|
 | 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS, 3 tools, Gemini 2.5 Flash |
 | 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
-| 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K | Qdrant, MiniLM-L6-v2, `retrieve_knowledge()` |
-| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
-| 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant | SemanticChunker, VectorStore, `consolidate_memory()` |
+| 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K with focus_area filtering | Qdrant Cloud, BGE-small-en-v1.5, `retrieve_knowledge()`, keyword reranking |
+| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 6-signal credibility |
+| 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant with focus_area/topic metadata | SemanticChunker, VectorStore, `consolidate_memory()` |
 | 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | `run_theme_agent()` ×6 via ThreadPoolExecutor |
-| 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Pro |
+| 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Flash-Lite |
 
 ## System Flow Diagram
 
@@ -112,7 +112,7 @@ flowchart TB
 
             subgraph Node3["Node 3: Context Agent (RAG Retrieval)"]
                 CTX[ContextAugmentationAgent]
-                EM1[MiniLM-L6-v2<br/>Query Embedding]
+                EM1[BGE-small-en-v1.5<br/>Query Embedding]
                 VS1[Qdrant<br/>Cosine Similarity Search]
                 TopK[Top-K Results]
                 CTX --> EM1 --> VS1 --> TopK
@@ -136,7 +136,7 @@ flowchart TB
             subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
                 CTX2[ContextAugmentationAgent]
                 SC[Semantic Chunker<br/>400 chars]
-                ES[Embedding Service<br/>MiniLM-L6-v2]
+                ES[Embedding Service<br/>BGE-small-en-v1.5]
                 VS2[Qdrant VectorStore]
                 CTX2 --> SC --> ES --> VS2
             end
@@ -153,7 +153,7 @@ flowchart TB
             end
 
             subgraph Node7["Node 7: CoordinatorAgent"]
-                GC[CoordinatorAgent<br/>gemini-2.5-pro]
+                GC[CoordinatorAgent<br/>gemini-2.5-flash-lite]
                 NR[Narrative Generation]
                 GC --> NR
                 SR[SnapshotResponse]
@@ -237,7 +237,7 @@ sequenceDiagram
     end
     TA-->>GC: Theme Insights
 
-    GC->>GC: Narrative Generation (Gemini 2.5 Pro)
+    GC->>GC: Narrative Generation (Gemini 2.5 Flash-Lite)
     GC-->>API: SnapshotResponse
     API-->>Client: JSON Response
 ```
@@ -257,11 +257,11 @@ graph LR
 
     subgraph Models["ML Models"]
         ROBERTA[RoBERTa<br/>twitter-roberta-base-sentiment-latest]
-        MINILM[MiniLM-L6-v2<br/>Sentence Embeddings]
+        BGE[BGE-small-en-v1.5<br/>Sentence Embeddings]
     end
 
     subgraph Storage["Storage"]
-        QDRANT[Qdrant<br/>Vector Store<br/>Persistent Disk]
+        QDRANT[Qdrant Cloud<br/>Vector Store]
         SUPA[Supabase<br/>Database]
     end
 
@@ -304,8 +304,8 @@ graph LR
     TAVILY --> CRA
     GFACT --> CRA
     ROBERTA --> SNA
-    MINILM --> NODE3
-    MINILM --> NODE5
+    BGE --> NODE3
+    BGE --> NODE5
     QDRANT --> NODE3
     QDRANT --> NODE5
 
@@ -332,14 +332,14 @@ graph LR
 | economy | Business & Economy | market, vendor, livelihood, mallification, SM Prime, price, displacement | economy, business |
 | environment | Environment | garbage, pollution, waste, tree, climate, air quality, flooding | environment |
 
-## The 5-Signal Credibility Framework
+## The 6-Signal Credibility Framework
 
 The `CredibilityAgent` employs a **Multi-Signal Verification Strategy** with weighted ensemble:
 
 | Signal | Weight | Description |
 |--------|--------|-------------|
 | **Domain Trust** | 25% | Tiered scoring (gov.ph = 0.95, social media = 0.45) |
-| **Semantic Cross-Reference** | 20% | MiniLM embeddings for cosine similarity between documents |
+| **Semantic Cross-Reference** | 20% | BGE embeddings for cosine similarity between documents |
 | **Google Fact Check API** | 15% | Real-time query against Google's fact-check repository |
 | **LLM Pattern Recognition** | 20% | Gemini analyzes for clickbait, conspiracy framing, misinformation |
 | **Tavily Web Verification** | 20% | Real-time web search to verify claims against authoritative sources |
@@ -379,7 +379,7 @@ Documents filtered by `published_at` timestamp after retrieval.
 
 ## Multi-Query Diversity Strategy
 
-The Query Orchestrator generates **6 diverse queries** using KEYWORD_CLUSTERS:
+The Query Orchestrator generates **up to 18 diverse queries** using KEYWORD_CLUSTERS + contextual expansion:
 
 ```python
 KEYWORD_CLUSTERS = {
@@ -395,19 +395,44 @@ KEYWORD_CLUSTERS = {
 }
 ```
 
-**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating.
+**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating. Contextual queries are added based on current month/season (e.g., Christmas traffic, Panagbenga festival).
+
+## RAG Memory System (Qdrant Cloud)
+
+The system uses **Qdrant Cloud** for persistent vector storage with intelligent filtering:
+
+### Metadata-Based Filtering
+Each document chunk is stored with:
+- `focus_area`: Parent category (safety, health, infrastructure, etc.)
+- `topic`: Granular topic (crime incident, landslide warning, etc.)
+
+### Retrieval Strategy (3-Tier)
+1. **Tier 1 - Filtered Vector Search**: Cosine similarity within documents matching `focus_area` filter
+2. **Tier 2 - Unfiltered Vector Search**: If Tier 1 returns <3 results, cosine similarity across all documents
+3. **Tier 3 - Keyword Reranking**: Post-processing re-rank by keyword presence (60% semantic + 30% keyword + 10% metadata)
+
+### Payload Indexes
+```python
+# Auto-created on startup
+index_fields = ["focus_area", "topic"]  # keyword type for exact matching
+```
+
+### Embedding Model
+- **Model**: `BAAI/bge-small-en-v1.5` (upgraded from MiniLM for better accuracy)
+- **Dimensions**: 384
+- **Min Score Threshold**: 0.50 (higher precision)
 
 ## Data Flow Summary (13 Agents)
 
 ```
 SnapshotRequest
-    → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS)
-    → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit)
-    → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant Cosine Similarity)
+    → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS + Contextual Expansion)
+    → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit, parallel batching)
+    → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant filtered + semantic fallback)
     → Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
-    → Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk → Embed → Store)
+    → Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk → Embed → Store with focus_area/topic)
     → Node 6: ThemeAgent ×6 in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
-    → Node 7: CoordinatorAgent.run() (Narrative Generation with Gemini 2.5 Pro)
+    → Node 7: CoordinatorAgent.run() (Narrative Generation with Gemini 2.5 Flash Lite)
     → SnapshotResponse
 ```
 
@@ -418,10 +443,10 @@ SnapshotRequest
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
 | Backend | FastAPI, Python 3.11+, Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5-pro for narrative/sentiment, 2.5-flash for orchestration/credibility/theme) |
+| LLM | Google Gemini (2.5-flash-lite for all agents) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment-latest) |
-| Embeddings | MiniLM-L6-v2 (384 dimensions) |
-| Vector DB | Qdrant (persistent disk storage) |
+| Embeddings | BGE-small-en-v1.5 (384 dimensions) |
+| Vector DB | Qdrant Cloud (with focus_area/topic payload indexes) |
 | Search | LangSearch API |
 | Social | Reddit (PRAW), Facebook (Apify) |
 | Fact-Check | Google Fact Check API, Tavily |

@@ -70,7 +70,7 @@ Node 2: RetrievalAgent
     |-- Parallel batching for speed
     v
 Node 3: ContextAugmentationAgent.retrieve_knowledge() [RAG RETRIEVAL]  <-- NOVEL
-    |-- Embed query with MiniLM-L6-v2 (384 dims)
+    |-- Embed query with BGE-small-en-v1.5 (384 dims)
     |-- Qdrant COSINE SIMILARITY search
     |-- Top-K retrieval (most relevant memories)
     |-- Merge external + internal (deduplicate)
@@ -82,7 +82,7 @@ Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
     v
 Node 5: ContextAugmentationAgent.consolidate_memory() [LEARNING]  <-- NOVEL
     |-- Chunk enriched documents (SemanticChunker)
-    |-- Embed with MiniLM-L6-v2
+    |-- Embed with BGE-small-en-v1.5
     |-- Store in Qdrant for future recall
     v
 Node 6: ThemeAgent ×6 in PARALLEL
@@ -91,14 +91,14 @@ Node 6: ThemeAgent ×6 in PARALLEL
     v
 Node 7: CoordinatorAgent
     |-- CoordinatorAgent.run()
-    |-- Narrative generation (Gemini 2.5 Pro)
+    |-- Narrative generation (Gemini 2.5 Flash-Lite)
     |-- Final response assembly
 ```
 
 **Key Point:** Nodes 3 and 5 create a **cyclic learning loop**. The system gets smarter with each run.
 
 **Node 3 RAG Pipeline Details:**
-- Query embedding using `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+- Query embedding using `BAAI/bge-small-en-v1.5` (384 dimensions)
 - Qdrant VectorStore configured with `Distance.COSINE`
 - Top-K retrieval based on cosine similarity scores
 - Implementation: `backend/app/services/rag/vector_store.py` (line 47-50)
@@ -112,7 +112,7 @@ Unlike simple domain whitelists, your system uses **multi-signal verification**:
 | Signal | Weight | What It Does |
 |--------|--------|--------------|
 | Domain Trust | 25% | gov.ph = 0.95, social = 0.45 |
-| Semantic Cross-Reference | 20% | MiniLM cosine similarity |
+| Semantic Cross-Reference | 20% | BGE cosine similarity |
 | Google Fact Check API | 15% | External fact-checker |
 | LLM Pattern Recognition | 20% | Detects clickbait, conspiracy |
 | Tavily Web Verification | 20% | Real-time claim verification |
@@ -146,7 +146,7 @@ While components (RAG, LLMs) exist, the **Specialized Orchestration** is state-o
 
 ### Q: "How does the self-learning work?"
 **A:** "**ContextAugmentationAgent** handles both recall and consolidation:
-- **Node 3** (`retrieve_knowledge()`): Embeds the query with MiniLM-L6-v2, performs **cosine similarity search** in Qdrant, retrieves Top-K most relevant past analyses
+- **Node 3** (`retrieve_knowledge()`): Embeds the query with BGE-small-en-v1.5, performs **cosine similarity search** in Qdrant, retrieves Top-K most relevant past analyses
 - **Node 5** (`consolidate_memory()`): Chunks enriched documents, embeds them, stores in Qdrant for future recall
 
 On Run 1, we had 0 internal docs. On Run 2 (2 minutes later), we recalled 20 relevant memories. The system **learns from each run**."
@@ -162,7 +162,7 @@ Use these words to sound authoritative:
 - **"Cyclic Learning Graph"**: The 7-node architecture with memory recall and consolidation
 - **"Multi-Query Diversity"**: KEYWORD_CLUSTERS ensure topic coverage
 - **"Ensemble Verification"**: 5-signal credibility framework
-- **"Semantic Cross-Reference"**: MiniLM embeddings for document similarity
+- **"Semantic Cross-Reference"**: BGE embeddings for document similarity
 - **"Domain Grounding"**: Restricting AI to Baguio City context
 
 ---
@@ -192,7 +192,7 @@ This visual contrast proves your hypothesis immediately.
 |--------------|----------|----------|
 | 7-Node Self-Learning Architecture | All 12 agents | `graph.py` - Cyclic pipeline with memory |
 | Multi-Query Diversity Strategy | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS |
-| RAG Memory with Cosine Similarity | **ContextAugmentationAgent** | `context_agent.py`, `vector_store.py` - Qdrant + MiniLM |
+| RAG Memory with Cosine Similarity | **ContextAugmentationAgent** | `context_agent.py`, `vector_store.py` - Qdrant + BGE |
 | Hybrid Sentiment Ensemble | **SentimentAgent** | `sentiment_agent.py` - RoBERTa + Gemini |
 | 5-Signal Credibility Framework | **CredibilityAgent** | `credibility_agent.py` - Multi-signal verification |
 | Parallel Theme Analysis | **ThemeAgent ×6** | `theme_agent.py` - `run_theme_agent()` ×6 via ThreadPoolExecutor |

@@ -529,9 +529,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 </div>
               </Card>
 
-              {/* Live Preview */}
-              {/* Live Preview */}
-              <Card className="mx-auto w-full max-w-md space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 sm:mx-0 sm:max-w-none md:max-w-md md:border md:rounded-xl md:shadow-md md:p-6" role="region" aria-labelledby="preview-heading">
+              {/* Live Preview - Sticky with internal scroll */}
+              <div className="xl:sticky xl:top-6 xl:self-start">
+                <Card className="mx-auto w-full max-w-md space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 sm:mx-0 sm:max-w-none md:max-w-md md:border md:rounded-xl md:shadow-md md:p-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-sm text-slate-500">
@@ -553,16 +553,30 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </span>
                           <span className="text-xs font-medium text-hinaing-blue-600">Updated moments ago</span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <h3 className="text-xl font-semibold text-hinaing-blue-900" id="sentiment-summary">
                             {snapshot.overall_sentiment.label}
                           </h3>
-                          <p className="text-sm text-slate-600">
-                            {animatedSummary || fullSummaryText}
-                            {isTypingSummary && (
-                              <span className="inline-block w-[0.5ch] animate-pulse align-baseline">▌</span>
-                            )}
-                          </p>
+                          <div className="text-sm text-slate-600 space-y-4 leading-relaxed">
+                            {(animatedSummary || fullSummaryText).split(/\n\n+/).map((paragraph, idx) => {
+                              // Handle **Bold:** pattern for topic headers
+                              const parts = paragraph.split(/\*\*([^*]+)\*\*/);
+                              return (
+                                <p key={idx} className="text-justify">
+                                  {parts.map((part, partIdx) => 
+                                    partIdx % 2 === 1 ? (
+                                      <span key={partIdx} className="font-semibold text-hinaing-blue-700">{part}</span>
+                                    ) : (
+                                      <span key={partIdx}>{part}</span>
+                                    )
+                                  )}
+                                  {isTypingSummary && idx === (animatedSummary || fullSummaryText).split(/\n\n+/).length - 1 && (
+                                    <span className="inline-block w-[0.5ch] animate-pulse align-baseline">▌</span>
+                                  )}
+                                </p>
+                              );
+                            })}
+                          </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
                           <div className="rounded-lg bg-white/70 p-3 shadow-inner">
@@ -828,6 +842,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   )}
                 </div>
               </Card>
+              </div>
             </section>
           </main>
         </div>

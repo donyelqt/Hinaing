@@ -262,78 +262,64 @@ def expand_contextual_queries(input_str: str) -> str:
     # Holiday seasons
     if month == 12:
         contextual_keywords.extend([
-            {"query": "Baguio Christmas traffic 2024", "topic": "holiday-traffic", "reason": "December holiday rush"},
-            {"query": "Baguio New Year celebration safety", "topic": "holiday-safety", "reason": "New Year events"},
-            {"query": "Baguio holiday tourist crowd", "topic": "holiday-tourism", "reason": "Peak tourist season"},
+            {"query": "Baguio Christmas traffic 2024", "topic": "holiday-traffic", "reason": "December holiday rush", "primary_focus": "infrastructure"},
+            {"query": "Baguio New Year celebration safety", "topic": "holiday-safety", "reason": "New Year events", "primary_focus": "safety"},
+            {"query": "Baguio holiday tourist crowd", "topic": "holiday-tourism", "reason": "Peak tourist season", "primary_focus": "tourism"},
+            {"query": "Baguio Christmas sales vendor", "topic": "holiday-economy", "reason": "Holiday commerce", "primary_focus": "economy"},
+            {"query": "Baguio market Christmas rush", "topic": "market-holiday", "reason": "Market activity surge", "primary_focus": "economy"},
         ])
     elif month == 1:
         contextual_keywords.extend([
-            {"query": "Baguio Panagbenga preparation 2025", "topic": "festival-prep", "reason": "Panagbenga planning"},
-            {"query": "Baguio post-holiday cleanup", "topic": "post-holiday", "reason": "Post-New Year issues"},
+            {"query": "Baguio Panagbenga preparation 2025", "topic": "festival-prep", "reason": "Panagbenga planning", "primary_focus": "tourism"},
+            {"query": "Baguio post-holiday cleanup", "topic": "post-holiday", "reason": "Post-New Year issues", "primary_focus": "environment"},
+            {"query": "Baguio January business reopening", "topic": "business-reopen", "reason": "Post-holiday commerce", "primary_focus": "economy"},
         ])
     elif month == 2:
         contextual_keywords.extend([
-            {"query": "Baguio Panagbenga festival 2025", "topic": "panagbenga", "reason": "Panagbenga Festival month"},
-            {"query": "Baguio flower festival crowd", "topic": "festival-crowd", "reason": "Festival overcrowding"},
-            {"query": "Baguio Valentine tourism", "topic": "valentine-tourism", "reason": "Valentine's Day tourism"},
+            {"query": "Baguio Panagbenga festival 2025", "topic": "panagbenga", "reason": "Panagbenga Festival month", "primary_focus": "tourism"},
+            {"query": "Baguio flower festival crowd", "topic": "festival-crowd", "reason": "Festival overcrowding", "primary_focus": "tourism"},
+            {"query": "Baguio Valentine tourism", "topic": "valentine-tourism", "reason": "Valentine's Day tourism", "primary_focus": "tourism"},
+            {"query": "Baguio Panagbenga vendor sales", "topic": "festival-economy", "reason": "Festival commerce", "primary_focus": "economy"},
         ])
     elif month in [3, 4, 5]:
         contextual_keywords.extend([
-            {"query": "Baguio summer crowd 2025", "topic": "summer-tourism", "reason": "Summer vacation season"},
-            {"query": "Baguio Holy Week traffic", "topic": "holy-week", "reason": "Holy Week travel"},
-            {"query": "Baguio water shortage summer", "topic": "summer-water", "reason": "Dry season water issues"},
+            {"query": "Baguio summer crowd 2025", "topic": "summer-tourism", "reason": "Summer vacation season", "primary_focus": "tourism"},
+            {"query": "Baguio Holy Week traffic", "topic": "holy-week", "reason": "Holy Week travel", "primary_focus": "infrastructure"},
+            {"query": "Baguio water shortage summer", "topic": "summer-water", "reason": "Dry season water issues", "primary_focus": "infrastructure"},
+            {"query": "Baguio summer business boom", "topic": "summer-economy", "reason": "Peak season commerce", "primary_focus": "economy"},
         ])
     elif month in [6, 7, 8, 9, 10]:
         contextual_keywords.extend([
-            {"query": "Baguio typhoon update", "topic": "typhoon", "reason": "Typhoon season"},
-            {"query": "Baguio landslide rainy season", "topic": "rainy-landslide", "reason": "Monsoon landslide risk"},
-            {"query": "Baguio flooding news", "topic": "rainy-flood", "reason": "Rainy season flooding"},
-            {"query": "Baguio school enrollment issue", "topic": "enrollment", "reason": "School opening season"},
+            {"query": "Baguio typhoon update", "topic": "typhoon", "reason": "Typhoon season", "primary_focus": "safety"},
+            {"query": "Baguio landslide rainy season", "topic": "rainy-landslide", "reason": "Monsoon landslide risk", "primary_focus": "safety"},
+            {"query": "Baguio flooding news", "topic": "rainy-flood", "reason": "Rainy season flooding", "primary_focus": "safety"},
+            {"query": "Baguio school enrollment issue", "topic": "enrollment", "reason": "School opening season", "primary_focus": "infrastructure"},
         ])
     elif month == 11:
         contextual_keywords.extend([
-            {"query": "Baguio All Saints Day crowd", "topic": "undas", "reason": "Undas/All Saints Day"},
-            {"query": "Baguio Christmas preparation", "topic": "christmas-prep", "reason": "Early Christmas rush"},
+            {"query": "Baguio All Saints Day crowd", "topic": "undas", "reason": "Undas/All Saints Day", "primary_focus": "tourism"},
+            {"query": "Baguio Christmas preparation", "topic": "christmas-prep", "reason": "Early Christmas rush", "primary_focus": "tourism"},
+            {"query": "Baguio holiday shopping early", "topic": "early-holiday-economy", "reason": "Early holiday commerce", "primary_focus": "economy"},
         ])
     
-    # Filter by focus areas if specified
+    # Filter by focus areas if specified - STRICT matching on primary_focus
     if focus_areas:
         focus_lower = [f.lower() for f in focus_areas]
         filtered = []
         
-        # Map topics to focus areas
-        topic_focus_map = {
-            "holiday-traffic": ["infrastructure", "tourism", "safety"],
-            "holiday-safety": ["safety"],
-            "holiday-tourism": ["tourism", "economy"],
-            "festival-prep": ["tourism", "infrastructure"],
-            "panagbenga": ["tourism", "economy", "safety"],
-            "festival-crowd": ["tourism", "safety", "infrastructure"],
-            "valentine-tourism": ["tourism", "economy"],
-            "summer-tourism": ["tourism", "economy", "infrastructure"],
-            "holy-week": ["tourism", "infrastructure", "safety"],
-            "summer-water": ["infrastructure", "health", "environment"],
-            "typhoon": ["safety", "infrastructure", "environment"],
-            "rainy-landslide": ["safety", "infrastructure", "environment"],
-            "rainy-flood": ["safety", "infrastructure", "environment"],
-            "enrollment": ["infrastructure", "economy"],
-            "undas": ["tourism", "safety", "infrastructure"],
-            "christmas-prep": ["tourism", "economy", "infrastructure"],
-            "post-holiday": ["environment", "infrastructure"],
-        }
-        
         for kw in contextual_keywords:
-            topic = kw.get("topic", "")
-            relevant_areas = topic_focus_map.get(topic, [])
-            if any(area in focus_lower for area in relevant_areas):
+            primary = kw.get("primary_focus", "").lower()
+            # Only include if primary_focus matches requested focus areas
+            if primary in focus_lower:
                 filtered.append(kw)
         
-        contextual_keywords = filtered if filtered else contextual_keywords[:2]
+        # If no matches, don't fall back to unrelated queries - return empty
+        contextual_keywords = filtered
     
     return json.dumps({
         "contextual_queries": contextual_keywords[:3],  # Max 3 contextual queries
         "current_context": current_date,
-        "reasoning": f"Generated {len(contextual_keywords[:3])} contextual queries based on {current_date} seasonal patterns",
+        "reasoning": f"Generated {len(contextual_keywords[:3])} contextual queries based on {current_date} seasonal patterns for {focus_areas}",
         "instruction": "Add these to your final query list for time-relevant coverage"
     })
 
@@ -361,17 +347,13 @@ Observation: [tool result]
 Thought: I have crafted diverse queries.
 Final Answer: [JSON with strategy and queries]
 
-WORKFLOW:
-1. Use analyze_focus_areas to get keyword CLUSTERS (static coverage)
-2. Use generate_query with ALL clusters at once
-3. Use expand_contextual_queries to get SEASONAL/TIME-RELEVANT queries (this is CRITICAL for intelligent search)
-4. COMBINE both static and contextual queries in Final Answer
+WORKFLOW (EXACTLY 3 STEPS - DO NOT LOOP):
+1. Use analyze_focus_areas ONCE to get ALL keyword clusters
+2. Use generate_query ONCE with ALL clusters from step 1 (pass the ENTIRE clusters array, NOT one at a time!)
+3. Use expand_contextual_queries ONCE to get seasonal queries
+4. Output Final Answer combining all queries
 
-IMPORTANT: The expand_contextual_queries tool adds INTELLIGENCE by generating queries based on:
-- Current month/season (typhoon season, summer, Christmas, Panagbenga)
-- Holidays and events
-- Weather patterns
-This is what makes the agent SMART - static clusters alone are not enough!
+CRITICAL: Do NOT call generate_query multiple times! Pass ALL clusters in ONE call.
 
 Final Answer JSON format:
 {{"strategy": "hybrid: static clusters + contextual expansion", "queries": [{{"query": "...", "topic": "...", "type": "static|contextual"}}], "expected_results": ["diverse results across topics and time-relevant events"]}}
@@ -386,8 +368,8 @@ Question: {input}
 class QueryOrchestratorAgent:
     """ReAct agent that creates diverse search queries for broad topic coverage."""
 
-    max_queries: int = 6  # Up to 6 diverse queries
-    max_iterations: int = 5
+    max_queries: int = 10  # Up to 10 diverse queries (6 static + 3 contextual + buffer)
+    max_iterations: int = 8  # Increased from 5 to handle edge cases
     fallback_focus: str = "public services"
     _llm: ChatGoogleGenerativeAI | None = field(default=None, init=False)
     _executor: AgentExecutor | None = field(default=None, init=False)
@@ -492,8 +474,8 @@ class QueryOrchestratorAgent:
                 f"Focus areas: {', '.join(focus_values)}\n"
                 f"Time window: {time_window}\n"
                 f"Current date: {current_date}\n"
-                f"IMPORTANT: Use analyze_focus_areas first, then generate_query for EACH cluster, "
-                f"then evaluate_query to verify coverage."
+                f"IMPORTANT: Call analyze_focus_areas ONCE, then generate_query ONCE with ALL clusters, "
+                f"then expand_contextual_queries ONCE. Do NOT loop - 3 tool calls total."
             )
             
             result = executor.invoke({"input": agent_input})

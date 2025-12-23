@@ -106,7 +106,7 @@ KEYWORD_CLUSTERS = {
 | Signal | Weight | Implementation |
 |--------|--------|----------------|
 | Domain Trust | 25% | Tiered scoring (gov.ph=0.95, social=0.45) |
-| Semantic Cross-Reference | 20% | MiniLM cosine similarity between documents |
+| Semantic Cross-Reference | 20% | BGE cosine similarity between documents |
 | Google Fact Check API | 15% | Real-time query against fact-check repository |
 | LLM Pattern Recognition | 20% | Gemini detects clickbait, conspiracy framing |
 | Tavily Web Verification | 20% | Real-time web search for claim verification |
@@ -186,7 +186,7 @@ Node 2: RetrievalAgent
        |-- Diversity merge (round-robin)
        v
 Node 3: ContextAugmentationAgent.retrieve_knowledge() [RAG RETRIEVAL]
-       |-- Embed query with MiniLM-L6-v2 (384 dims)
+       |-- Embed query with BGE-small-en-v1.5 (384 dims)
        |-- Qdrant cosine similarity search per focus area
        |-- Top-K retrieval (most relevant memories)
        |-- Merge external + internal (deduplicate)
@@ -198,7 +198,7 @@ Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
        v
 Node 5: ContextAugmentationAgent.consolidate_memory()
        |-- Chunk enriched documents (SemanticChunker)
-       |-- Embed with MiniLM-L6-v2
+       |-- Embed with BGE-small-en-v1.5
        |-- Store in Qdrant for future recall
        v
 Node 6: 6 Theme Agents in PARALLEL
@@ -211,7 +211,7 @@ Node 6: 6 Theme Agents in PARALLEL
        v
 Node 7: CoordinatorAgent
        |-- CoordinatorAgent.run()
-       |-- Narrative generation (Gemini 2.5 Pro)
+       |-- Narrative generation (Gemini 2.5 Flash-Lite)
        |-- Assemble SnapshotResponse
        v
 SnapshotResponse
@@ -221,11 +221,11 @@ SnapshotResponse
 
 | Agent | Model | Reason |
 |-------|-------|--------|
-| QueryOrchestratorAgent | `gemini-2.5-flash` | Fast ReAct reasoning |
-| SentimentAgent (LLM part) | `gemini-2.5-pro` | Context-aware, 60% weight |
-| CredibilityAgent | `gemini-2.5-flash` | Fast pattern detection |
-| ThemeAgent ×6 | `gemini-2.5-pro` | Theme-specific insight generation |
-| CoordinatorAgent | `gemini-2.5-pro` | Comprehensive narrative |
+| QueryOrchestratorAgent | `gemini-2.5-flash-lite` | Fast ReAct reasoning |
+| SentimentAgent (LLM part) | `gemini-2.5-flash-lite` | Context-aware, 60% weight |
+| CredibilityAgent | `gemini-2.5-flash-lite` | Fast pattern detection |
+| ThemeAgent ×6 | `gemini-2.5-flash` | Theme-specific insight generation |
+| CoordinatorAgent | `gemini-2.5-flash-lite` | Narrative generation |
 | ChatAgent (Control) | `gemini-2.5-flash` | Fast Q&A |
 
 ## Gaps and Next Steps
@@ -257,7 +257,7 @@ SnapshotResponse
 |--------|--------|----------|
 | Multi-Agent Architecture | Defensible | 13 Agents in 7-Node Graph |
 | Agent Specialization | Defensible | Each agent has distinct role |
-| Data Persistence | Defensible | Qdrant on Disk |
+| Data Persistence | Defensible | Qdrant Cloud |
 | Accuracy | Defensible | Multi-Agent Consensus |
 | Self-Learning | Verified | ContextAugmentationAgent Memory Loop |
 | UI | Premium | Streaming Progress |

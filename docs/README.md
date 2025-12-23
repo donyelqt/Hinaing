@@ -62,7 +62,7 @@ Located in `backend/app/services/agents/sentiment_agent.py`:
 ### 4. CredibilityAgent (5-Signal)
 Located in `backend/app/services/agents/credibility_agent.py`:
 - Domain Trust (25%) – Tiered scoring by source type
-- Semantic Cross-Reference (20%) – MiniLM cosine similarity
+- Semantic Cross-Reference (20%) – BGE cosine similarity
 - Google Fact Check API (15%) – External fact-checker verification
 - LLM Pattern Recognition (20%) – Gemini misinformation detection
 - Tavily Web Verification (20%) – Real-time claim verification
@@ -70,7 +70,7 @@ Located in `backend/app/services/agents/credibility_agent.py`:
 ### 5. ContextAugmentationAgent (RAG)
 Located in `backend/app/services/agents/context_agent.py`:
 - **SemanticChunker** – 400 chars, 100 overlap
-- **EmbeddingService** – MiniLM-L6-v2 (384 dimensions, CPU-optimized)
+- **EmbeddingService** – BGE-small-en-v1.5 (384 dimensions, CPU-optimized)
 - **VectorStore** – Qdrant with **cosine similarity** search
 - `retrieve_knowledge()` (Node 3) – Embeds query → Cosine similarity search → Top-K retrieval
 - `consolidate_memory()` (Node 5) – Chunks → Embeds → Stores in Qdrant
@@ -122,10 +122,10 @@ Located in `backend/app/services/agents/chat_agent.py`:
 - **LangChain / LangGraph** – Multi-agent orchestration
 - **LangSmith** – Observability and tracing
 - **LangSearch** – Semantic web search API
-- **Google Gemini** – LLM (2.5-pro, 2.5-flash)
+- **Google Gemini** – LLM (2.5-flash-lite, 2.5-flash)
 - **HuggingFace Transformers** – RoBERTa sentiment model
-- **Qdrant** – Vector database (persistent disk)
-- **Sentence Transformers** – MiniLM-L6-v2 embeddings
+- **Qdrant** – Vector database (Qdrant Cloud)
+- **Sentence Transformers** – BGE-small-en-v1.5 embeddings
 - **PRAW** – Reddit API client
 - **Apify** – Facebook scraping
 - **Tavily** – Web search for fact-checking

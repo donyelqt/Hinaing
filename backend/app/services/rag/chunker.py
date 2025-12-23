@@ -117,6 +117,16 @@ class SemanticChunker:
             if platform is not None:
                 base_metadata["platform"] = platform
 
+            # Extract topic for filtered retrieval
+            source_topic = (document.metadata or {}).get("_source_topic")
+            if source_topic:
+                base_metadata["topic"] = source_topic
+            
+            # Extract focus area for category-level filtering
+            focus_area = (document.metadata or {}).get("_focus_area")
+            if focus_area:
+                base_metadata["focus_area"] = focus_area
+
             merged_metadata = {**base_metadata, **(document.metadata or {})}
 
             doc_chunks.append(

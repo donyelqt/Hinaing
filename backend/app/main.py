@@ -1,14 +1,19 @@
+import gc
 import logging
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .routers import agent, health, snapshot, chat, chat_analyze, metrics
 
 logger = logging.getLogger(__name__)
+
+# Track concurrent requests to prevent memory exhaustion
+_active_requests = 0
+_MAX_CONCURRENT_HEAVY_REQUESTS = 2
 
 
 def _load_models_sync():
@@ -46,7 +51,45 @@ async def lifespan(app: FastAPI):
     yield
     
     executor.shutdown(wait=False)
+    # Force garbage collection on shutdown
+    gc.collect()
     logger.info("[shutdown] Application shutting down")
+
+
+async def memory_cleanup_middleware(request: Request, call_next):
+    """Clean up memory after heavy requests."""
+    global _active_requests
+    
+    # Track heavy endpoints
+    is_heavy = request.url.path in ["/insights/snapshot", "/api/snapshot"]
+    
+    if is_heavy:
+        _active_requests += 1
+        logger.info(f"[memory] Active heavy requests: {_active_requests}")
+    
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        if is_heavy:
+            _active_requests -= 1
+            try:
+                from .services.rag.embeddings import clear_embedding_cache
+                
+                # Clear embedding cache (still uses local RAM)
+                clear_embedding_cache()
+                
+                # Force garbage collection
+                gc.collect()
+                
+                # Log memory after cleanup
+                import psutil
+                process = psutil.Process()
+                mem_mb = process.memory_info().rss / 1024 / 1024
+                logger.info(f"[memory] Cleanup done. Memory: {mem_mb:.1f}MB, Active: {_active_requests}")
+            except Exception as e:
+                logger.warning(f"[memory] Cleanup error: {e}")
+                gc.collect()
 
 
 def create_app() -> FastAPI:
@@ -71,6 +114,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    # Add memory cleanup middleware
+    @app.middleware("http")
+    async def cleanup_middleware(request: Request, call_next):
+        return await memory_cleanup_middleware(request, call_next)
 
     app.include_router(health.router)
     app.include_router(snapshot.router)

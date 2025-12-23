@@ -275,7 +275,7 @@ class MetricsCollector:
         logger.info(
             f"[metrics] Run {metrics.run_id} completed: "
             f"{metrics.total_latency_ms:.0f}ms, "
-            f"{metrics.total_docs_count} docs, "
+            f"{metrics.docs_after_dedup} docs (raw: {metrics.total_docs_count}), "
             f"{metrics.insights_generated} insights"
         )
         

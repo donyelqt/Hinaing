@@ -25,6 +25,130 @@ MAX_DOCUMENTS = 100
 logger = logging.getLogger(__name__)
 
 
+# Topic to focus area mapping (derived from KEYWORD_CLUSTERS)
+# Module-level constant to avoid dataclass mutable default issue
+TOPIC_FOCUS_MAP: dict[str, str] = {
+    # Infrastructure
+    "traffic congestion": "infrastructure",
+    "road repair": "infrastructure", 
+    "water shortage": "infrastructure",
+    "power outage": "infrastructure",
+    "parking problem": "infrastructure",
+    "drainage issue": "infrastructure",
+    "construction delay": "infrastructure",
+    "jeepney modernization": "infrastructure",
+    "public transport": "infrastructure",
+    "Session Road rehabilitation": "infrastructure",
+    "Kennon Road closure": "infrastructure",
+    # Health
+    "hospital issue": "health",
+    "BGH Baguio": "health",
+    "healthcare concern": "health",
+    "dengue outbreak": "health",
+    "COVID update": "health",
+    "mental health": "health",
+    "medical services": "health",
+    "medicine shortage": "health",
+    "doctor shortage": "health",
+    "emergency room": "health",
+    "vaccination": "health",
+    # Safety
+    "crime incident": "safety",
+    "landslide warning": "safety",
+    "earthquake drill": "safety",
+    "fire incident": "safety",
+    "accident report": "safety",
+    "theft problem": "safety",
+    "road accident": "safety",
+    "emergency response": "safety",
+    "disaster preparedness": "safety",
+    "missing person": "safety",
+    "police operation": "safety",
+    "evacuation": "safety",
+    "flood control": "safety",
+    "corruption issue": "safety",
+    "students walkout": "safety",
+    "student protest": "safety",
+    # Tourism
+    "tourist complaint": "tourism",
+    "overcrowding": "tourism",
+    "Burnham Park": "tourism",
+    "hotel issue": "tourism",
+    "scam tourist": "tourism",
+    "travel advisory": "tourism",
+    "tourist trap": "tourism",
+    "Session Road crowd": "tourism",
+    "weekend traffic": "tourism",
+    "accommodation problem": "tourism",
+    "Panagbenga": "tourism",
+    # Economy
+    "vendor issue": "economy",
+    "market problem": "economy",
+    "business closure": "economy",
+    "mallification protest": "economy",
+    "SM Baguio": "economy",
+    "public market": "economy",
+    "unemployment": "economy",
+    "cost of living": "economy",
+    "livelihood program": "economy",
+    "vendor displacement": "economy",
+    "job hiring": "economy",
+    # Environment
+    "tree cutting": "environment",
+    "air pollution": "environment",
+    "flooding": "environment",
+    "waste management": "environment",
+    "urban development": "environment",
+    "green space": "environment",
+    "climate change": "environment",
+    "pine trees": "environment",
+    "environmental concern": "environment",
+    "garbage problem": "environment",
+    "illegal dumping": "environment",
+    "water pollution": "environment",
+    # Contextual (from expand_contextual_queries)
+    "ctx-holiday-traffic": "infrastructure",
+    "ctx-holiday-safety": "safety",
+    "ctx-holiday-tourism": "tourism",
+    "ctx-holiday-economy": "economy",
+    "ctx-market-holiday": "economy",
+    "ctx-festival-prep": "tourism",
+    "ctx-panagbenga": "tourism",
+    "ctx-festival-crowd": "tourism",
+    "ctx-festival-economy": "economy",
+    "ctx-summer-tourism": "tourism",
+    "ctx-summer-economy": "economy",
+    "ctx-summer-water": "infrastructure",
+    "ctx-typhoon": "safety",
+    "ctx-rainy-landslide": "safety",
+    "ctx-rainy-flood": "safety",
+    "ctx-business-reopen": "economy",
+    "ctx-early-holiday-economy": "economy",
+    "holiday-economy": "economy",
+    "market-holiday": "economy",
+    "business-reopen": "economy",
+    "festival-economy": "economy",
+    "summer-economy": "economy",
+    "early-holiday-economy": "economy",
+}
+
+
+def _get_focus_area_for_topic(topic: str) -> str:
+    """Map a granular topic to its parent focus area."""
+    topic_lower = topic.lower()
+    
+    # Direct match
+    if topic_lower in TOPIC_FOCUS_MAP:
+        return TOPIC_FOCUS_MAP[topic_lower]
+    
+    # Partial match
+    for key, area in TOPIC_FOCUS_MAP.items():
+        if key in topic_lower or topic_lower in key:
+            return area
+    
+    return "general"
+
+
 @dataclass
 class RetrievalAgent:
     """Agent that decides which platforms to pull documents from.
@@ -71,6 +195,8 @@ class RetrievalAgent:
                 
                 async def fetch_query(task, idx):
                     topic = task.topic or f"topic_{idx}"
+                    # Determine parent focus area from topic
+                    focus_area = _get_focus_area_for_topic(topic)
                     try:
                         # Increased to 20s to allow for at least 3 retry cycles
                         docs = await asyncio.wait_for(
@@ -82,7 +208,11 @@ class RetrievalAgent:
                             timeout=20.0
                         )
                         for doc in docs:
-                            doc.metadata = {**(doc.metadata or {}), "_source_topic": topic}
+                            doc.metadata = {
+                                **(doc.metadata or {}), 
+                                "_source_topic": topic,
+                                "_focus_area": focus_area,
+                            }
                         logger.info("[retrieval_agent] query '%s' returned %d docs", topic, len(docs))
                         return topic, docs
                     except asyncio.TimeoutError:

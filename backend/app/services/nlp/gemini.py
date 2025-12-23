@@ -152,7 +152,17 @@ class GeminiClient:
             return response.text or ""
 
         try:
-            raw_text = await asyncio.to_thread(lambda: _invoke(lambda: analysis_prompt))
+            import time
+            start = time.perf_counter()
+            raw_text = await asyncio.wait_for(
+                asyncio.to_thread(lambda: _invoke(lambda: analysis_prompt)),
+                timeout=60.0  # 60s max for narrative generation
+            )
+            elapsed = time.perf_counter() - start
+            logger.info(f"[GeminiClient] Narrative generated in {elapsed:.1f}s")
+        except asyncio.TimeoutError:
+            logger.error("[GeminiClient] Narrative generation timed out after 60s")
+            return None, []
         except Exception:  # pragma: no cover - network/SDK failures
             logger.exception("Gemini analysis failed")
             return None, []
@@ -186,12 +196,11 @@ class GeminiClient:
                 insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
             insights_block = "\n\n=== PRE-ANALYZED THEME INSIGHTS ===\n" + "\n\n".join(insight_lines)
         
-        # Build documents section (Include ALL docs for comprehensive analysis)
-        # Using Gemini Flash's large context window to process full retrieval set
+        # Build documents section - use all docs, truncate snippets for speed
         doc_lines = []
         for idx, doc in enumerate(documents, start=1):
             title = sanitize_text(doc.get('title', ''))
-            snippet = sanitize_text(doc.get('snippet', ''))
+            snippet = sanitize_text(doc.get('snippet', ''))[:300]  # Truncate long snippets
             sentiment = doc.get('sentiment', 'neutral')
             doc_lines.append(f"{idx}. [{sentiment.upper()}] {title}: {snippet}")
         docs_block = "\n".join(doc_lines) or "No documents available."
@@ -206,8 +215,14 @@ class GeminiClient:
             "1. Analyze ALL supporting conversations above.\n"
             "2. Reference the theme insights for structured context.\n"
             "3. Generate a comprehensive narrative summary.\n\n"
+            "FORMATTING REQUIREMENTS:\n"
+            "- Structure the summary into 3-4 SHORT paragraphs (2-3 sentences each)\n"
+            "- Each paragraph should focus on ONE major theme/topic\n"
+            "- Start each paragraph with a BOLD topic indicator like: **Public Safety:** or **Infrastructure:**\n"
+            "- Use clear, concise language suitable for executive briefing\n"
+            "- Highlight key tensions, risks, and positive developments\n\n"
             "Return a JSON object with keys:\n"
-            "- summary: string narrative (detailed executive briefing, 2-3 paragraphs. synthesized from ALL documents. Highlight key tensions and minority viewpoints.)\n"
+            "- summary: string narrative (structured paragraphs as described above, separated by double newlines)\n"
             "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n"
         )
 

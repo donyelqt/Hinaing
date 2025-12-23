@@ -46,7 +46,7 @@ This document tracks what has been delivered so far and the remaining work neede
 
 #### CredibilityAgent (5-Signal Framework)
 - Domain Trust (25%) - Tiered scoring (gov.ph = 0.95, social = 0.45)
-- Semantic Cross-Reference (20%) - MiniLM cosine similarity
+- Semantic Cross-Reference (20%) - BGE cosine similarity
 - Google Fact Check API (15%) - External fact-checker verification
 - LLM Pattern Recognition (20%) - Gemini misinformation detection
 - Tavily Web Verification (20%) - Real-time claim verification
@@ -55,7 +55,7 @@ This document tracks what has been delivered so far and the remaining work neede
 - `retrieve_knowledge()` (Node 3) - Query embedding → **Cosine similarity search** → Top-K retrieval
 - `consolidate_memory()` (Node 5) - Chunk → Embed → Store in Qdrant
 - SemanticChunker (400 chars, 100 overlap)
-- MiniLM-L6-v2 embeddings (384 dims)
+- BGE-small-en-v1.5 embeddings (384 dims)
 - Qdrant VectorStore with `Distance.COSINE`
 
 #### ThemeRouterAgent
@@ -67,7 +67,7 @@ This document tracks what has been delivered so far and the remaining work neede
 - Single `run_theme_agent()` function called 6 times
 - Themes: Infrastructure, Health & Wellness, Public Safety, Tourism & Events, Business & Economy, Environment
 - ThreadPoolExecutor with 6 workers
-- Gemini 2.5 Pro for theme-specific insight generation
+- Gemini 2.5 Flash for theme-specific insight generation
 
 ### Chat Systems
 - **Chat Analyzer** - Streaming SSE with 12-agent pipeline
@@ -98,7 +98,7 @@ This document tracks what has been delivered so far and the remaining work neede
 - Updated all docs to explicitly mention 12 agents
 - Added agent-to-node mapping tables
 - Added agent-specific implementation details
-- Updated LLM model versions (gemini-2.5-flash, gemini-2.5-pro)
+- Updated LLM model versions (gemini-2.5-flash-lite, gemini-2.5-flash)
 
 ## Previous Updates
 

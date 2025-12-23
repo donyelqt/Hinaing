@@ -162,6 +162,13 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
         unique_docs.append(doc)
     
     state["documents"] = unique_docs
+    
+    # Record document counts for metrics
+    metrics = get_metrics_collector()
+    external_count = len(state.get("external_documents", []))
+    internal_count = len(internal_docs)
+    metrics.record_retrieval_metrics(external_count, internal_count, len(unique_docs))
+    
     return state
 
 

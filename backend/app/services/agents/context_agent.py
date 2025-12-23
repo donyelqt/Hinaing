@@ -30,6 +30,56 @@ class ContextAugmentationAgent:
             min_chunk_size=50
         )
         logger.info("ContextAugmentationAgent initialized")
+    
+    def _rerank_by_keyword_match(
+        self, 
+        results: list, 
+        keywords: list[str], 
+        focus_area: str
+    ) -> list:
+        """Re-rank results by keyword presence for precision boost.
+        
+        Combines semantic score with keyword match score:
+        - Semantic score: 0.6 weight
+        - Keyword match: 0.3 weight  
+        - Focus area match: 0.1 weight
+        """
+        if not results or not keywords:
+            return results
+        
+        # Normalize keywords for matching
+        keyword_terms = set()
+        for kw in keywords:
+            # Extract individual terms from phrases like "Baguio crime incident"
+            for term in kw.lower().replace("baguio", "").split():
+                if len(term) > 2:
+                    keyword_terms.add(term)
+        
+        scored_results = []
+        for res in results:
+            content_lower = res.chunk.content.lower()
+            title_lower = (res.chunk.source_title or "").lower()
+            
+            # Count keyword matches
+            match_count = sum(1 for term in keyword_terms if term in content_lower or term in title_lower)
+            keyword_score = min(match_count / max(len(keyword_terms), 1), 1.0)
+            
+            # Check focus area match in metadata
+            chunk_focus = (res.chunk.metadata or {}).get("focus_area", "")
+            focus_match = 1.0 if chunk_focus == focus_area else 0.0
+            
+            # Combined score
+            combined_score = (
+                res.score * 0.6 +           # Semantic similarity
+                keyword_score * 0.3 +        # Keyword presence
+                focus_match * 0.1            # Metadata match
+            )
+            
+            scored_results.append((combined_score, res))
+        
+        # Sort by combined score descending
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+        return [res for _, res in scored_results]
 
     async def retrieve_knowledge(
         self,
@@ -62,29 +112,46 @@ class ContextAugmentationAgent:
         
         for area in focus_areas:
             try:
-                # OPTIMIZATION: Expand query with specific keywords if available
-                # This boosts vector scores by providing dense semantic targets
-                # e.g., "Health" -> "Health dengue hospital medicine outbreak"
                 from ..insights.agent_tools import FOCUS_CONCERN_KEYWORDS
                 
-                # Normalize key lookup
                 normalized_area = area.lower()
-                # Find matching key in keywords dict (handling case variations)
+                
+                # Get rich keywords for this focus area
                 rich_keywords = []
                 for k, v in FOCUS_CONCERN_KEYWORDS.items():
                     if k.lower() == normalized_area or k.lower() in normalized_area:
                         rich_keywords = v
                         break
                 
+                # IMPROVED STRATEGY: Use focused query, not keyword soup
+                # Pick top 3-4 most distinctive keywords instead of all
                 if rich_keywords:
-                    # Construct dense query
-                    query_text = f"{area} {' '.join(rich_keywords)}"
-                    logger.debug(f"Expanded memory query '{area}' -> '{query_text}'")
+                    # Use first 4 keywords (most important/distinctive)
+                    top_keywords = rich_keywords[:4]
+                    query_text = f"{area} {' '.join(top_keywords)}"
                 else:
-                    query_text = area
+                    query_text = f"Baguio {area} news concerns issues"
 
-                # Search for specific topic with enhanced query
-                results = await self.vector_store.search(query=query_text, k=per_area_limit)
+                logger.debug(f"Memory query for '{area}': '{query_text[:80]}...'")
+
+                # STRATEGY 1: Try filtered search first (most precise)
+                results = await self.vector_store.search(
+                    query=query_text, 
+                    k=per_area_limit * 2,
+                    focus_area_filter=normalized_area
+                )
+                
+                # STRATEGY 2: If filter returns too few, try semantic with higher threshold
+                if len(results) < 3:
+                    logger.debug(f"Filtered search returned {len(results)}, trying semantic-only")
+                    results = await self.vector_store.search(
+                        query=query_text, 
+                        k=per_area_limit
+                    )
+                
+                # STRATEGY 3: Re-rank by keyword presence for precision boost
+                if results:
+                    results = self._rerank_by_keyword_match(results, rich_keywords[:6], normalized_area)
                 
                 # Add unique results
                 added_count = 0
@@ -93,6 +160,8 @@ class ContextAugmentationAgent:
                         seen_ids.add(res.chunk.chunk_id)
                         all_results.append(res)
                         added_count += 1
+                        if added_count >= per_area_limit:
+                            break
                 
                 logger.debug(f"Memory recall for '{area}': found {len(results)}, added {added_count} unique")
                 

@@ -46,8 +46,8 @@ class EmbeddingService:
     - LRU cache for repeated queries
     """
     
-    # Using all-MiniLM-L6-v2: Fast, good quality, 384 dimensions
-    DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+    # Using BGE-small: Better quality than MiniLM, same speed, 384 dimensions
+    DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
     
     def __init__(self, model_name: str | None = None):
         """Initialize embedding model.
@@ -150,9 +150,23 @@ class EmbeddingService:
     def clear_cache(self) -> None:
         """Clear the query embedding cache."""
         self._query_cache.clear()
+        logger.info("[EmbeddingService] Query cache cleared")
 
 
-@lru_cache(maxsize=1)
+# Global instance (not using lru_cache to allow reset)
+_embedding_service: EmbeddingService | None = None
+
+
 def get_embedding_service() -> EmbeddingService:
     """Get singleton embedding service instance."""
-    return EmbeddingService()
+    global _embedding_service
+    if _embedding_service is None:
+        _embedding_service = EmbeddingService()
+    return _embedding_service
+
+
+def clear_embedding_cache() -> None:
+    """Clear embedding service cache to free memory."""
+    global _embedding_service
+    if _embedding_service is not None:
+        _embedding_service.clear_cache()

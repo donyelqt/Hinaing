@@ -66,7 +66,7 @@ SnapshotRequest
 ┌──────────────────────────────────────────────────────────────────┐
 │  NODE 3: Context Agent — Memory Recall (RAG Retrieval)           │
 │  - Queries Qdrant vector store per focus area                    │
-│  - Cosine similarity search with MiniLM-L6-v2 embeddings         │
+│  - Cosine similarity search with BGE-small-en-v1.5 embeddings         │
 │  - Deduplicates and merges with external documents               │
 └──────────────────────────────────────────────────────────────────┘
        ↓
@@ -83,20 +83,20 @@ SnapshotRequest
 ┌──────────────────────────────────────────────────────────────────┐
 │  NODE 5: Context Agent — Memory Consolidation (RAG Ingestion)    │
 │  - Chunks enriched documents (400 chars, 100 overlap)            │
-│  - Embeds with MiniLM-L6-v2                                      │
+│  - Embeds with BGE-small-en-v1.5                                      │
 │  - Stores in Qdrant for future recall (LEARNING LOOP)            │
 └──────────────────────────────────────────────────────────────────┘
        ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │  NODE 6: Theme Agents (6 Agents in Parallel)                     │
 │  - ThreadPoolExecutor with max_workers=6                         │
-│  - Each agent: Gemini 2.5 Pro for domain-specific insights       │
+│  - Each agent: Gemini 2.5 Flash for domain-specific insights       │
 │  - Themes: Infrastructure, Health, Safety, Tourism, Economy, Env │
 └──────────────────────────────────────────────────────────────────┘
        ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │  NODE 7: Coordinator Agent (Final Synthesis)                     │
-│  - Assembles narrative summary using Gemini 2.5 Pro              │
+│  - Assembles narrative summary using Gemini 2.5 Flash-Lite              │
 │  - Aggregates theme insights                                     │
 │  - Computes sentiment breakdown scores                           │
 └──────────────────────────────────────────────────────────────────┘
@@ -108,13 +108,13 @@ SnapshotResponse
 
 | Component | Model | Rationale |
 |-----------|-------|-----------|
-| QueryOrchestratorAgent | Gemini 2.5 Flash | Fast ReAct loop for query planning |
-| SentimentAgent (LLM) | Gemini 2.5 Pro | Context-aware classification, 60% ensemble weight |
-| CredibilityAgent | Gemini 2.5 Flash | Fast content quality scoring |
-| ThemeAgent (×6) | Gemini 2.5 Pro | Theme-specific insight generation |
-| CoordinatorAgent | Gemini 2.5 Pro | Comprehensive narrative generation |
+| QueryOrchestratorAgent | Gemini 2.5 Flash-Lite | Fast ReAct loop for query planning |
+| SentimentAgent (LLM) | Gemini 2.5 Flash-Lite | Context-aware classification, 60% ensemble weight |
+| CredibilityAgent | Gemini 2.5 Flash-Lite | Fast content quality scoring |
+| ThemeAgent (×6) | Gemini 2.5 Flash | Theme-specific insight generation |
+| CoordinatorAgent | Gemini 2.5 Flash-Lite | Narrative generation |
 | RoBERTa | twitter-roberta-base-sentiment-latest | Local model, 40% ensemble weight |
-| Embeddings | sentence-transformers/all-MiniLM-L6-v2 | Local 384-dim vectors for RAG |
+| Embeddings | BAAI/bge-small-en-v1.5 | Local 384-dim vectors for RAG |
 
 ---
 
@@ -127,7 +127,7 @@ The system employs a **full ensemble** where both models analyze ALL documents, 
 | Model | Type | Weight | Strengths |
 |-------|------|--------|-----------|
 | RoBERTa (`twitter-roberta-base-sentiment-latest`) | Transformer | 40% | Fast inference, trained on 124M tweets, handles social media slang |
-| Gemini 2.5 Pro | Large Language Model | 60% | Context-aware, understands local civic issues, nuanced reasoning |
+| Gemini 2.5 Flash-Lite | Large Language Model | 60% | Context-aware, understands local civic issues, nuanced reasoning |
 
 ### Why RoBERTa Twitter?
 
@@ -192,7 +192,7 @@ The CredibilityAgent implements a **Multi-Signal Verification Strategy** with we
 | Signal | Weight | Description |
 |--------|--------|-------------|
 | Domain Trust | 25% | Source reputation based on tiered domain scoring |
-| Semantic Cross-Reference | 20% | Corroboration detection using MiniLM embeddings |
+| Semantic Cross-Reference | 20% | Corroboration detection using BGE embeddings |
 | Google Fact Check API | 15% | External verification against fact-checker database |
 | LLM Pattern Recognition | 20% | Gemini analyzes for misinformation patterns |
 | Tavily Web Verification | 20% | Real-time web search for claim corroboration |
@@ -212,7 +212,7 @@ Tiered scoring based on source domain reputation:
 
 ### Signal 2: Semantic Cross-Reference (20%)
 
-Uses **MiniLM-L6-v2 embeddings** to detect corroboration across independent sources:
+Uses **BGE-small-en-v1.5 embeddings** to detect corroboration across independent sources:
 
 ```python
 # Embed all documents
@@ -368,7 +368,7 @@ Unlike standard RAG systems that are read-only, Hinaing implements a **Read-Writ
 
 | Property | Value |
 |----------|-------|
-| Model | sentence-transformers/all-MiniLM-L6-v2 |
+| Model | BAAI/bge-small-en-v1.5 |
 | Dimensions | 384 |
 | Device | CPU (optimized for Railway containers) |
 | Normalization | Pre-normalized for cosine similarity |
@@ -384,7 +384,7 @@ Unlike standard RAG systems that are read-only, Hinaing implements a **Read-Writ
 
 | Property | Value |
 |----------|-------|
-| Storage | Persistent disk (`./qdrant_data`) |
+| Storage | Qdrant Cloud |
 | Distance Metric | Cosine similarity |
 | Collection | `baguio_documents` |
 | Retrieval | Top-k per focus area (k=10) |
@@ -506,7 +506,7 @@ Each theme agent runs in parallel using `ThreadPoolExecutor(max_workers=6)`:
 
 ```python
 def run_theme_agent(theme_label: str, prompt: str, documents: list[dict]):
-    """Direct Gemini 2.5 Pro call for theme-specific insights."""
+    """Direct Gemini 2.5 Flash call for theme-specific insights."""
     
     # Build context with URLs for evidence
     doc_lines = [f"- [{title}]({url}): {snippet}" for doc in documents[:5]]
@@ -634,10 +634,10 @@ Per-node telemetry tracked via MetricsCollector:
 | Framework | FastAPI (Python 3.11+) |
 | Package Manager | Poetry |
 | Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5 Pro, 2.5 Flash) |
+| LLM | Google Gemini (2.5 Flash-Lite, 2.5 Flash) |
 | Transformer | HuggingFace Transformers (RoBERTa) |
-| Embeddings | Sentence Transformers (MiniLM-L6-v2) |
-| Vector DB | Qdrant (persistent disk storage) |
+| Embeddings | Sentence Transformers (BGE-small-en-v1.5) |
+| Vector DB | Qdrant Cloud |
 | Web Search | LangSearch API |
 | Fact-Checking | Google Fact Check API, Tavily API |
 | Social Media | PRAW (Reddit), Apify (Facebook) |
@@ -694,7 +694,7 @@ Weighted voting between transformer and LLM provides:
 2. **Credibility Ground Truth** — No labeled misinformation dataset for Philippine civic content
 3. **Language Support** — Optimized for English; Taglish/Filipino support is implicit via RoBERTa
 4. **Rate Limits** — Gemini (15 RPM), Tavily (1000/month) constrain throughput
-5. **Vector Store Scale** — Qdrant on disk; production may require distributed deployment (otw to prod version)
+5. **Vector Store Scale** — Now using Qdrant Cloud for production-grade scalability and persistence
 
 ---
 
