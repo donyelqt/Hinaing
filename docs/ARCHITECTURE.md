@@ -332,7 +332,7 @@ graph LR
 | economy | Business & Economy | market, vendor, livelihood, mallification, SM Prime, price, displacement | economy, business |
 | environment | Environment | garbage, pollution, waste, tree, climate, air quality, flooding | environment |
 
-## The 6-Signal Credibility Framework
+## The 5-Signal Credibility Framework
 
 The `CredibilityAgent` employs a **Multi-Signal Verification Strategy** with weighted ensemble:
 
