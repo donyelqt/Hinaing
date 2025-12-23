@@ -36,7 +36,7 @@ ENV PYTHONUNBUFFERED=1 \
     # Transformers cache directory (for RoBERTa model)
     TRANSFORMERS_CACHE=/app/.cache/huggingface \
     HF_HOME=/app/.cache/huggingface \
-    # Sentence transformers cache (for MiniLM embeddings)
+    # Sentence transformers cache (for BGE embeddings)
     SENTENCE_TRANSFORMERS_HOME=/app/.cache/sentence-transformers
 
 WORKDIR /app
@@ -54,7 +54,7 @@ RUN python -c "from transformers import AutoModelForSequenceClassification, Auto
     AutoModelForSequenceClassification.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
     AutoTokenizer.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest')" && \
     python -c "from sentence_transformers import SentenceTransformer; \
-    SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+    SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
 EXPOSE 8000
 
