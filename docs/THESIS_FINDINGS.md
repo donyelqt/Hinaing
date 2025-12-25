@@ -1,5 +1,7 @@
 # Thesis Findings
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
 ## Overview
 The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating a cyclic learning loop that improves analysis quality over time.
 
@@ -38,11 +40,11 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 s
 
 **Significance:** The 7-Node Multi-Agent Architecture functions as a true learning engine. It is no longer just a "monitor" but a "growing knowledge base."
 
-### 2. QueryOrchestratorAgent: Multi-Query Diversity Strategy
+### 2. QueryOrchestratorAgent: Context Engineering with Multi-Query Diversity
 
-**Problem:** Single queries return homogeneous results, missing topic diversity.
+**Problem:** Single queries return homogeneous results, missing topic diversity and temporal relevance.
 
-**Solution:** **QueryOrchestratorAgent** uses ReAct reasoning with KEYWORD_CLUSTERS:
+**Solution:** **QueryOrchestratorAgent** uses ReAct reasoning with **context engineering** - pre-defined domain knowledge via KEYWORD_CLUSTERS and dynamic contextual expansion:
 
 ```python
 KEYWORD_CLUSTERS = {
@@ -56,12 +58,16 @@ KEYWORD_CLUSTERS = {
 }
 ```
 
-**Agent Tools:**
-- `analyze_focus_areas` - Retrieves keyword clusters for focus areas
-- `generate_query` - Creates diverse queries from clusters
-- `evaluate_query` - Validates topic diversity
+**Agent Tools (4 Total):**
 
-**Result:** 6 diverse queries per request, round-robin interleaving prevents topic domination.
+| Tool | Type | Purpose |
+|------|------|---------|
+| `analyze_focus_areas` | Static Context Engineering | Retrieves KEYWORD_CLUSTERS for focus areas |
+| `generate_query` | Query Construction | Creates diverse queries from clusters (1 per cluster) |
+| `expand_contextual_queries` | Dynamic Context Engineering | Adds seasonal/time-aware queries (Christmas, Panagbenga, typhoon) |
+| `evaluate_query` | Validation | Validates topic diversity coverage |
+
+**Result:** 6+ diverse queries per request combining static clusters and dynamic contextual expansion. Round-robin interleaving prevents topic domination.
 
 ### 3. SentimentAgent: Full Ensemble Analysis
 
@@ -144,15 +150,17 @@ KEYWORD_CLUSTERS = {
 
 ## Novel Contributions
 
-1. **7-Node Multi-Agent Self-Learning Architecture (13 Agents)**
-   - Cyclic graph with 7 core agents + 6 theme agents
+1. **Context-Engineered 7-Node Multi-Agent Architecture (13 Agents)**
+   - The entire architecture is context engineering - pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals inject domain knowledge
+   - Cyclic graph with 7 core agents + 6 theme sub-agents (conditionally spawned)
    - **ContextAugmentationAgent** handles both recall (Node 3) and consolidation (Node 5)
    - Verified self-reference loop
 
-2. **QueryOrchestratorAgent with Multi-Query Diversity**
-   - ReAct reasoning with 3 custom tools
-   - KEYWORD_CLUSTERS for topic coverage
-   - 6 diverse queries per request
+2. **QueryOrchestratorAgent with Context Engineering**
+   - ReAct reasoning with 4 custom tools
+   - KEYWORD_CLUSTERS for static context engineering (Baguio-specific civic concerns)
+   - `expand_contextual_queries` for dynamic context engineering (seasonal/temporal awareness)
+   - 6+ diverse queries per request
 
 3. **SentimentAgent with Hybrid Ensemble**
    - RoBERTa (social-native) + Gemini (context-aware)
@@ -164,9 +172,9 @@ KEYWORD_CLUSTERS = {
    - Misinformation pattern detection
    - Verified source tracking
 
-5. **6 Parallel Theme Agents**
-   - InfrastructureAgent, HealthAgent, SafetyAgent
-   - TourismAgent, EconomyAgent, EnvironmentAgent
+5. **Conditional Sub-Agent Spawning**
+   - 6 Theme Agents dynamically spawned only when their bucket has documents
+   - Dynamic agent count (7-13) based on routing results
    - ThreadPoolExecutor for parallel execution
 
 ## Architecture Flow (13 Agents)
@@ -175,9 +183,11 @@ KEYWORD_CLUSTERS = {
 SnapshotRequest
        |
        v
-Node 1: QueryOrchestratorAgent (ReAct)
-       |-- Tools: analyze_focus_areas, generate_query, evaluate_query
-       |-- Generate 6 diverse queries via KEYWORD_CLUSTERS
+Node 1: QueryOrchestratorAgent (ReAct + Context Engineering)
+       |-- Tools: analyze_focus_areas, generate_query, expand_contextual_queries, evaluate_query
+       |-- KEYWORD_CLUSTERS (static context engineering)
+       |-- Contextual expansion (dynamic context engineering - seasonal/temporal)
+       |-- Generate 6+ diverse queries
        v
 Node 2: RetrievalAgent
        |-- LangSearch Web API
@@ -196,18 +206,18 @@ Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
        |-- CredibilityAgent: 5-signal ensemble
        |-- ThemeRouterAgent: Route to 6 theme buckets
        v
-Node 5: ContextAugmentationAgent.consolidate_memory()
+Node 5: ContextAugmentationAgent.consolidate_memory() [SELF-LEARNING]
        |-- Chunk enriched documents (SemanticChunker)
        |-- Embed with BGE-small-en-v1.5
        |-- Store in Qdrant for future recall
        v
-Node 6: 6 Theme Agents in PARALLEL
-       |-- InfrastructureAgent
-       |-- HealthAgent
-       |-- SafetyAgent
-       |-- TourismAgent
-       |-- EconomyAgent
-       |-- EnvironmentAgent
+Node 6: 6 Theme Sub-Agents in PARALLEL (conditionally spawned)
+       |-- InfrastructureAgent (if bucket has docs)
+       |-- HealthAgent (if bucket has docs)
+       |-- SafetyAgent (if bucket has docs)
+       |-- TourismAgent (if bucket has docs)
+       |-- EconomyAgent (if bucket has docs)
+       |-- EnvironmentAgent (if bucket has docs)
        v
 Node 7: CoordinatorAgent
        |-- CoordinatorAgent.run()

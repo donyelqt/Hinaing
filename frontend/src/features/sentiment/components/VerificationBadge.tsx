@@ -258,7 +258,7 @@ export function VerificationBadge({
           {/* External Cross-Reference (Tavily) */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
-              External Cross-Reference (Tavily)
+              External Cross-Reference (Tavily - Web Search)
             </p>
             {/* Verification Status Badge */}
             <div className="mb-2">

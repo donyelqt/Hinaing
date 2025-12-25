@@ -1,8 +1,10 @@
 # Project Roadmap
 
-**Thesis Title:** _Multi-agent agentic AI with real-time intelligent search and RAG for context-aware public opinion analysis_
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
 
 This document tracks what has been delivered so far and the remaining work needed to reach the "thesis-grade" target.
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
 
 ## Agent Summary (13 Total)
 
@@ -27,9 +29,10 @@ This document tracks what has been delivered so far and the remaining work neede
 
 ### Agent-Specific Implementations
 
-#### QueryOrchestratorAgent
-- ReAct reasoning with 3 tools: `analyze_focus_areas`, `generate_query`, `evaluate_query`
-- KEYWORD_CLUSTERS for topic diversity (4 clusters per focus area)
+#### QueryOrchestratorAgent (Context Engineering)
+- ReAct reasoning with 4 tools: `analyze_focus_areas`, `generate_query`, `expand_contextual_queries`, `evaluate_query`
+- KEYWORD_CLUSTERS for static context engineering (4 clusters per focus area)
+- `expand_contextual_queries` for dynamic context engineering (seasonal/temporal awareness)
 - 6 diverse queries generated per request
 - Time-based search operators (`after:YYYY-MM-DD`)
 
