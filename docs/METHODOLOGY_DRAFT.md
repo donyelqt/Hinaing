@@ -41,8 +41,10 @@ All analysis is scoped to **Baguio City, Philippines** through:
 | Category | Count | Agents |
 |----------|-------|--------|
 | Core Pipeline Agents | 7 | QueryOrchestrator, Retrieval, Context, Sentiment, Credibility, ThemeRouter, Coordinator |
-| Theme Sub-Agents | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
-| **Total** | **13** | 7 core + 6 theme-specific |
+| Theme Sub-Agents | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned) |
+| **Total** | **13** | 7 core + 6 theme-specific sub-agents |
+
+> **Sub-Agent Note**: Theme Agents are sub-agents dynamically spawned by the ThemeRouterAgent in Node 6. They are only instantiated when their corresponding theme bucket contains documents from Node 4's routing.
 
 ### Pipeline Flow
 
