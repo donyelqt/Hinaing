@@ -9,8 +9,10 @@ Multi-Agentic AI system with real-time intelligent search and and self learning 
 | Category | Agents | Notes |
 |----------|--------|-------|
 | **Core Pipeline Agents** | 7 | QueryOrchestrator, Retrieval, Sentiment, Credibility, Context, ThemeRouter, Coordinator |
-| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
-| **Total** | **13** | 7 core + 6 theme-specific |
+| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned by ThemeRouter) |
+| **Total** | **13** | 7 core + 6 theme-specific sub-agents |
+
+> **Sub-Agent Note**: Theme Agents are sub-agents dynamically spawned by the ThemeRouterAgent. They are only instantiated when their corresponding theme bucket contains documents. For example, if a user selects only "health" and "safety" focus areas, only HealthAgent and SafetyAgent will be spawned (2 sub-agents), not all 6.
 
 > **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather` in a single unified analysis node, reducing latency significantly.
 
@@ -72,7 +74,7 @@ The system implements a cyclic learning architecture where fresh external data i
 | 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K with focus_area filtering | Qdrant Cloud, BGE-small-en-v1.5, `retrieve_knowledge()`, keyword reranking |
 | 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 6-signal credibility |
 | 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant with focus_area/topic metadata | SemanticChunker, VectorStore, `consolidate_memory()` |
-| 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category | `run_theme_agent()` ×6 via ThreadPoolExecutor |
+| 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category (sub-agents conditionally spawned) | `run_theme_agent()` ×6 via ThreadPoolExecutor |
 | 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Flash-Lite |
 
 ## System Flow Diagram
@@ -170,13 +172,13 @@ flowchart TB
     SR --> Response[SnapshotResponse JSON]
     Response --> Frontend
 
-    style Node1 fill:#e1f5fe
-    style Node2 fill:#fff3e0
-    style Node3 fill:#e8f5e9
-    style Node4 fill:#f3e5f5
-    style Node5 fill:#fff8e1
-    style Node6 fill:#fce4ec
-    style Node7 fill:#e0f2f1
+    style Node1 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node2 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node3 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node4 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node5 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node6 fill:#ffffff,stroke:#333,stroke-width:2px
+    style Node7 fill:#ffffff,stroke:#333,stroke-width:2px
 ```
 
 
