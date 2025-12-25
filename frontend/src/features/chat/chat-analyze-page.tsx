@@ -152,27 +152,6 @@ function ProgressIndicator({ stage, progress, message }: { stage: string; progre
     );
 }
 
-function ExpandableText({ text, maxLength = 150 }: { text: string; maxLength?: number }) {
-    const [isExpanded, setIsExpanded] = React.useState(false);
-    const needsTruncation = text.length > maxLength;
-    
-    if (!needsTruncation) {
-        return <span>{text}</span>;
-    }
-    
-    return (
-        <>
-            <span>{isExpanded ? text : `${text.slice(0, maxLength)}...`}</span>
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="ml-1 text-blue-600 font-medium hover:underline active:scale-95 transition-transform"
-            >
-                {isExpanded ? "See less" : "See more"}
-            </button>
-        </>
-    );
-}
-
 function AnalysisResultCard({ data }: { data: AnalysisData }) {
     const [showSources, setShowSources] = React.useState(false);
     const [expandedInsights, setExpandedInsights] = React.useState<Set<number>>(new Set());
@@ -209,29 +188,22 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                 </h3>
                 
                 {data.overall_sentiment?.summary && (
-                    <div className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4 space-y-2 sm:space-y-3">
-                        {/* Mobile: truncated with expand */}
-                        <div className="sm:hidden">
-                            <ExpandableText text={data.overall_sentiment.summary} maxLength={200} />
-                        </div>
-                        {/* Desktop: formatted paragraphs with bold topics */}
-                        <div className="hidden sm:block space-y-3 leading-relaxed">
-                            {data.overall_sentiment.summary.split(/\n\n+/).map((paragraph, idx) => {
-                                // Handle **Bold:** pattern for topic headers
-                                const parts = paragraph.split(/\*\*([^*]+)\*\*/);
-                                return (
-                                    <p key={idx} className="text-justify">
-                                        {parts.map((part, partIdx) => 
-                                            partIdx % 2 === 1 ? (
-                                                <span key={partIdx} className="font-semibold text-blue-700">{part}</span>
-                                            ) : (
-                                                <span key={partIdx}>{part}</span>
-                                            )
-                                        )}
-                                    </p>
-                                );
-                            })}
-                        </div>
+                    <div className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4 space-y-2 sm:space-y-3 leading-relaxed">
+                        {data.overall_sentiment.summary.split(/\n\n+/).map((paragraph, idx) => {
+                            // Handle **Bold:** pattern for topic headers
+                            const parts = paragraph.split(/\*\*([^*]+)\*\*/);
+                            return (
+                                <p key={idx} className="text-justify">
+                                    {parts.map((part, partIdx) => 
+                                        partIdx % 2 === 1 ? (
+                                            <span key={partIdx} className="font-semibold text-blue-700">{part}</span>
+                                        ) : (
+                                            <span key={partIdx}>{part}</span>
+                                        )
+                                    )}
+                                </p>
+                            );
+                        })}
                     </div>
                 )}
 
