@@ -1,6 +1,21 @@
 # Hinaing Docs
 
-This directory houses the thesis documentation for **Hinaing**, a **13-agent multi-agent system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
+This directory houses the thesis documentation for **Hinaing**, a **hierarchical multi-agent agentic AI system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
+
+## System Classification
+
+| Aspect | Classification |
+|--------|----------------|
+| **Architecture** | Hierarchical Multi-Agent System with Context Engineering |
+| **AI Pattern** | Agentic AI (ReAct reasoning, tool use, autonomous planning) |
+| **Orchestration** | Graph-Based (LangGraph 7-node pipeline) |
+| **Learning** | Self-Learning Cyclic RAG (read-write memory loop) |
+| **Sentiment** | Ensemble (RoBERTa 40% + Gemini 60%) |
+| **Credibility** | 5-Signal Weighted Ensemble |
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
 ## Agent Summary (13 Total)
 
@@ -10,6 +25,15 @@ This directory houses the thesis documentation for **Hinaing**, a **13-agent mul
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (conditionally spawned) |
 
 > **Note**: Theme Sub-Agents are dynamically spawned by ThemeRouterAgent only when their theme bucket contains documents.
+
+## Novel Contributions
+
+1. **Context-Engineered Multi-Agent Architecture** – The 7-node pipeline is itself context engineering: each node, agent specialization, keyword cluster, theme definition, and credibility signal injects domain knowledge into the system.
+2. **Cyclic Self-Learning RAG** – Node 3 recalls memory → Node 5 writes back. System learns from each analysis run.
+3. **Conditional Sub-Agent Spawning** – Theme agents instantiated only when their bucket has documents (dynamic 7-13 agent count).
+4. **5-Signal Credibility Framework** – Domain Trust + Semantic Cross-Reference + Google Fact Check + LLM Pattern Detection + Tavily Web Verification.
+5. **Ensemble Sentiment with Agreement Tracking** – RoBERTa + Gemini with `full_agreement`, `roberta_dominant`, `gemini_dominant` metadata.
+6. **KEYWORD_CLUSTERS for Query Diversity** – Pre-defined Baguio-specific keyword clusters guide the QueryOrchestratorAgent to generate diverse, location-aware queries.
 
 ## Contents
 - `ARCHITECTURE.md` – Detailed 7-node multi-agent architecture with Mermaid diagrams
@@ -41,10 +65,10 @@ This directory houses the thesis documentation for **Hinaing**, a **13-agent mul
 
 ## Architecture Highlights (13 Agents)
 
-### 1. QueryOrchestratorAgent (ReAct)
+### 1. QueryOrchestratorAgent (ReAct + Context Engineering)
 Located in `backend/app/services/agents/query_orchestrator.py`:
-- Uses KEYWORD_CLUSTERS for topic diversity (6 queries per request)
-- Tools: `analyze_focus_areas`, `generate_query`, `evaluate_query`
+- Uses KEYWORD_CLUSTERS for topic diversity (context engineering with 6 curated keyword clusters per focus area)
+- Tools: `analyze_focus_areas`, `generate_query`, `expand_contextual_queries`, `evaluate_query`
 - Gemini 2.5 Flash for fast reasoning
 - Time-based search operators (`after:YYYY-MM-DD`)
 

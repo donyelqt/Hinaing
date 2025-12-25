@@ -1,6 +1,10 @@
 # Methodology
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
 This document describes the research methodology for **Hinaing**, a multi-agent AI system with real-time intelligent search and Retrieval-Augmented Generation (RAG) for context-aware public opinion analysis in Baguio City, Philippines.
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
 ---
 
@@ -52,8 +56,12 @@ All analysis is scoped to **Baguio City, Philippines** through:
 SnapshotRequest
        ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  NODE 1: Query Orchestrator Agent (ReAct)                        │
-│  - Generates 6 diverse search queries using KEYWORD_CLUSTERS     │
+│  NODE 1: Query Orchestrator Agent (ReAct + Context Engineering)  │
+│  - Tools: analyze_focus_areas, generate_query,                   │
+│           expand_contextual_queries, evaluate_query              │
+│  - KEYWORD_CLUSTERS for static context engineering               │
+│  - expand_contextual_queries for dynamic context engineering     │
+│  - Generates 6 diverse search queries                            │
 │  - Model: Gemini 2.5 Flash                                       │
 └──────────────────────────────────────────────────────────────────┘
        ↓

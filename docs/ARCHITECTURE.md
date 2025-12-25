@@ -1,8 +1,12 @@
 # Hinaing System Architecture
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
 ## Overview
 
 Multi-Agentic AI system with real-time intelligent search and and self learning RAG for context-aware public opinion analysis in Baguio City. Features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation.
+
+> **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (13 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
 ## Agent Count Summary
 
@@ -69,7 +73,7 @@ The system implements a cyclic learning architecture where fresh external data i
 
 | Node | Agent(s) | Function | Key Components |
 |------|----------|----------|----------------|
-| 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS, 3 tools, Gemini 2.5 Flash |
+| 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS (context engineering), 4 tools, Gemini 2.5 Flash |
 | 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
 | 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K with focus_area filtering | Qdrant Cloud, BGE-small-en-v1.5, `retrieve_knowledge()`, keyword reranking |
 | 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 6-signal credibility |
@@ -90,14 +94,17 @@ flowchart TB
     subgraph Backend["Backend (FastAPI + LangGraph)"]
         subgraph Workflow["7-Node Multi-Agent Pipeline"]
             
-            subgraph Node1["Node 1: Query Orchestrator Agent (ReAct)"]
+            subgraph Node1["Node 1: Query Orchestrator Agent (ReAct + Context Engineering)"]
                 QO[QueryOrchestratorAgent]
                 T1[analyze_focus_areas tool]
                 T2[generate_query tool]
-                T3[evaluate_query tool]
-                QO --> T1 & T2 & T3
-                QP[QueryPlan<br/>6 diverse queries]
-                T1 & T2 & T3 --> QP
+                T3[expand_contextual_queries tool]
+                T4[evaluate_query tool]
+                KC[KEYWORD_CLUSTERS<br/>Context Engineering]
+                QO --> T1 & T2 & T3 & T4
+                T1 --> KC
+                QP[QueryPlan<br/>6+ diverse queries]
+                T1 & T2 & T3 & T4 --> QP
             end
 
             subgraph Node2["Node 2: Retrieval Agent"]
@@ -199,13 +206,14 @@ sequenceDiagram
     Client->>API: POST /insights/snapshot
     API->>QO: SnapshotRequest
     
-    Note over QO: ReAct Loop (Gemini 2.5 Flash)
-    QO->>QO: analyze_focus_areas → KEYWORD_CLUSTERS
-    QO->>QO: generate_query → 6 diverse queries
+    Note over QO: ReAct Loop + Context Engineering (Gemini 2.5 Flash)
+    QO->>QO: analyze_focus_areas → KEYWORD_CLUSTERS (context engineering)
+    QO->>QO: generate_query → static cluster queries
+    QO->>QO: expand_contextual_queries → seasonal/time-aware queries
     QO->>QO: evaluate_query → diversity check
-    QO-->>RA: QueryPlan (6 queries)
+    QO-->>RA: QueryPlan (6+ diverse queries)
 
-    par Parallel External Retrieval (Batches of 3)
+    par Parallel External Retrieval (Batches of 2)
         RA->>RA: LangSearch Web API
         RA->>RA: Facebook Ingestion
         RA->>RA: Reddit r/baguio, r/Philippines
@@ -379,9 +387,13 @@ LangSearch API receives a `freshness` parameter:
 ### 3. Client-Side Time Filtering
 Documents filtered by `published_at` timestamp after retrieval.
 
-## Multi-Query Diversity Strategy
+## Multi-Query Diversity Strategy (Context Engineering)
 
-The Query Orchestrator generates **up to 18 diverse queries** using KEYWORD_CLUSTERS + contextual expansion:
+The QueryOrchestratorAgent uses **context engineering** via KEYWORD_CLUSTERS and contextual expansion to generate diverse, Baguio-specific queries:
+
+### KEYWORD_CLUSTERS (Static Context Engineering)
+
+Pre-defined domain knowledge organized by civic theme:
 
 ```python
 KEYWORD_CLUSTERS = {
@@ -397,7 +409,24 @@ KEYWORD_CLUSTERS = {
 }
 ```
 
-**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating. Contextual queries are added based on current month/season (e.g., Christmas traffic, Panagbenga festival).
+### Contextual Expansion (Dynamic Context Engineering)
+
+The `expand_contextual_queries` tool generates time-aware queries based on current date:
+- **December**: Christmas traffic, New Year safety, holiday tourism
+- **February**: Panagbenga festival, flower festival crowds
+- **June-October**: Typhoon updates, landslide warnings, flooding
+- **Summer**: Water shortage, tourist overcrowding
+
+### ReAct Tool Workflow
+
+| Tool | Purpose | Output |
+|------|---------|--------|
+| `analyze_focus_areas` | Retrieves KEYWORD_CLUSTERS for selected focus areas | Keyword clusters organized by topic |
+| `generate_query` | Builds diverse queries from clusters (1 per cluster) | Static cluster queries |
+| `expand_contextual_queries` | Adds seasonal/time-aware queries | Contextual queries |
+| `evaluate_query` | Validates topic diversity coverage | Coverage assessment |
+
+**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating.
 
 ## RAG Memory System (Qdrant Cloud)
 

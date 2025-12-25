@@ -1,15 +1,18 @@
 # Hinaing Query Strategy: The "Cluster & Diverse" Method
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
 **Document Status**: Official Algorithm Documentation
 **Component**: `QueryOrchestratorAgent` (Node 1)
+**Pattern**: ReAct Agentic AI with Context Engineering
 
 ---
 
 ## 1. The Challenge (Why not just search "Baguio"?)
 If we simply search `Baguio City Issues`, search engines return generic results (e.g., "Top 10 Tourist Spots"). We miss the hyper-local grittiness unless we specifically ask for "water shortage" or "market vendor displacement" separately.
 
-## 2. The Solution: Keyword Clustering
-Instead of one query, we use a database of **Keyword Clusters**. A "cluster" is a group of semantically related terms that describe a specific civic issue.
+## 2. The Solution: Context Engineering via Keyword Clustering
+Instead of relying on a single LLM prompt, we use **context engineering** - pre-defined domain knowledge in the form of **Keyword Clusters**. A "cluster" is a group of semantically related terms that describe a specific civic issue.
 
 ### The Cluster Database (`KEYWORD_CLUSTERS`)
 *Excerpt from `backend/app/services/agents/query_orchestrator.py`*
@@ -61,35 +64,71 @@ Instead of one query, we use a database of **Keyword Clusters**. A "cluster" is 
 
 ---
 
-## 3. The Execution Strategy (ReAct Loop)
+## 3. The Execution Strategy (ReAct Loop with 4 Tools)
 
-The Agent does not just dump all keywords. It uses a **Reasoning Loop** to select the best strategy based on the User's Focus.
+The Agent uses a **ReAct reasoning loop** with 4 specialized tools to generate diverse, context-aware queries.
 
-**Step 1: Focus Analysis**
-User inputs: `["Health", "Infrastructure"]`
-Agent Tool: `analyze_focus_areas` returns all `health_*` and `infra_*` clusters.
+### Tool 1: `analyze_focus_areas` (Static Context Engineering)
+Retrieves KEYWORD_CLUSTERS for the user's selected focus areas.
 
-**Step 2: Diversity Selection**
-The agent selects **One Query Per Cluster** to ensure maximum diversity.
+**Input**: `{"focus_areas": ["Health", "Infrastructure"]}`
+**Output**: All `health_*` and `infra_*` clusters with keywords.
+
+### Tool 2: `generate_query` (Query Construction)
+Builds diverse queries from clusters - one query per cluster for maximum diversity.
+
+**Output**:
 *   Query 1 (Infra): `"Baguio traffic congestion" OR "Session Road rehabilitation"`
 *   Query 2 (Infra): `"Baguio water shortage" OR "Drainage issue"`
 *   Query 3 (Health): `"Baguio hospital issue" OR "Emergency Room"`
 *   Query 4 (Health): `"Baguio dengue outbreak" OR "Vaccination"`
 
-**Step 3: Time Augmentation**
-To ensure freshness, we append Google-style time operators.
+### Tool 3: `expand_contextual_queries` (Dynamic Context Engineering)
+Generates time-aware, seasonal queries based on current date. This is **dynamic context engineering** - the system adapts to temporal context.
+
+| Month | Contextual Queries Added |
+|-------|-------------------------|
+| December | Christmas traffic, New Year safety, holiday tourism, market rush |
+| January | Panagbenga preparation, post-holiday cleanup, business reopening |
+| February | Panagbenga festival, flower festival crowds, Valentine tourism |
+| March-May | Summer crowds, Holy Week traffic, water shortage |
+| June-October | Typhoon updates, landslide warnings, flooding, school enrollment |
+| November | All Saints Day, early Christmas rush |
+
+**Example Output** (December):
+*   Query 5: `"Baguio Christmas traffic 2024"`
+*   Query 6: `"Baguio holiday tourist crowd"`
+
+### Tool 4: `evaluate_query` (Diversity Validation)
+Validates that queries cover diverse topics and sufficient clusters per focus area.
+
+**Output**: Coverage assessment with recommendations.
+
+### Time Augmentation
+All queries are appended with Google-style time operators for freshness:
 *   Final Query: `("Baguio traffic congestion" OR "Session Road rehabilitation") after:2024-12-10`
 
 ---
 
-## 4. Why this is scientifically superior
+## 4. Why This is Context Engineering (Novel Contribution)
+
+| Aspect | Traditional Approach | Hinaing's Context Engineering |
+|--------|---------------------|------------------------------|
+| **Query Generation** | Single LLM prompt | Pre-defined KEYWORD_CLUSTERS + ReAct tools |
+| **Domain Knowledge** | Implicit in LLM | Explicit in code (curated by domain experts) |
+| **Temporal Awareness** | None | `expand_contextual_queries` adapts to season |
+| **Diversity Guarantee** | Hope LLM varies | Mathematically enforced (1 query per cluster) |
+| **Verifiability** | Black box | Telemetry logs strategy used |
+
+## 5. Why This is Scientifically Superior
 *   **Coverage**: We prove mathematically (via clusters) that we cover N distinct sub-topics.
 *   **Precision**: We avoid generic noise by using specific "trigger words" (e.g., "dengue", "landslide").
 *   **Recall**: By using `OR` logic within clusters, we catch variations ("traffic" vs "congestion").
+*   **Temporal Relevance**: Contextual queries ensure we capture current events (Christmas, Panagbenga, typhoon season).
 
 ---
 
-## 5. Runtime Verification (Telemetry)
+## 6. Runtime Verification (Telemetry)
 We verify that this strategy is active by inspecting the `query_strategy` field in the telemetry logs (`backend/data/metrics/*.jsonl`).
 
 **Mechanism:**

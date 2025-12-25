@@ -1,5 +1,9 @@
 # Chat Systems Architecture
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
+
 ## Overview
 
 Hinaing provides two distinct chat interfaces with different agent architectures:
@@ -97,9 +101,9 @@ flowchart TB
         end
 
         subgraph Pipeline["7-Node Multi-Agent Pipeline (13 Agents)"]
-            subgraph Node1["Node 1: QueryOrchestratorAgent (10%)"]
+            subgraph Node1["Node 1: QueryOrchestratorAgent (10%) - Context Engineering"]
                 QO[QueryOrchestratorAgent]
-                QO --> |KEYWORD_CLUSTERS| QP[QueryPlan<br/>6 diverse queries]
+                QO --> |KEYWORD_CLUSTERS + expand_contextual_queries| QP[QueryPlan<br/>6 diverse queries]
             end
 
             subgraph Node2["Node 2: RetrievalAgent (25%)"]
@@ -214,10 +218,11 @@ sequenceDiagram
         
         API-->>Client: SSE: {stage: "start", progress: 0.0}
         
-        Note over QO: Node 1: QueryOrchestratorAgent
+        Note over QO: Node 1: QueryOrchestratorAgent (Context Engineering)
         API->>QO: parse_user_intent(message)
-        QO->>QO: ReAct: analyze_focus_areas tool
+        QO->>QO: ReAct: analyze_focus_areas tool (static context engineering)
         QO->>QO: ReAct: generate_query tool (KEYWORD_CLUSTERS)
+        QO->>QO: ReAct: expand_contextual_queries tool (dynamic context engineering)
         QO->>QO: ReAct: evaluate_query tool
         API-->>Client: SSE: {stage: "query_orchestrator", progress: 0.1}
         
@@ -334,7 +339,7 @@ flowchart TB
 
 | Aspect | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |--------|---------------------------|------------------------|
-| **QueryOrchestratorAgent** | ✅ ReAct with 3 tools | ❌ None |
+| **QueryOrchestratorAgent** | ✅ ReAct with 4 tools (context engineering) | ❌ None |
 | **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ⚠️ LangSearch + Memory |
 | **ContextAugmentationAgent** | ✅ Memory recall + consolidation | ⚠️ Memory recall only (via tool) |
 | **SentimentAgent** | ✅ RoBERTa + Gemini ensemble | ❌ None |

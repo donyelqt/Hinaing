@@ -1,5 +1,9 @@
 # Thesis Defense Strategy: Hinaing vs. Frontier AI
 
+> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
+
 ## The Core Argument
 **"We are not competing with Gemini or ChatGPT on General Intelligence. We are competing on Hyper-Local Situational Awareness with Self-Learning Memory."**
 
@@ -61,8 +65,10 @@ You have built three systems to prove your point.
 This is your **key differentiator**. Explain it clearly:
 
 ```
-Node 1: QueryOrchestratorAgent (ReAct)
-    |-- KEYWORD_CLUSTERS for topic diversity
+Node 1: QueryOrchestratorAgent (ReAct + Context Engineering)
+    |-- Tools: analyze_focus_areas, generate_query, expand_contextual_queries, evaluate_query
+    |-- KEYWORD_CLUSTERS for static context engineering
+    |-- expand_contextual_queries for dynamic context engineering (seasonal/temporal)
     |-- 6 diverse queries per request
     v
 Node 2: RetrievalAgent
