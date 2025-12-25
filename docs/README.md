@@ -37,7 +37,7 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 
 ## Contents
 - `ARCHITECTURE.md` – Detailed 7-node multi-agent architecture with Mermaid diagrams
-- `CHAT_ARCHITECTURE.md` – Chat Analyzer (12 agents) and AI Assistant (1 agent) systems
+- `CHAT_ARCHITECTURE.md` – Chat Analyzer (13 agents) and AI Assistant (1 agent) systems
 - `ROADMAP.md` – High-level milestones, completed work, and next steps
 - `THESIS_FINDINGS.md` – Current thesis findings, capabilities, and remaining gaps
 - `DEFENSE_GUIDE.md` – Thesis defense preparation and key differentiators
