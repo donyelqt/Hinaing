@@ -107,6 +107,15 @@ def create_app() -> FastAPI:
         # In production, also allow common patterns
         allowed_origins = ["*"]  # Allow all for now; restrict later if needed
     
+    # Add memory cleanup middleware FIRST (runs after CORS due to middleware order)
+    @app.middleware("http")
+    async def cleanup_middleware(request: Request, call_next):
+        # Skip cleanup logic for OPTIONS preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        return await memory_cleanup_middleware(request, call_next)
+    
+    # CORS middleware added AFTER custom middleware (runs BEFORE due to reverse order)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
@@ -114,11 +123,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # Add memory cleanup middleware
-    @app.middleware("http")
-    async def cleanup_middleware(request: Request, call_next):
-        return await memory_cleanup_middleware(request, call_next)
 
     app.include_router(health.router)
     app.include_router(snapshot.router)
