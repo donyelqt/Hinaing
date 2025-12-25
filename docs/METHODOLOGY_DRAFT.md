@@ -176,7 +176,7 @@ Each document records agreement status for analysis quality assessment:
 ### Memory Optimization
 
 The sentiment analysis includes production hardening:
-- **Sequential Processing**: RoBERTa runs first, then Gemini (prevents OOM on Railway)
+- **Sequential Processing**: RoBERTa runs first, then Gemini (prevents OOM on Cloud Run)
 - **Timeout Protection**: 120s total timeout, 30s per Gemini batch
 - **Batch Size**: 15 documents per Gemini API call
 - **Unicode Sanitization**: Removes surrogate characters that break APIs
@@ -370,7 +370,7 @@ Unlike standard RAG systems that are read-only, Hinaing implements a **Read-Writ
 |----------|-------|
 | Model | BAAI/bge-small-en-v1.5 |
 | Dimensions | 384 |
-| Device | CPU (optimized for Railway containers) |
+| Device | CPU (optimized for Cloud Run containers) |
 | Normalization | Pre-normalized for cosine similarity |
 | Batch Size | 16 |
 | Thread Count | 2 (controlled for container environments) |
@@ -642,7 +642,7 @@ Per-node telemetry tracked via MetricsCollector:
 | Fact-Checking | Google Fact Check API, Tavily API |
 | Social Media | PRAW (Reddit), Apify (Facebook) |
 | Observability | LangSmith |
-| Deployment | Railway |
+| Deployment | Google Cloud Run (asia-southeast1) |
 
 ### Frontend
 

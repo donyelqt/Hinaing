@@ -139,7 +139,7 @@ Located in `backend/app/services/agents/chat_agent.py`:
 
 ### DevOps
 - **Docker** – Containerization
-- **Railway** – Backend hosting
+- **Google Cloud Run** – Backend hosting (asia-southeast1)
 - **Vercel** – Frontend hosting
 
 ## Getting Started
