@@ -1,6 +1,6 @@
 # Project Roadmap
 
-> **Thesis Title:** Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City
+> **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 
 This document tracks what has been delivered so far and the remaining work needed to reach the "thesis-grade" target.
 

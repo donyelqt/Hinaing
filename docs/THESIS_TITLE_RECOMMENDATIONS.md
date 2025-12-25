@@ -70,7 +70,7 @@ This document provides thesis title options for **Hinaing** based on the system'
 
 ---
 
-### Rank 4 (Current Title)
+### Rank 4
 
 > **Hinaing: A Self-Learning Multi-Agent Agentic AI System with RAG for Context-Aware Public Opinion Analysis in Baguio City**
 
@@ -134,12 +134,17 @@ This document provides thesis title options for **Hinaing** based on the system'
 
 ## Final Recommendation
 
-**Go with Rank 1:**
+**Selected Title:**
 
-> **Hinaing: A Context-Engineered Self-Learning Multi-Agent System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City**
+> **Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City**
 
-This title:
-- Captures 6 out of 7 novel contributions
-- Is readable and flows well
-- Differentiates from generic "AI chatbot" or "LLM wrapper" projects
-- Provides clear defense talking points for each keyword
+This title captures:
+- ✅ Context-Engineered
+- ✅ Self-Learning
+- ✅ Multi-Agent
+- ✅ Agentic AI
+- ✅ Ensemble Sentiment
+- ✅ 5-Signal Credibility
+- ✅ Baguio City (domain)
+
+Every word is a defense talking point. No fluff.
