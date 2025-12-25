@@ -7,7 +7,9 @@ This directory houses the thesis documentation for **Hinaing**, a **13-agent mul
 | Category | Count | Agents |
 |----------|-------|--------|
 | **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
-| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
+| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (conditionally spawned) |
+
+> **Note**: Theme Sub-Agents are dynamically spawned by ThemeRouterAgent only when their theme bucket contains documents.
 
 ## Contents
 - `ARCHITECTURE.md` – Detailed 7-node multi-agent architecture with Mermaid diagrams
