@@ -3,7 +3,12 @@
 > **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 
 ## Overview
-The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating a cyclic learning loop that improves analysis quality over time.
+The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop that improves analysis quality over time.
+
+**Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
+**State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
+
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
 
 ## Agent Summary (13 Total)
 

@@ -27,7 +27,7 @@ When panelists ask: *"Why not just use ChatGPT for this?"*
 >
 > If you ask ChatGPT about 'Baguio Traffic', it hallucinates or gives generic advice.
 > **Hinaing** actively:
-> 1. **Plans** 6 diverse queries using KEYWORD_CLUSTERS
+> 1. **Plans** 6 diverse queries using KEYWORD_CLUSTERS and Contextual Expansion (Seasonal/Temporal, Event-Driven, etc.)
 > 2. **Fetches** 50+ localized posts from web, Facebook, and Reddit
 > 3. **Recalls** relevant past analyses from its memory (Qdrant)
 > 4. **Cross-verifies** using 5 credibility signals (Domain + Fact-Check + LLM + Tavily)
@@ -48,7 +48,7 @@ You have built three systems to prove your point.
 | **Agent Count** | **1** (ChatAgent) | **13** (7 core + 6 theme) | **13** (7 core + 6 theme) |
 | **Technology** | Agentic RAG | Streaming 13-Agent Pipeline | **7-Node Self-Learning Graph** |
 | **Input** | User question (Reactive) | Natural language query | Focus areas (Proactive) |
-| **Workflow** | Linear (Search -> Summarize) | 7-Node with SSE Progress | **7-Node Cyclic (with Memory)** |
+| **Workflow** | Linear (Search -> Summarize) | 7-Node with SSE Progress | **7-Node DAG with Memory** |
 | **Output** | Unstructured Text | Structured Cards + Progress | **Dashboard (Charts, Scores)** |
 | **Memory** | None | Session Cache | **Persistent (Qdrant)** |
 | **RAG** | None | **Cosine similarity** (Node 3) | **Cosine similarity** (Node 3) |
@@ -62,7 +62,10 @@ You have built three systems to prove your point.
 
 ## 3. The 7-Node Self-Learning Architecture (13 Agents)
 
-This is your **key differentiator**. Explain it clearly:
+This is your **key differentiator**. Explain it clearly using Graph Theory terms:
+
+**Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
+**State Management:** Cyclic Data Flow (Episodic Memory).
 
 ```
 Node 1: QueryOrchestratorAgent (ReAct + Context Engineering)
@@ -81,7 +84,7 @@ Node 3: ContextAugmentationAgent.retrieve_knowledge() [RAG RETRIEVAL]  <-- NOVEL
     |-- Top-K retrieval (most relevant memories)
     |-- Merge external + internal (deduplicate)
     v
-Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
+Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent] (Map Phase)
     |-- SentimentAgent: RoBERTa 40% + Gemini 60%
     |-- CredibilityAgent: 5-signal ensemble
     |-- ThemeRouterAgent: Route to 6 theme buckets
@@ -91,17 +94,19 @@ Node 5: ContextAugmentationAgent.consolidate_memory() [LEARNING]  <-- NOVEL
     |-- Embed with BGE-small-en-v1.5
     |-- Store in Qdrant for future recall
     v
-Node 6: ThemeAgent ×6 in PARALLEL
+Node 6: ThemeAgent ×6 in PARALLEL (Map Phase)
     |-- run_theme_agent() called 6 times via ThreadPoolExecutor
     |-- Themes: Infrastructure, Health, Safety, Tourism, Economy, Environment
     v
-Node 7: CoordinatorAgent
+Node 7: CoordinatorAgent (Reduce Phase)
     |-- CoordinatorAgent.run()
     |-- Narrative generation (Gemini 2.5 Flash-Lite)
     |-- Final response assembly
 ```
 
-**Key Point:** Nodes 3 and 5 create a **cyclic learning loop**. The system gets smarter with each run.
+**Key Point:** Nodes 3 and 5 create a **Temporal Learning Loop**.
+*   **Control Flow (DAG):** Node 5 *does not* loop back to Node 3 in the same run (which would cause infinite loops).
+*   **Data Flow (Cyclic):** Node 5 writes state that Node 3 reads in the *next* run. The system gets smarter with each execution.
 
 **Node 3 RAG Pipeline Details:**
 - Query embedding using `BAAI/bge-small-en-v1.5` (384 dimensions)
@@ -138,12 +143,20 @@ Unlike simple domain whitelists, your system uses **multi-signal verification**:
 
 Just as a Tesla is not 'just a wrapper around an electric motor', our system provides the **Architecture** required for reliable civic monitoring."
 
+### Q: "Why use a Linear DAG instead of a Cyclic Graph?"
+**A:** "For decision support, **Latency Determinism** is critical. 
+- A **Cyclic Graph** (autonomous looping) introduces unbound latency. If the agent continually 'refines' its answer, a 3-minute analysis could drift to 20 minutes.
+- Our **DAG Architecture** enforces a strict 'Time Box'. Deep analysis takes time (3-5 minutes for 6 parallel themes is an 80x speedup over human analysis), but the DAG guarantees it *will* finish.
+
+We mitigate the 'brittleness' of a linear path via the **Query Orchestrator Agent (Node 1)**. Instead of looping *after* a failure, the Orchestrator uses **Context Engineering (Keyword Clusters)** to ensure the search is robust *before* it begins, maximizing success probability in a single pass."
+
 ### Q: "Is your architecture strictly novel?"
 **A:** "It is novel in **System Application**. We are among the first to implement:
-1. A **7-Node Self-Learning Graph** for civic sentiment
+1. A **7-Node Linear DAG** with Episodic Memory for civic sentiment
 2. **Multi-Query Diversity** via KEYWORD_CLUSTERS
 3. **5-Signal Credibility Ensemble** with Tavily verification
-4. **Memory Recall + Consolidation** for continuous learning
+4. **Hierarchical Map-Reduce** for parallel domain analysis
+5. **Self-Learning Cyclic RAG (Read-Write Memory Loop)**
 
 While components (RAG, LLMs) exist, the **Specialized Orchestration** is state-of-the-art."
 
@@ -164,12 +177,16 @@ On Run 1, we had 0 internal docs. On Run 2 (2 minutes later), we recalled 20 rel
 
 ## 6. Technical Terminology for Defense
 
-Use these words to sound authoritative:
-- **"Cyclic Learning Graph"**: The 7-node architecture with memory recall and consolidation
-- **"Multi-Query Diversity"**: KEYWORD_CLUSTERS ensure topic coverage
-- **"Ensemble Verification"**: 5-signal credibility framework
-- **"Semantic Cross-Reference"**: BGE embeddings for document similarity
-- **"Domain Grounding"**: Restricting AI to Baguio City context
+Use these words to sound authoritative (CS Theory):
+
+- **"Directed Acyclic Graph (DAG)"**: The deterministic control flow of the pipeline.
+- **"Self-Learning Cyclic RAG"**: Our novel term for the Read-Write Memory Loop (Behavior).
+- **"Episodic Memory Consolidation"**: The process of "learning" by writing to Qdrant (Node 5).
+- **"Hierarchical Map-Reduce"**: The fan-out (Nodes 4 & 6) and fan-in (Node 7) parallel processing pattern.
+- **"Multi-Query Diversity"**: KEYWORD_CLUSTERS ensure topic coverage.
+- **"Ensemble Verification"**: 5-signal credibility framework.
+- **"Semantic Cross-Reference"**: BGE embeddings for document similarity.
+- **"Domain Grounding"**: Restricting AI to Baguio City context.
 
 ---
 
@@ -196,7 +213,7 @@ This visual contrast proves your hypothesis immediately.
 
 | Contribution | Agent(s) | Evidence |
 |--------------|----------|----------|
-| 7-Node Self-Learning Architecture | All 12 agents | `graph.py` - Cyclic pipeline with memory |
+| 7-Node Self-Learning Architecture | All 12 agents | `graph.py` - DAG pipeline with memory |
 | Multi-Query Diversity Strategy | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS |
 | RAG Memory with Cosine Similarity | **ContextAugmentationAgent** | `context_agent.py`, `vector_store.py` - Qdrant + BGE |
 | Hybrid Sentiment Ensemble | **SentimentAgent** | `sentiment_agent.py` - RoBERTa + Gemini |
@@ -208,7 +225,7 @@ This visual contrast proves your hypothesis immediately.
 
 ## 9. Defense Readiness Checklist
 
-- [x] **Architecture:** Defensible (7-Node Cyclic Graph with **13 Agents**)
+- [x] **Architecture:** Defensible (7-Node Linear DAG with **13 Agents**)
 - [x] **Agent Count:** 13 total (7 core + 6 theme)
 - [x] **Self-Learning:** Verified (ContextAugmentationAgent Memory Loop)
 - [x] **RAG Pipeline:** Cosine similarity search in Qdrant (Node 3)

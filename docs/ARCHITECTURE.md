@@ -35,7 +35,13 @@ Multi-Agentic AI system with real-time intelligent search and and self learning 
 
 ## 7-Node Self-Learning Pipeline
 
-The system implements a cyclic learning architecture where fresh external data is merged with internal memory, analyzed, and then consolidated back into the knowledge base.
+The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop where fresh external data is merged with internal memory, analyzed, and then consolidated back into the knowledge base.
+
+**Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
+**State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
+
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency. The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating the need for retry loops. This architecture ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
+
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -76,7 +82,7 @@ The system implements a cyclic learning architecture where fresh external data i
 | 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS (context engineering), 4 tools, Gemini 2.5 Flash |
 | 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
 | 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K with focus_area filtering | Qdrant Cloud, BGE-small-en-v1.5, `retrieve_knowledge()`, keyword reranking |
-| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 6-signal credibility |
+| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
 | 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant with focus_area/topic metadata | SemanticChunker, VectorStore, `consolidate_memory()` |
 | 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category (sub-agents conditionally spawned) | `run_theme_agent()` ×6 via ThreadPoolExecutor |
 | 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Flash-Lite |
