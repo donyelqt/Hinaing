@@ -10,7 +10,7 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 |--------|----------------|
 | **Architecture** | Hierarchical Multi-Agent System with Context Engineering |
 | **AI Pattern** | Agentic AI (ReAct reasoning, tool use, autonomous planning) |
-| **Orchestration** | Graph-Based (LangGraph 7-node pipeline) |
+| **Orchestration** | Directed Acyclic Graph (DAG) - LangGraph 7-node pipeline |
 | **Learning** | Self-Learning Cyclic RAG (read-write memory loop) |
 | **Sentiment** | Ensemble (RoBERTa 40% + LLM 60%) |
 | **Credibility** | 5-Signal Weighted Ensemble |
@@ -29,7 +29,7 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 ## Novel Contributions
 
 1. **Context-Engineered Multi-Agent Architecture** – The 7-node pipeline is itself context engineering: each node, agent specialization, keyword cluster, theme definition, and credibility signal injects domain knowledge into the system.
-2. **Cyclic Self-Learning RAG** – Node 3 recalls memory → Node 5 writes back. System learns from each analysis run.
+2. **Self-Learning Cyclic RAG (Read-Write Memory Loop)** – Node 3 recalls memory → Node 5 writes back. System learns from each analysis run.
 3. **Conditional Sub-Agent Spawning** – Theme agents instantiated only when their bucket has documents (dynamic 7-13 agent count).
 4. **5-Signal Credibility Framework** – Domain Trust + Semantic Cross-Reference + Google Fact Check + LLM Pattern Detection + Tavily Web Verification.
 5. **Ensemble Sentiment with Agreement Tracking** – RoBERTa + Gemini with `full_agreement`, `roberta_dominant`, `gemini_dominant` metadata.
@@ -46,12 +46,12 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 ## Application Overview
 
 ### Frontend (Next.js 15 + React 19)
-- **Sentiment Generator** – Dashboard for configuring and running 12-agent analysis
-- **Chat Analyzer** – Conversational interface with streaming 12-agent pipeline
+- **Sentiment Generator** – Dashboard for configuring and running 13-agent analysis
+- **Chat Analyzer** – Conversational interface with streaming 13-agent pipeline
 - **AI Assistant** – Quick Q&A with single ChatAgent + LangSearch
 
 ### Backend (FastAPI + LangGraph)
-7-Node Multi-Agent Pipeline (12 Agents):
+7-Node Multi-Agent Pipeline (13 Agents):
 
 | Node | Agent(s) | Function |
 |------|----------|----------|

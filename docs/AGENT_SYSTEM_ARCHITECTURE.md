@@ -6,7 +6,7 @@
 ---
 
 ## 1. Executive Summary for Defense
-Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **13 Specialized Agents** organized in a **Directed Acyclic Graph (DAG)** pipeline. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next.
+Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **13 Specialized Agents** organized in a **Directed Acyclic Graph (DAG)** pipeline. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next (Self-Learning Cyclic RAG - Read-Write Memory Loop).
 
 ---
 
