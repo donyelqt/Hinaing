@@ -36,7 +36,8 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 6. **KEYWORD_CLUSTERS for Query Diversity** – Pre-defined Baguio-specific keyword clusters guide the QueryOrchestratorAgent to generate diverse, location-aware queries.
 
 ## Contents
-- `ARCHITECTURE.md` – Detailed 7-node multi-agent architecture with Mermaid diagrams
+- `ARCHITECTURE.md` – Detailed implementation diagram with internal agent components, tools, and APIs
+- `ARCHITECTURE_SUMMARY.md` – High-level conceptual diagram with 7-node DAG pipeline and temporal memory loop
 - `CHAT_ARCHITECTURE.md` – Chat Analyzer (13 agents) and AI Assistant (1 agent) systems
 - `ROADMAP.md` – High-level milestones, completed work, and next steps
 - `THESIS_FINDINGS.md` – Current thesis findings, capabilities, and remaining gaps

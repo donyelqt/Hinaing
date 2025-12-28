@@ -70,7 +70,9 @@ We do not rely on the LLM's internal safety filters alone. We implemented an ext
 
 ---
 
-## 4. Visualizing the Architecture
+## 4. System Architecture: 7-Node Self-Learning DAG Pipeline Diagram
+
+> **Note:** This is a **high-level conceptual diagram** showing the overall/summary pipeline flow and temporal memory loop. For a detailed implementation diagram showing internal agent components, tools, and APIs, see `ARCHITECTURE.md`.
 
 ```mermaid
 graph TD

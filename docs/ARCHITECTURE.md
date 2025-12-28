@@ -87,7 +87,9 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 | 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category (sub-agents conditionally spawned) | `run_theme_agent()` ×6 via ThreadPoolExecutor |
 | 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Flash-Lite |
 
-## System Flow Diagram
+## System Architecture: Hierarchical DAG-Based Multi-Agent Agentic Workflow
+
+> **Note:** This is a **detailed implementation diagram** showing internal agent components, tools, and APIs. For a high-level conceptual diagram showing the overall/summarized pipeline flow and temporal memory loop, see `ARCHITECTURE_SUMMARY.md`.
 
 ```mermaid
 flowchart TB
