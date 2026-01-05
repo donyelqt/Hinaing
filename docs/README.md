@@ -1,8 +1,16 @@
 # Hinaing Docs
 
-> **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 
 This directory houses the thesis documentation for **Hinaing**, a **hierarchical multi-agent agentic AI system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
+
+## License
+
+Copyright (c) 2025 Donielr Arys Antonio
+
+This thesis project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) License. See the [LICENSE](../LICENSE) file in the project root for full license text.
+
+Under this license, others are free to share and adapt this work for non-commercial purposes as long as they give appropriate attribution. This means that anyone can use, distribute, and build upon this work for academic and non-commercial purposes while properly crediting the original author.
 
 ## System Classification
 
@@ -28,18 +36,19 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 
 ## Novel Contributions
 
-1. **Context-Engineered Multi-Agent Architecture** – The 7-node pipeline is itself context engineering: each node, agent specialization, keyword cluster, theme definition, and credibility signal injects domain knowledge into the system.
-2. **Self-Learning Cyclic RAG (Read-Write Memory Loop)** – Node 3 recalls memory → Node 5 writes back. System learns from each analysis run.
+1. **Neuro-Symbolic Cognitive Architecture (Context-Engineered Multi-Agent System)** – Combines rigid expert rules (Symbolic Safety) with flexible LLM reasoning (Neural Nuance). The **7-node pipeline itself is Context Engineering**: each node, agent specialization, keyword cluster, and theme definition injects domain knowledge into the system (Structural Inductive Bias).
+2. **Self-Learning Cyclic RAG (Non-Parametric Systemic Learning)** – Node 3 recalls memory → Node 5 writes back. System "learns" via state accumulation without weight updates.
 3. **Conditional Sub-Agent Spawning** – Theme agents instantiated only when their bucket has documents (dynamic 7-13 agent count).
-4. **5-Signal Credibility Framework** – Domain Trust + Semantic Cross-Reference + Google Fact Check + LLM Pattern Detection + Tavily Web Verification.
+4. **5-Signal Epistemic Credibility Framework** – Domain Trust + Semantic Cross-Reference + Google Fact Check + LLM Pattern Detection + Tavily web verification for rigorous truth quantification.
 5. **Ensemble Sentiment with Agreement Tracking** – RoBERTa + Gemini with `full_agreement`, `roberta_dominant`, `gemini_dominant` metadata.
-6. **KEYWORD_CLUSTERS for Query Diversity** – Pre-defined Baguio-specific keyword clusters guide the QueryOrchestratorAgent to generate diverse, location-aware queries.
+6. **A Priori Ontology (KEYWORD_CLUSTERS)** – Pre-defined hierarchical knowledge structure guides the QueryOrchestratorAgent to generate diverse, location-aware queries (Inductive Bias).
 
 ## Contents
 - `ARCHITECTURE.md` – Detailed implementation diagram with internal agent components, tools, and APIs
 - `ARCHITECTURE_SUMMARY.md` – High-level conceptual diagram with 7-node DAG pipeline and temporal memory loop
 - `CHAT_ARCHITECTURE.md` – Chat Analyzer (13 agents) and AI Assistant (1 agent) systems
 - `ROADMAP.md` – High-level milestones, completed work, and next steps
+- `THESIS_RESEARCH_GAPS_AND_SOLUTIONS.md` – The Single Source of Truth for Research Gaps, Novel Contributions, and Theoretical Definitions (PhD Edition)
 - `THESIS_FINDINGS.md` – Current thesis findings, capabilities, and remaining gaps
 - `DEFENSE_GUIDE.md` – Thesis defense preparation and key differentiators
 - `README.md` (this file) – Quick overview plus links to app resources
