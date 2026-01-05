@@ -6,7 +6,7 @@ This directory houses the thesis documentation for **Hinaing**, a **hierarchical
 
 ## License
 
-Copyright (c) 2025 Donielr Arys Antonio
+Copyright (c) 2025 Doniele Arys Antonio
 
 This thesis project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) License. See the [LICENSE](../LICENSE) file in the project root for full license text.
 
