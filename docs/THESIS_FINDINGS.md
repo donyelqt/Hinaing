@@ -1,6 +1,6 @@
 # Thesis Findings
 
-> **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 
 ## Overview
 The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop that improves analysis quality over time.
