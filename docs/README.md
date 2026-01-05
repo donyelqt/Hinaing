@@ -17,7 +17,7 @@ Under this license, others are free to share and adapt this work for non-commerc
 | Aspect | Classification |
 |--------|----------------|
 | **Architecture** | Hierarchical Multi-Agent System with Context Engineering |
-| **AI Pattern** | Agentic AI (ReAct reasoning, tool use, autonomous planning) |
+| **AI Pattern** | Agentic AI (ReAct reasoning, tool use, autonomous planning, multi-agent systems) |
 | **Orchestration** | Directed Acyclic Graph (DAG) - LangGraph 7-node pipeline |
 | **Learning** | Self-Learning Cyclic RAG (read-write memory loop) |
 | **Sentiment** | Ensemble (RoBERTa 40% + LLM 60%) |
