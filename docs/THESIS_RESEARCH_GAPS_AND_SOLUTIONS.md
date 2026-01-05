@@ -13,8 +13,8 @@ Traditional public opinion analysis systems focus primarily on sentiment detecti
 Our system implements a comprehensive credibility quantification engine (`CredibilityAgent`) using a weighted ensemble of five distinct signals:
 
 1.  **Domain Reputation Tiering (25%)**: Hierarchical scoring of known domains (e.g., `gov.ph` > `news` > `social`).
-2.  **Semantic Cross-Reference (20%)**: Uses **BAAI/bge-small-en-v1.5** embeddings to measure the cosine similarity between the claim and the retrieved evidence. If the distance > threshold, the claim is flagged as "Unverified."
-3.  **External Fact-Checking (15%)**: Real-time validation against the Google Fact Check Tools API.
+2.  **Semantic Cross-Reference (20%)**: Uses **BAAI/bge-small-en-v1.5** embeddings to mathematically compare claims via **Cosine Similarity**. If a claim appears disjointly (low similarity score) without semantic matches in other articles, it is flagged as an "Unverified Rumor."
+3.  **External Fact-Checking (15%)**: Real-time validation against the Google Fact Check Tools API. *(Note: While robust for national news, we observed minimal/no contribution in hyper-local Baguio contexts due to data sparsity, yet it functions as a necessary safety rail).*
 4.  **Linguistic Pattern Analysis (20%)**: Large Language Model (Gemini 2.5) analysis of syntactic features indicative of misinformation (eg., sensationalism, clickbait, conspiracy framing).
 5.  **Multi-Source Web Verification (20%)**: Real-time cross-referencing via Tavily Search to validate claims against an index of trusted authorities.
 
@@ -47,8 +47,8 @@ Generic Large Language Models (LLMs) suffer from "Contextual Blindness" when app
 Our system implements a comprehensive **Context Engineering** strategy that constructs the information environment BEFORE the model reasons, rather than relying on prompt instructions alone:
 
 1.  **Structural Context Injection**: The architecture itself (13 agents) mirrors the organizational structure of a city hall (Infrastructure, Health, Safety, Tourism, Economy, Environment).
-2.  **Epistemic Context (Metadata Level)**: By injecting *Credibility Scores* and *Sentiment Labels* alongside raw text, we engineer the weights of the context window.
-3.  **Ontological Grounding (`KEYWORD_CLUSTERS`)**: The `QueryOrchestratorAgent` utilizes an **A Priori Expert Ontology** (functioning as architectural Inductive Bias) effectively acting as a **Linearized Knowledge Graph**. This forces the model to expand generic queries (e.g., "traffic") into location-specific entities (e.g., "Session Road congestion," "Kennon Road closure").
+2.  **Epistemic Context (Metadata Level)**: By injecting *Credibility Scores* and *Sentiment Labels* alongside raw text **into the LangGraph state (at Node 4)**, we effectively engineer the weights of the context window **for the final Coordinator Agent (Node 7)** to prioritize high-credibility sources.
+3.  **Ontological Grounding (`KEYWORD_CLUSTERS`)**: The `QueryOrchestratorAgent` utilizes an **A Priori Expert Ontology** (functioning as architectural Inductive Bias) effectively acting as a **Linearized Knowledge Graph**. This forces the model to expand generic queries (e.g., "traffic") into location-specific entities (e.g., "Session Road congestion") and **temporal-specific contexts (e.g., "Baguio January business reopening" or "Holiday market rush")**.
 
 > **Note on Inductive Bias:** Standard LLMs fail at hyper-local tasks because they treat all locations as equally probable ("Contextual Blindness"). By hard-coding the `KEYWORD_CLUSTERS`, we introduce a necessary **Inductive Bias**—architecturally forcing the model to assume that generic terms like "congestion" specifically refer to Baguio entities (Session Road, etc.). In low-resource domains, **Human Domain Expertise** must be encoded into the system to guide the probabilistic reasoning of the AI. We do not rely on the model to "guess" the context; we explicitly map it using human knowledge.
 
