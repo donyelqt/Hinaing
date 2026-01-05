@@ -48,7 +48,9 @@ Our system implements a comprehensive **Context Engineering** strategy that cons
 
 1.  **Structural Context Injection**: The architecture itself (13 agents) mirrors the organizational structure of a city hall (Infrastructure, Health, Safety, Tourism, Economy, Environment).
 2.  **Epistemic Context (Metadata Level)**: By injecting *Credibility Scores* and *Sentiment Labels* alongside raw text, we engineer the weights of the context window.
-3.  **Ontological Grounding (`KEYWORD_CLUSTERS`)**: The `QueryOrchestrator` utilizes an **A Priori Expert Ontology** (functioning as architectural Inductive Bias) effectively acting as a **Knowledge Graph**. This forces the model to expand generic queries (e.g., "traffic") into location-specific entities (e.g., "Session Road congestion," "Kennon Road closure").
+3.  **Ontological Grounding (`KEYWORD_CLUSTERS`)**: The `QueryOrchestratorAgent` utilizes an **A Priori Expert Ontology** (functioning as architectural Inductive Bias) effectively acting as a **Linearized Knowledge Graph**. This forces the model to expand generic queries (e.g., "traffic") into location-specific entities (e.g., "Session Road congestion," "Kennon Road closure").
+
+> **Note on Inductive Bias:** Standard LLMs fail at hyper-local tasks because they treat all locations as equally probable ("Contextual Blindness"). By hard-coding the `KEYWORD_CLUSTERS`, we introduce a necessary **Inductive Bias**—architecturally forcing the model to assume that generic terms like "congestion" specifically refer to Baguio entities (Session Road, etc.). In low-resource domains, **Human Domain Expertise** must be encoded into the system to guide the probabilistic reasoning of the AI. We do not rely on the model to "guess" the context; we explicitly map it using human knowledge.
 
 **Scientific Contribution:** Demonstrating that **Context Engineering** (the systematic architectural construction of the agent's environment) is superior to standard **Prompt Engineering** for low-resource, high-nuance domains.
 
