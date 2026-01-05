@@ -67,7 +67,7 @@ Our system demonstrates that agentic depth does not require linear latency. We i
 *   **Parallel Analysis Node**: The `SentimentAgent`, `CredibilityAgent`, and `ThemeRouterAgent` execute simultaneously via `asyncio.gather`, reducing the "Analysis Phase" latency by ~60%.
 *   **Conditional Sub-Agent Spawning**: The 6 Theme Agents are **ephemeral**; they are only instantiated if the router detects relevant content. This "Serverless-like" agent behavior minimizes compute and time drift.
 
-**Scientific Contribution:** An optimized **Parallel-Agent Pattern** that balances the depth of agentic reasoning with the speed requirements of production monitoring systems.
+**Scientific Contribution:** An optimized **Graph-Based Cognitive Architecture** that implements a **Graph-of-Thought (GoT)** reasoning topology. This shifts the paradigm from brittle linear chains to robust parallel graphs, balancing agentic depth with production-grade latency.
 
 ---
 
