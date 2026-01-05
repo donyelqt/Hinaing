@@ -13,7 +13,7 @@ Traditional public opinion analysis systems focus primarily on sentiment detecti
 Our system implements a comprehensive credibility quantification engine (`CredibilityAgent`) using a weighted ensemble of five distinct signals:
 
 1.  **Domain Reputation Tiering (25%)**: Hierarchical scoring of known domains (e.g., `gov.ph` > `news` > `social`).
-2.  **Semantic Corroboration (20%)**: Uses `MiniLM` embeddings to verify if a claim is semantically corroborated by other independent sources within the current retrieval batch.
+2.  **Semantic Cross-Reference (20%)**: Uses **BAAI/bge-small-en-v1.5** embeddings to measure the cosine similarity between the claim and the retrieved evidence. If the distance > threshold, the claim is flagged as "Unverified."
 3.  **External Fact-Checking (15%)**: Real-time validation against the Google Fact Check Tools API.
 4.  **Linguistic Pattern Analysis (20%)**: Large Language Model (Gemini 2.5) analysis of syntactic features indicative of misinformation (eg., sensationalism, clickbait, conspiracy framing).
 5.  **Multi-Source Web Verification (20%)**: Real-time cross-referencing via Tavily Search to validate claims against an index of trusted authorities.
