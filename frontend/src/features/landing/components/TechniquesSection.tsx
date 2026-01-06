@@ -56,7 +56,7 @@ export function TechniquesSection() {
             Advanced Agentic AI Techniques
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
-            Hinaing leverages cutting-edge artificial intelligence and machine learning technologies to transform digital noise into clear, actionable insights.
+            Hinaing leverages neuro-symbolic AI and hierarchical multi-agent orchestration to transform unstructured digital noise into structured, actionable intelligence.
           </p>
         </div>
 
