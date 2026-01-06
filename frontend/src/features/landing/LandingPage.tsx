@@ -5,6 +5,7 @@ import { TrustBar } from "./components/TrustBar";
 import { ValuePropsSection } from "./components/ValuePropsSection";
 import { LivePreviewSection } from "./components/LivePreviewSection";
 import { HowItWorksSection } from "./components/HowItWorksSection";
+import { TechniquesSection } from "./components/TechniquesSection";
 import { UseCasesSection } from "./components/UseCasesSection";
 import { FAQSection } from "./components/FAQSection";
 import { FinalCTASection } from "./components/FinalCTASection";
@@ -34,12 +35,15 @@ export function LandingPage() {
           <HowItWorksSection />
         </ScrollReveal>
         <ScrollReveal delay={280}>
-          <UseCasesSection />
+          <TechniquesSection />
         </ScrollReveal>
         <ScrollReveal delay={320}>
-          <FAQSection />
+          <UseCasesSection />
         </ScrollReveal>
         <ScrollReveal delay={360}>
+          <FAQSection />
+        </ScrollReveal>
+        <ScrollReveal delay={400}>
           <FinalCTASection />
         </ScrollReveal>
       </main>
