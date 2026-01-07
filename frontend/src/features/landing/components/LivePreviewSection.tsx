@@ -5,7 +5,7 @@ export function LivePreviewSection() {
   return (
     <section
       id="live-preview"
-      className="relative overflow-hidden bg-slate-50 py-24"
+      className="relative overflow-hidden bg-slate-50 bg-grid-pattern py-24"
     >
       {/* Background Gradients */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
