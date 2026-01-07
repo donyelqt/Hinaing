@@ -46,7 +46,7 @@ export function TechniquesSection() {
   ];
 
   return (
-    <section id="techniques" className="relative bg-white py-24">
+    <section id="techniques" className="relative bg-white bg-grid-pattern py-24">
       {/* Decorative background blob */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-violet-100/40 to-blue-100/40 rounded-full blur-3xl pointer-events-none" />
 
