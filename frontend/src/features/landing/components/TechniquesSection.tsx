@@ -9,7 +9,7 @@ export function TechniquesSection() {
       icon: Users,
     },
     {
-      title: "Agentic Search Orchestration / Intelligent Search",
+      title: "Agentic/Intelligent Search",
       description: "Combines ReAct-based query planning with neural semantic reranking to autonomously formulate strategies and prioritize high-relevance results across web and social platforms.",
       icon: Search,
     },
