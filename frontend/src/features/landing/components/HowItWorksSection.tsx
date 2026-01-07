@@ -2,7 +2,7 @@ import { HOW_IT_WORKS_STEPS } from "../constants";
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="relative overflow-hidden bg-white py-24">
+    <section id="how-it-works" className="relative overflow-hidden bg-white bg-grid-pattern py-24">
       {/* Background Gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-to-b from-slate-50 to-transparent rounded-full blur-3xl opacity-50" />
