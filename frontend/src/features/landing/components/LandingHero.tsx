@@ -55,7 +55,7 @@ function BaguioTeamsPill() {
 
 export function LandingHero() {
   return (
-    <section className="relative overflow-hidden bg-slate-50">
+    <section className="relative overflow-hidden bg-slate-50 bg-grid-pattern">
       {/* Abstract Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-br from-violet-200/30 via-blue-200/30 to-transparent blur-3xl animate-fade-in" />
