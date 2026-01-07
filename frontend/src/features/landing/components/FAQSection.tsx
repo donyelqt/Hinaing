@@ -3,7 +3,7 @@ import { Plus, Minus } from "lucide-react";
 
 export function FAQSection() {
   return (
-    <section id="faq" className="relative bg-white py-24">
+    <section id="faq" className="relative bg-white bg-grid-pattern py-24">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="mb-16 text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
