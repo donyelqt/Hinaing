@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function FinalCTASection() {
   return (
-    <section className="border-t border-slate-100 bg-gradient-to-b from-slate-50 to-white">
+    <section className="border-t border-slate-100 bg-gradient-to-b from-slate-50 to-white bg-grid-pattern">
       <div className="mx-auto max-w-6xl px-4 py-12 text-center sm:px-6 lg:py-16 xl:px-8">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Start monitoring public sentiment in Baguio today
