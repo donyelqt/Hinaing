@@ -53,7 +53,7 @@ export function TechniquesSection() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 xl:px-8">
         <div className="mb-16 max-w-2xl mx-auto text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Advanced Agentic AI Techniques
+            Advanced <span className="bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent">Agentic AI Techniques</span>
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Hinaing leverages neuro-symbolic AI and hierarchical multi-agent orchestration to transform unstructured digital noise into structured, actionable intelligence.
