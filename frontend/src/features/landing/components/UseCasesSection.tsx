@@ -4,7 +4,7 @@ import { Building2, Siren, Megaphone } from "lucide-react";
 
 export function UseCasesSection() {
   return (
-    <section id="use-cases" className="relative bg-slate-50 py-24">
+    <section id="use-cases" className="relative bg-slate-50 bg-grid-pattern py-24">
       {/* Background Gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-violet-100/40 to-transparent rounded-full blur-3xl" />
