@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, MessageSquare, MapPin, Share2 } from "lucide-react";
+import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles } from "lucide-react";
 
 function BaguioTeamsPill() {
   const [isAutoPulse, setIsAutoPulse] = useState(false);
@@ -65,7 +65,13 @@ export function LandingHero() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:py-16 xl:px-8">
         {/* Left Content */}
         <div className="flex flex-col justify-center space-y-6 lg:max-w-2xl z-10">
-          <BaguioTeamsPill />
+          <div className="flex flex-wrap gap-3">
+            <BaguioTeamsPill />
+            <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-md hover:shadow-emerald-500/10 active:scale-95">
+              <Sparkles className="h-3 w-3 text-emerald-500 animate-pulse" />
+              <span>Thesis Grade Research Architecture</span>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl leading-[1.1]">
