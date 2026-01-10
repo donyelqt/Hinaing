@@ -21,7 +21,7 @@ Under this license, others are free to share and adapt this work for non-commerc
 | **Orchestration** | Directed Acyclic Graph (DAG) - LangGraph 7-node pipeline |
 | **Learning** | Self-Learning Cyclic RAG (read-write memory loop) |
 | **Sentiment** | Ensemble (RoBERTa 40% + LLM 60%) |
-| **Credibility** | 5-Signal Weighted Ensemble |
+| **Credibility** | 5-Signal Weighted Ensemble Framework |
 
 > **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
