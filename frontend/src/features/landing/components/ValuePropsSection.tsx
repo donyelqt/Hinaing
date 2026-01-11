@@ -3,13 +3,29 @@ import { Activity, AlertTriangle, Signal } from "lucide-react";
 import { VALUE_PROPS } from "../constants";
 
 export function ValuePropsSection() {
+  // Define consistent styling for each value prop
+  const valuePropStyles = [
+    {
+      color: "text-violet-500 bg-violet-50 border-violet-100",
+      tilt: "-rotate-1",
+    },
+    {
+      color: "text-blue-500 bg-blue-50 border-blue-100",
+      tilt: "rotate-1",
+    },
+    {
+      color: "text-amber-500 bg-amber-50 border-amber-100",
+      tilt: "-rotate-1",
+    }
+  ];
+
   return (
-    <section id="product" className="relative bg-slate-50 bg-grid-pattern py-24">
+    <section id="product" className="relative bg-slate-50 bg-grid-pattern py-24 border-t border-slate-200">
       {/* Decorative background blob */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-violet-100/40 to-blue-100/40 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
-        <div className="mb-16 max-w-2xl mx-auto text-center space-y-4">
+        <div className="mb-12 max-w-2xl mx-auto text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             What Hinaing gives your team
           </h2>
@@ -22,36 +38,28 @@ export function ValuePropsSection() {
         <div className="grid gap-8 md:grid-cols-3">
           {VALUE_PROPS.map((item, index) => {
             const Icon = index === 0 ? Activity : index === 1 ? Signal : AlertTriangle;
-            const gradientClass = index === 0
-              ? "from-violet-500 to-purple-500"
-              : index === 1
-                ? "from-blue-500 to-cyan-500"
-                : "from-amber-500 to-orange-500";
-
-            const bgClass = index === 0
-              ? "bg-violet-50 text-violet-600"
-              : index === 1
-                ? "bg-blue-50 text-blue-600"
-                : "bg-amber-50 text-amber-600";
+            const style = valuePropStyles[index];
 
             return (
               <Card
                 key={item.title}
-                className="group relative h-full overflow-hidden rounded-3xl border-0 bg-white/80 p-8 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-slate-200/80 ring-1 ring-slate-100"
+                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/50 hover:rotate-0 hover:scale-[1.02] ${style.tilt} max-w-[22rem] w-full mx-auto`}
               >
-                <div className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${bgClass} transition-transform duration-300 group-hover:scale-110`}>
-                  <Icon className="h-7 w-7" aria-hidden="true" />
+                {/* Gradient Gloss Effect upon Hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                <div className="flex flex-col py-4 px-2">
+                  <div className={`relative z-10 mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:border-violet-200 group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-cyan-500 group-hover:text-white group-hover:scale-110 group-hover:rotate-6 ${style.color}`}>
+                    <Icon className="h-10 w-10" aria-hidden="true" />
+                  </div>
+
+                  <h3 className="relative z-10 text-xl font-bold text-slate-900 mb-2 group-hover:text-violet-700 transition-all px-1">
+                    {item.title}
+                  </h3>
+                  <p className="relative z-10 text-lg leading-relaxed text-slate-600 px-1">
+                    {item.description}
+                  </p>
                 </div>
-
-                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-violet-700 transition-colors">
-                  {item.title}
-                </h3>
-                <p className="text-base leading-relaxed text-slate-600">
-                  {item.description}
-                </p>
-
-                {/* Hover Gradient Border Effect */}
-                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               </Card>
             );
           })}
