@@ -91,7 +91,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 bg-grid-pattern">
       {/* Mobile Hamburger Toggle */}
       <button
         type="button"
