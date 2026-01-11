@@ -58,7 +58,7 @@ export function LandingHero() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Auto-cycle through hover states every 2 seconds
+    // Auto-cycle through hover states every 3 seconds
     intervalRef.current = setInterval(() => {
       setHoveredElement(prev => {
         if (prev === 'negative') return 'neutral';
@@ -67,7 +67,7 @@ export function LandingHero() {
         if (prev === 'card') return 'negative';
         return 'negative'; // Start cycle if null
       });
-    }, 2000); // 2 seconds
+    }, 3000); // 3 seconds
 
     return () => {
       if (intervalRef.current) {
@@ -97,7 +97,7 @@ export function LandingHero() {
           if (prev === 'card') return 'negative';
           return 'negative'; // Start cycle if null
         });
-      }, 2000);
+      }, 3000);
     }, 1000); // Wait 1 second after leaving before resuming auto-cycle
   };
 
@@ -182,7 +182,7 @@ export function LandingHero() {
           />
 
           <div className="relative w-full max-w-[440px] group">
-            <div className={`relative transform transition-all duration-500 ${
+            <div className={`relative transform transition-all duration-700 ${
               hoveredElement === 'card' ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'
             }`}>
               {/* Animated Rainbow Border - Subtle Glow */}
@@ -220,7 +220,7 @@ export function LandingHero() {
 
                       <div className="grid grid-cols-3 gap-2">
                         <div
-                          className={`rounded-xl p-3 text-center transition-colors ${
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
                             hoveredElement === 'negative' || hoveredElement === 'card'
                               ? 'bg-rose-100'
                               : 'bg-rose-50'
@@ -232,7 +232,7 @@ export function LandingHero() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Negative</p>
                         </div>
                         <div
-                          className={`rounded-xl p-3 text-center transition-colors ${
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
                             hoveredElement === 'neutral' || hoveredElement === 'card'
                               ? 'bg-slate-100'
                               : 'bg-slate-50'
@@ -244,7 +244,7 @@ export function LandingHero() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Neutral</p>
                         </div>
                         <div
-                          className={`rounded-xl p-3 text-center transition-colors ${
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
                             hoveredElement === 'positive' || hoveredElement === 'card'
                               ? 'bg-emerald-100'
                               : 'bg-emerald-50'
