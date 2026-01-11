@@ -24,7 +24,7 @@ export function TechniquesSection() {
     {
       id: "NLP-03",
       title: "Deep Learning & NLP",
-      description: "Hybrid ensemble combining RoBERTa (social media-optimized) with Gemini LLM for sentiment analysis, achieving 60%+ model agreement rate and 98% ensemble accuracy.",
+      description: "Hybrid ensemble combining RoBERTa (social media-optimized) with Gemini LLM for sentiment analysis, achieving 60%+ model agreement rate and 98% model ensemble accuracy.",
       icon: Brain,
       color: "text-blue-500 bg-blue-50 border-blue-100",
       tilt: "-rotate-1",
