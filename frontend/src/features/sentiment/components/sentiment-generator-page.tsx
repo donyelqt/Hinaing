@@ -396,7 +396,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
         )}
       </button>
 
-      <div className="min-h-screen bg-slate-50 font-sans">
+      <div className="min-h-screen bg-slate-50 bg-grid-pattern font-sans">
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
           <Sidebar
