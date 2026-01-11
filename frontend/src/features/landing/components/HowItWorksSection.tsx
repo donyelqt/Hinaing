@@ -28,7 +28,7 @@ export function HowItWorksSection() {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="mb-16 max-w-2xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center justify-center -space-x-px rounded-md border border-violet-100 bg-white p-1 shadow-sm">
-            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">Workflow</span>
+            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">Agentic AI Workflow</span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             How it <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">works</span>

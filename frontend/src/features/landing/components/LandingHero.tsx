@@ -54,6 +54,53 @@ function BaguioTeamsPill() {
 }
 
 export function LandingHero() {
+  const [hoveredElement, setHoveredElement] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Auto-cycle through hover states every 2 seconds
+    intervalRef.current = setInterval(() => {
+      setHoveredElement(prev => {
+        if (prev === 'negative') return 'neutral';
+        if (prev === 'neutral') return 'positive';
+        if (prev === 'positive') return 'card';
+        if (prev === 'card') return 'negative';
+        return 'negative'; // Start cycle if null
+      });
+    }, 2000); // 2 seconds
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseEnter = (element: string) => {
+    setHoveredElement(element);
+    // Pause auto-cycle when user interacts
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredElement(null);
+    // Restart auto-cycle after a delay
+    setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        setHoveredElement(prev => {
+          if (prev === 'negative') return 'neutral';
+          if (prev === 'neutral') return 'positive';
+          if (prev === 'positive') return 'card';
+          if (prev === 'card') return 'negative';
+          return 'negative'; // Start cycle if null
+        });
+      }, 2000);
+    }, 1000); // Wait 1 second after leaving before resuming auto-cycle
+  };
+
   return (
     <section className="relative overflow-hidden bg-slate-50 bg-grid-pattern">
       {/* Abstract Background Elements */}
@@ -69,7 +116,7 @@ export function LandingHero() {
             <BaguioTeamsPill />
             <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-md hover:shadow-emerald-500/10 active:scale-95">
               <Sparkles className="h-3 w-3 text-emerald-500 animate-pulse" />
-              <span>Thesis Grade Research Architecture</span>
+              <span>Thesis Grade Research AI Architecture</span>
             </div>
           </div>
 
@@ -135,13 +182,19 @@ export function LandingHero() {
           />
 
           <div className="relative w-full max-w-[440px] group">
-            <div className="relative transform transition-all duration-500 hover:scale-[1.02] hover:rotate-1">
+            <div className={`relative transform transition-all duration-500 ${
+              hoveredElement === 'card' ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'
+            }`}>
               {/* Animated Rainbow Border - Subtle Glow */}
               <div className="absolute -inset-[6px] rounded-[2.2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 opacity-30 blur-lg animate-rainbow-border" />
 
               {/* Gradient Border Wrapper */}
               <div className="relative rounded-[2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 p-[1.5px] animate-rainbow-border">
-                <Card className="relative h-full w-full rounded-[1.9rem] border-0 bg-white/90 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl">
+                <Card
+                  className="relative h-full w-full rounded-[1.9rem] border-0 bg-white/90 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl"
+                  onMouseEnter={() => handleMouseEnter('card')}
+                  onMouseLeave={handleMouseLeave}
+                >
                   <div className="absolute inset-0 rounded-[1.9rem] bg-gradient-to-br from-white/50 to-white/0 pointer-events-none" />
 
                   <div className="relative z-10">
@@ -166,15 +219,39 @@ export function LandingHero() {
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-rose-50 p-3 text-center transition-colors hover:bg-rose-100">
+                        <div
+                          className={`rounded-xl p-3 text-center transition-colors ${
+                            hoveredElement === 'negative' || hoveredElement === 'card'
+                              ? 'bg-rose-100'
+                              : 'bg-rose-50'
+                          }`}
+                          onMouseEnter={() => handleMouseEnter('negative')}
+                          onMouseLeave={handleMouseLeave}
+                        >
                           <p className="text-lg font-bold text-rose-600">52%</p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Negative</p>
                         </div>
-                        <div className="rounded-xl bg-slate-50 p-3 text-center transition-colors hover:bg-slate-100">
+                        <div
+                          className={`rounded-xl p-3 text-center transition-colors ${
+                            hoveredElement === 'neutral' || hoveredElement === 'card'
+                              ? 'bg-slate-100'
+                              : 'bg-slate-50'
+                          }`}
+                          onMouseEnter={() => handleMouseEnter('neutral')}
+                          onMouseLeave={handleMouseLeave}
+                        >
                           <p className="text-lg font-bold text-slate-700">31%</p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Neutral</p>
                         </div>
-                        <div className="rounded-xl bg-emerald-50 p-3 text-center transition-colors hover:bg-emerald-100">
+                        <div
+                          className={`rounded-xl p-3 text-center transition-colors ${
+                            hoveredElement === 'positive' || hoveredElement === 'card'
+                              ? 'bg-emerald-100'
+                              : 'bg-emerald-50'
+                          }`}
+                          onMouseEnter={() => handleMouseEnter('positive')}
+                          onMouseLeave={handleMouseLeave}
+                        >
                           <p className="text-lg font-bold text-emerald-600">17%</p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/70">Positive</p>
                         </div>
