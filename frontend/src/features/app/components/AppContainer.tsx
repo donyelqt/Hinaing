@@ -62,7 +62,7 @@ export function AppContainer() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 bg-grid-pattern">
       {renderActivePage()}
     </div>
   );
