@@ -21,13 +21,13 @@ export const HOW_IT_WORKS_STEPS = [
     label: "Step 1",
     title: "Collects public chatter",
     description:
-      "Continuously listens to Facebook and Reddit conversations relevant to Baguio City and nearby areas.",
+      "Continuously listens to Web, Facebook, and Reddit conversations relevant to Baguio City and nearby areas.",
   },
   {
     label: "Step 2",
     title: "Classifies and filters",
     description:
-      "Classifies sentiment, groups related topics, and downranks noisy or low-signal posts.",
+      "Classifies sentiment, groups related topics, and applies multi-signal credibility verification to detect and filter misinformation, fake news, and hallucinated sources.",
   },
   {
     label: "Step 3",
