@@ -102,7 +102,7 @@ export function TechniquesSection() {
           </div>
           <div className="h-px w-8 bg-slate-200 hidden sm:block" />
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
-            Verified by Claude Opus 4.5 and Gemini 3 Pro
+            
           </p>
         </div>
 
