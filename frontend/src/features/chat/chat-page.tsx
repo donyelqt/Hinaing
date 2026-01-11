@@ -267,7 +267,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                 )}
             </button>
 
-            <div className="h-[100dvh] bg-slate-50 font-sans selection:bg-blue-100 overflow-hidden fixed inset-0">
+            <div className="h-[100dvh] bg-slate-50 bg-grid-pattern font-sans selection:bg-blue-100 overflow-hidden fixed inset-0">
                 <div className="mx-auto flex w-full h-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
 
                     <Sidebar
