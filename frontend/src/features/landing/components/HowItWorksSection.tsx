@@ -1,8 +1,25 @@
+import { Card } from "@/components/ui/card";
 import { HOW_IT_WORKS_STEPS } from "../constants";
 
 export function HowItWorksSection() {
+  // Define consistent styling for each step
+  const stepStyles = [
+    {
+      color: "text-violet-500 bg-violet-50 border-violet-100",
+      tilt: "-rotate-1",
+    },
+    {
+      color: "text-blue-500 bg-blue-50 border-blue-100",
+      tilt: "rotate-1",
+    },
+    {
+      color: "text-amber-500 bg-amber-50 border-amber-100",
+      tilt: "-rotate-2",
+    }
+  ];
+
   return (
-    <section id="how-it-works" className="relative overflow-hidden bg-white bg-grid-pattern py-24">
+    <section id="how-it-works" className="relative overflow-hidden bg-white bg-grid-pattern py-24 border-t border-slate-200">
       {/* Background Gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-to-b from-slate-50 to-transparent rounded-full blur-3xl opacity-50" />
@@ -10,8 +27,11 @@ export function HowItWorksSection() {
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="mb-16 max-w-2xl mx-auto text-center space-y-4">
+          <div className="inline-flex items-center justify-center -space-x-px rounded-md border border-violet-100 bg-white p-1 shadow-sm">
+            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">Workflow</span>
+          </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            How it works
+            How it <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">works</span>
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             The console automates the parts of monitoring that are repetitive and fragile, while keeping your team in
@@ -19,77 +39,54 @@ export function HowItWorksSection() {
           </p>
         </div>
 
-        <div className="relative mt-8">
-          {/* Connecting Line System */}
-          <div className="absolute inset-x-0 top-[56px] hidden -translate-y-1/2 md:block z-0">
-            <svg
-              className="h-20 w-full overflow-visible"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient id="flow-gradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.2" />
-                  <stop offset="20%" stopColor="#8b5cf6" stopOpacity="1" />
-                  <stop offset="50%" stopColor="#3b82f6" stopOpacity="1" />
-                  <stop offset="80%" stopColor="#8b5cf6" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.2" />
-                </linearGradient>
-                <filter id="glow-line" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="2" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
-
-              {/* Base Track */}
-              <line
-                x1="0"
-                y1="50%"
-                x2="100%"
-                y2="50%"
-                stroke="#e2e8f0"
-                strokeWidth="4"
-              />
-
-              {/* Animated Flow */}
-              <line
-                x1="0"
-                y1="50%"
-                x2="100%"
-                y2="50%"
-                stroke="url(#flow-gradient)"
-                strokeWidth="4"
-                strokeDasharray="20 20"
-                className="animate-dash-flow"
-                strokeLinecap="round"
-                filter="url(#glow-line)"
-              />
-            </svg>
+        <div className="relative">
+          {/* Connecting Arrows */}
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center z-0 pointer-events-none">
+            <div className="flex items-center w-full max-w-4xl mx-auto px-8">
+              <div className="hidden md:block flex-grow border-t-2 border-slate-400 relative">
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0 h-0 border-y-8 border-l-8 border-r-0 border-solid border-transparent border-l-slate-400"></div>
+              </div>
+              <div className="hidden md:flex items-center justify-center text-slate-400 mx-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+              <div className="hidden md:block flex-grow border-t-2 border-slate-400 relative">
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0 h-0 border-y-8 border-l-8 border-r-0 border-solid border-transparent border-l-slate-400"></div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3 relative z-10">
-            {HOW_IT_WORKS_STEPS.map((step, index) => (
-              <div
-                key={step.title}
-                className="group relative rounded-3xl border border-slate-100 bg-white p-8 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/80"
-              >
-                <div className="mb-6 flex items-center gap-4">
-                  <div className="relative z-20 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300 ring-8 ring-white">
-                    {index + 1}
-                  </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    {step.label}
-                  </span>
-                </div>
+          <div className="grid gap-6 md:grid-cols-3 relative z-10">
+            {HOW_IT_WORKS_STEPS.map((step, index) => {
+              const style = stepStyles[index];
 
-                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors">
-                  {step.title}
-                </h3>
-                <p className="text-base leading-relaxed text-slate-600">
-                  {step.description}
-                </p>
-              </div>
-            ))}
+              return (
+                <Card
+                  key={step.title}
+                  className={`group relative flex flex-col h-full overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-6 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/50 hover:rotate-0 hover:scale-[1.02] ${style.tilt}`}
+                >
+                  {/* Gradient Gloss Effect upon Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border bg-gradient-to-br from-violet-500 to-cyan-500 text-sm font-bold text-white shadow-sm">
+                      {index + 1}
+                    </div>
+                    <span className="relative z-10 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      {step.label}
+                    </span>
+                  </div>
+
+                  <h3 className="relative z-10 text-base font-bold text-slate-900 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-violet-600 group-hover:to-cyan-600 transition-all">
+                    {step.title}
+                  </h3>
+                  <p className="relative z-10 text-sm leading-relaxed text-slate-500 group-hover:text-slate-700">
+                    {step.description}
+                  </p>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </div>
