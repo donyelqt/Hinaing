@@ -4,7 +4,6 @@ import * as React from "react";
 import clsx from "clsx";
 import {
   RefreshCw,
-  Save,
   MapPin,
   AlertTriangle,
   ExternalLink,
@@ -496,15 +495,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2 text-sm font-medium text-slate-600 transition duration-150 ease-out hover:-translate-y-0.5 hover:border-hinaing-blue-500 hover:text-hinaing-blue-600 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2"
-                    aria-label="Save current configuration as preset"
-                  >
-                    <Save className="h-4 w-4" aria-hidden="true" />
-                    Save Preset
-                  </button>
+                <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-end">
                   <div className="flex flex-col items-end gap-2">
                     {Object.keys(validation.errors).length > 0 && (
                       <p className="text-xs text-rose-500 font-medium">
