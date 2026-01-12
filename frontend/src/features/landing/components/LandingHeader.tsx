@@ -34,11 +34,11 @@ export function LandingHeader() {
           <a href="#product" className="transition hover:text-slate-900">
             Product
           </a>
-          <a href="#techniques" className="transition hover:text-slate-900">
-            AI Techniques
-          </a>
           <a href="#how-it-works" className="transition hover:text-slate-900">
             How it works
+          </a>
+          <a href="#techniques" className="transition hover:text-slate-900">
+            AI Techniques
           </a>
           <a href="#use-cases" className="transition hover:text-slate-900">
             Use cases
@@ -76,18 +76,18 @@ export function LandingHeader() {
               Product
             </a>
             <a
-              href="#techniques"
-              className="py-1 hover:text-slate-900"
-              onClick={closeMenu}
-            >
-              AI Techniques
-            </a>
-            <a
               href="#how-it-works"
               className="py-1 hover:text-slate-900"
               onClick={closeMenu}
             >
               How it works
+            </a>
+            <a
+              href="#techniques"
+              className="py-1 hover:text-slate-900"
+              onClick={closeMenu}
+            >
+              AI Techniques
             </a>
             <a
               href="#use-cases"
