@@ -84,7 +84,7 @@ export function TechniquesSection() {
             <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">System Architecture</span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Advanced <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">Agentic AI Techniques</span>
+            Advanced <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">Agentic AI Engineering</span>
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Hinaing leverages neuro-symbolic AI and hierarchical multi-agent orchestration to transform unstructured digital noise into structured, actionable intelligence.

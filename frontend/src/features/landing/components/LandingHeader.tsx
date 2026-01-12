@@ -38,7 +38,7 @@ export function LandingHeader() {
             How it works
           </a>
           <a href="#techniques" className="transition hover:text-slate-900">
-            AI Techniques
+            Advanced Agentic AI Engineering
           </a>
           <a href="#use-cases" className="transition hover:text-slate-900">
             Use cases
@@ -87,7 +87,7 @@ export function LandingHeader() {
               className="py-1 hover:text-slate-900"
               onClick={closeMenu}
             >
-              AI Techniques
+              Advanced Agentic AI Engineering
             </a>
             <a
               href="#use-cases"
