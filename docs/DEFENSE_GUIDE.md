@@ -1,6 +1,6 @@
 # Thesis Defense Strategy: Hinaing vs. Frontier AI
 
-> **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 
 > **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
@@ -179,14 +179,19 @@ On Run 1, we had 0 internal docs. On Run 2 (2 minutes later), we recalled 20 rel
 
 Use these words to sound authoritative (CS Theory):
 
+- **"Neuro-Symbolic Cognitive Architecture"**: The hybrid system combining Rule-Based Safety (Symbolic) with LLM Nuance (Neural).
+- **"Epistemic Truth Discovery"**: The mathematical quantification of information reliability (5-Signal Credibility).
+- **"Architectural Inductive Bias"**: Hard-coding the `KEYWORD_CLUSTERS` to force the model to respect local context.
+- **"Linearized Knowledge Graph"**: The taxonomy structure (Ontology) we engineered to replace a graph database.
+- **"Non-Parametric Systemic Learning"**: The system getting smarter via RAG (accumulating state) without updating model weights.
+- **"Graph-Based Cognitive Architecture (Graph-of-Thought)"**: The parallel reasoning topology (DAG) superior to linear chains.
 - **"Directed Acyclic Graph (DAG)"**: The deterministic control flow of the pipeline.
-- **"Self-Learning Cyclic RAG"**: Our novel term for the Read-Write Memory Loop (Behavior).
-- **"Episodic Memory Consolidation"**: The process of "learning" by writing to Qdrant (Node 5).
 - **"Hierarchical Map-Reduce"**: The fan-out (Nodes 4 & 6) and fan-in (Node 7) parallel processing pattern.
-- **"Multi-Query Diversity"**: KEYWORD_CLUSTERS ensure topic coverage.
-- **"Ensemble Verification"**: 5-signal credibility framework.
-- **"Semantic Cross-Reference"**: BGE embeddings for document similarity.
-- **"Domain Grounding"**: Restricting AI to Baguio City context.
+- **"Episodic Memory Consolidation"**: The process of "learning" by writing to Qdrant (Node 5).
+- **"Multi-Query Diversity"**: Use of KEYWORD_CLUSTERS to prevent semantic collapse.
+- **"Ensemble Verification"**: The 5-signal credibility framework as a consensus mechanism.
+- **"Semantic Cross-Reference"**: Using BGE embeddings to mathematically verify claim similarity.
+- **"Domain Grounding"**: Restricting the AI's search space to the Baguio City context.
 
 ---
 
