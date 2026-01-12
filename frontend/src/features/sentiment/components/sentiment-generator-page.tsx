@@ -263,6 +263,22 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [animatedSummary, setAnimatedSummary] = React.useState("");
   const [isTypingSummary, setIsTypingSummary] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [hoveredCardIndex, setHoveredCardIndex] = React.useState<number | null>(null);
+
+  // Auto-hover effect for cards every 3 seconds
+  React.useEffect(() => {
+    if (!snapshot) return; // Only run when snapshot data is available
+
+    const cards = [0, 1, 2, 3, 4, 5]; // Indices for the 6 cards (sentiment + 3 stats + 3 credibility)
+    let currentIndex = 0;
+
+    const interval = setInterval(() => {
+      setHoveredCardIndex(cards[currentIndex]);
+      currentIndex = (currentIndex + 1) % cards.length;
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [snapshot]);
 
   React.useEffect(() => {
     apiGet<{ status: string }>("/health")
@@ -538,7 +554,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <div className="space-y-5">
                   {snapshot ? (
                     <>
-                      <Card className="space-y-4 border border-hinaing-blue-200 bg-gradient-to-br from-hinaing-blue-50 to-violet-50 p-5">
+                      <Card className={clsx(
+                        "space-y-4 border border-hinaing-blue-200 bg-gradient-to-br from-hinaing-blue-50 to-violet-50 p-5 transition-all duration-300",
+                        hoveredCardIndex === 0 && "transform scale-105 shadow-xl ring-2 ring-hinaing-blue-300"
+                      )}>
                         <div className="flex items-center justify-between">
                           <span className="rounded-full bg-gradient-to-r from-hinaing-blue-500/15 via-hinaing-blue-400/15 to-violet-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-hinaing-blue-800">
                             Overall Sentiment
@@ -571,35 +590,53 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                          <div className="rounded-lg bg-white/70 p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 1 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
+                          )}>
                             <strong className="block text-lg font-semibold text-rose-600">{negativePercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Negative</span>
                           </div>
-                          <div className="rounded-lg bg-white/70 p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 2 && "transform scale-105 shadow-xl ring-2 ring-slate-300"
+                          )}>
                             <strong className="block text-lg font-semibold text-slate-700">{neutralPercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Neutral</span>
                           </div>
-                          <div className="rounded-lg bg-white/70 p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 3 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
+                          )}>
                             <strong className="block text-lg font-semibold text-emerald-600">{positivePercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
-                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 4 && "transform scale-105 shadow-xl ring-2 ring-slate-300"
+                          )}>
                             <strong className="block text-base sm:text-lg font-semibold text-slate-700">{credibilityBreakdown.avgScore}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
                               {credibilityBreakdown.hasData ? '6-signal analysis' : 'No data yet'}
                             </p>
                           </div>
-                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 5 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
+                          )}>
                             <strong className="block text-base sm:text-lg font-semibold text-emerald-600">{credibilityBreakdown.highCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
                               {credibilityBreakdown.hasData ? 'Low risk' : 'Score ≥55%'}
                             </p>
                           </div>
-                          <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                          <div className={clsx(
+                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            hoveredCardIndex === 6 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
+                          )}>
                             <strong className="block text-base sm:text-lg font-semibold text-rose-600">{credibilityBreakdown.lowCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Misinfo</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
