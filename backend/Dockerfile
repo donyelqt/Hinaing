@@ -56,11 +56,23 @@ RUN python -c "from transformers import AutoModelForSequenceClassification, Auto
     python -c "from sentence_transformers import SentenceTransformer; \
     SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
-EXPOSE 8000
+# Hugging Face Spaces uses port 7860 by default
+EXPOSE 7860
 
-# Health check for Railway/container orchestration
-# Health check for Railway/container orchestration
+# Add a non-root user for security on Hugging Face
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+
+WORKDIR $HOME/app
+
+# Copy files with correct ownership
+COPY --chown=user . .
+COPY --from=builder --chown=user /app/.venv /home/user/app/.venv
+
+# Health check for Hugging Face
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import os, urllib.request; port = os.getenv('PORT', '8000'); urllib.request.urlopen(f'http://localhost:{port}/health')" || exit 1
+    CMD python -c "import os, urllib.request; port = os.getenv('PORT', '7860'); urllib.request.urlopen(f'http://localhost:{port}/health')" || exit 1
 
-CMD sh -c "uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000}"
+CMD ["sh", "-c", "uvicorn app.main:create_app --factory --host 0.0.0.0 --port 7860"]
