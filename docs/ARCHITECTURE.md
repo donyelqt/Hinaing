@@ -1,10 +1,12 @@
 # Hinaing System Architecture
 
-> **Thesis Title:** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
 ## Overview
 
-Multi-Agentic AI system with real-time intelligent search and and self learning RAG for context-aware public opinion analysis in Baguio City. Features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation.
+Multi-Agentic AI system with real-time intelligent search and self learning RAG for context-aware public opinion analysis in Baguio City. It utilizes a **Neuro-Symbolic Graph-of-Thought** control flow and features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation (Non-Parametric Systemic Learning).
 
 > **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (13 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
@@ -92,6 +94,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 > **Note:** This is a **detailed implementation diagram** showing internal agent components, tools, and APIs. For a high-level conceptual diagram showing the overall/summarized pipeline flow and temporal memory loop, see `ARCHITECTURE_SUMMARY.md`.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryTextColor': '#000000', 'secondaryTextColor': '#000000', 'tertiaryTextColor': '#000000' }, 'flowchart': { 'subGraphTitleMargin': { 'top': 10, 'bottom': 10 }, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 50 }}}%%
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Sentiment Dashboard]
@@ -101,8 +104,8 @@ flowchart TB
 
     subgraph Backend["Backend (FastAPI + LangGraph)"]
         subgraph Workflow["7-Node Multi-Agent Pipeline"]
-            
-            subgraph Node1["Node 1: Query Orchestrator Agent (ReAct + Context Engineering)"]
+
+            subgraph Node1["Node 1: Query Orchestrator Agent"]
                 QO[QueryOrchestratorAgent]
                 T1[analyze_focus_areas tool]
                 T2[generate_query tool]
@@ -117,9 +120,9 @@ flowchart TB
 
             subgraph Node2["Node 2: Retrieval Agent"]
                 RA[RetrievalAgent]
-                LS[LangSearch Web API]
+                LS[LangSearch Web API<br/>+ Built-in Reranking]
                 FB[Facebook Ingestion]
-                RD[Reddit r/baguio]
+                RD[Reddit r/baguio<br/>+ Built-in Reranking]
                 RA --> LS & FB & RD
                 RR[Diversity Merge]
                 LS & FB & RD --> RR
@@ -140,7 +143,7 @@ flowchart TB
                 IntDocs --> Merge
             end
 
-            subgraph Node4["Node 4: Unified Analysis (3 Agents in Parallel)"]
+            subgraph Node4["Node 4: Unified Analysis"]
                 direction TB
                 subgraph Parallel["asyncio.gather"]
                     SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
@@ -158,7 +161,7 @@ flowchart TB
                 CTX2 --> SC --> ES --> VS2
             end
 
-            subgraph Node6["Node 6: Theme Agents (6 Agents in Parallel)"]
+            subgraph Node6["Node 6: Theme Agents"]
                 TH1[InfrastructureAgent]
                 TH2[HealthAgent]
                 TH3[SafetyAgent]
@@ -195,6 +198,18 @@ flowchart TB
     style Node6 fill:#ffffff,stroke:#333,stroke-width:2px
     style Node7 fill:#ffffff,stroke:#333,stroke-width:2px
 ```
+
+### Updated Node 2: Retrieval Agent with Source-Level Reranking
+
+The Retrieval Agent performs platform-specific retrieval with built-in reranking for efficiency:
+
+1. **LangSearch Web API**: Retrieves and automatically reranks web documents by semantic relevance
+2. **Facebook Ingestion**: Retrieves Facebook documents (no built-in reranking)
+3. **Reddit Ingestion**: Retrieves and automatically reranks Reddit documents by semantic relevance
+4. **Diversity Merge**: Combines results from all sources using round-robin interleaving
+5. **External Documents**: Merged results passed to downstream analysis agents
+
+This approach minimizes latency by performing reranking at the source level rather than as a separate post-merge step. When both "web" and "facebook" platforms are selected, an additional reranking step is applied to the combined results for enhanced relevance.
 
 
 
