@@ -1,6 +1,8 @@
 # Hinaing Docs
 
-> **Thesis Title:** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> 
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
 This directory houses the thesis documentation for **Hinaing**, a **hierarchical multi-agent agentic AI system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
 

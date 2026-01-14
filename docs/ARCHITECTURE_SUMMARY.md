@@ -1,5 +1,9 @@
 # Hinaing: 7-Node Cognitive Architecture (13-Agent System)
-
+ 
+> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> 
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
+ 
 **Document Status**: Official Defense Reference
 **System Type**: Multi-Agentic System with Hierarchical Map-Reduce Topology
 
