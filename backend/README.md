@@ -1,6 +1,16 @@
-# Backend Insights Workflow
+---
+title: Hinaing Backend
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
 
-This backend powers the sentiment snapshot generator. The LangGraph pipeline in `app/services/insights/graph.py` orchestrates data collection, scoring, and summarization. To keep the frontend metrics “thesis-grade,” we plan to extend the backend in the following ways:
+# 7-Node Agentic Graphs (Hinaing Pipeline) 🛡️
+
+This backend powers the sentiment snapshot generator. The LangGraph pipeline in `app/services/insights/graph.py` orchestrates data collection, scoring, and summarization. This architecture is optimized for 16GB RAM / 2 vCPU environments. To keep the frontend metrics “thesis-grade,” we plan to extend the backend in the following ways:
 
 ## 1. Sentiment Model Upgrade
 
