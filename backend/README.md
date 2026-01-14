@@ -1,6 +1,6 @@
 ---
 title: Hinaing Backend
-emoji: ??
+emoji: 🛡️
 colorFrom: blue
 colorTo: indigo
 sdk: docker
@@ -8,4 +8,6 @@ app_port: 7860
 pinned: false
 ---
 
-# 7-Node Agentic Graphs
+# 7-Node Agentic Graphs 🛡️
+
+Unified Backend Architecture for precision civic intelligence.
