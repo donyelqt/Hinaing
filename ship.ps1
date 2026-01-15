@@ -28,36 +28,24 @@ git commit -m "$m"
 git push origin main
 Write-Host "✅ GitHub Synchronization Complete." -ForegroundColor Green
 
-# --- PHASE 2: Hugging Face (Backend Repository) ---
+# --- PHASE 2: Hugging Face (Backend Folder Only) ---
 Write-Host "`n[PHASE 2] Syncing Backend files to Hugging Face (hf)..." -ForegroundColor Yellow
-if (Test-Path $BACKEND_DIR) {
-    # Find which staged files belong to the backend
-    $backendFiles = $stagedFiles | Where-Object { $_ -like "backend/*" }
-    
-    if ($backendFiles) {
-        Set-Location $BACKEND_DIR
-        
-        # Sync the staging area for the sub-repo
-        foreach ($file in $backendFiles) {
-            $relativePath = $file.Substring(8) # Remove 'backend/' prefix
-            if (Test-Path $relativePath) {
-                git add $relativePath
-            }
-        }
-        
-        try {
-            git commit -m "$m"
-            Write-Host "🚀 Pushing to Hugging Face Production..." -ForegroundColor Blue
-            git push -f hf master:main
-        } catch {
-            Write-Host "💡 Note: Backend changes were already synced or nothing new for HF." -ForegroundColor Gray
-        }
-        
-        Set-Location $ROOT_DIR
-        Write-Host "✅ Hugging Face Deployment Triggered." -ForegroundColor Green
-    } else {
-        Write-Host "💡 Skipping Phase 2: No backend files were staged." -ForegroundColor Gray
+
+# Check if any staged/committed files belong to the backend
+$backendFiles = $stagedFiles | Where-Object { $_ -like "backend/*" }
+
+if ($backendFiles) {
+    try {
+        Write-Host "🚀 Extracting and pushing 'backend/' folder to Hugging Face..." -ForegroundColor Blue
+        # CTO-GRADE: Using subtree split & forced push to handle the history transition perfectly
+        $splitRev = git subtree split --prefix backend main
+        git push hf "$($splitRev):main" --force
+        Write-Host "✅ Hugging Face Deployment Complete." -ForegroundColor Green
+    } catch {
+        Write-Host "❌ Error: Hugging Face push failed. Check your internet or HF token." -ForegroundColor Red
     }
+} else {
+    Write-Host "💡 Skipping Phase 2: No backend files were modified." -ForegroundColor Gray
 }
 
 Write-Host "`n🏁 PIPELINE SUCCESSFUL: Precision update synchronized." -ForegroundColor Cyan
