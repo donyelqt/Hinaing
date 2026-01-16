@@ -107,20 +107,15 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
-  'tertiaryColor': '#e8f4e8',
   'primaryFontSize': '18px',
   'secondaryFontSize': '14px',
-  'tertiaryFontSize': '12px',
-  'lineColor': '#333333'
-}, 'flowchart': {
+  'tertiaryFontSize': '12px'
+ }, 'flowchart': {
   'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
   'padding': 25,
   'nodeSpacing': 40,
   'rankSpacing': 60
-}}}%%
+ }}}%%
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Sentiment Dashboard]
@@ -215,14 +210,6 @@ flowchart TB
     Request[SnapshotRequest] --> Node1
     SR --> Response[SnapshotResponse JSON]
     Response --> Frontend
-
-    style Node1 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node2 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node3 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node4 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node5 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node6 fill:#ffffff,stroke:#333,stroke-width:2px
-    style Node7 fill:#ffffff,stroke:#333,stroke-width:2px
 ```
 
 ### Updated Node 2: Retrieval Agent with Source-Level Reranking
@@ -243,14 +230,9 @@ This approach minimizes latency by performing reranking at the source level rath
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px',
-  'actorBackgroundColor': '#ffffff',
-  'actorBorderColor': '#333333'
-}}}%%
+  'secondaryFontSize': '12px'
+ }}}%%
 sequenceDiagram
     participant Client
     participant API as FastAPI
@@ -314,17 +296,13 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '16px',
-  'secondaryFontSize': '13px',
-  'lineColor': '#333333'
-}, 'flowchart': {
+  'secondaryFontSize': '13px'
+ }, 'flowchart': {
   'padding': 20,
   'nodeSpacing': 35,
   'rankSpacing': 50
-}}}%%
+ }}}%%
 graph LR
     subgraph External["External Services"]
         LS[LangSearch API]
@@ -413,16 +391,9 @@ The diagrams below document **AOSE principles** using AUML notation—showing ag
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
-  'tertiaryColor': '#e8f4e8',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px',
-  'classLabelBoxBackgroundColor': '#ffffff',
-  'classLabelBoxBorderColor': '#333333',
-  'classLabelFontSize': '14px'
-}}}%%
+  'secondaryFontSize': '12px'
+ }}}%%
 classDiagram
     %% AOSE Design: Worker Pattern Realization
     
@@ -530,12 +501,9 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}%%
+ }}}%%
 sequenceDiagram
     participant C as CoordinatorAgent
     participant QO as QueryOrchestratorAgent
@@ -560,12 +528,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}%%
+ }}}%%
 sequenceDiagram
     participant CA as ContextAugmentationAgent
     participant SA as SentimentAgent
@@ -589,12 +554,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}%%
+ }}}%%
 sequenceDiagram
     participant TR as ThemeRouterAgent
     participant TA as ThemeAnalyzer
@@ -635,12 +597,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#ffffff',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}%%
+ }}}%%
 sequenceDiagram
     participant MA as MemoryAgent
     participant VS as VectorStore
