@@ -107,14 +107,9 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
-  'tertiaryColor': '#000000',
   'primaryFontSize': '18px',
   'secondaryFontSize': '14px',
-  'tertiaryFontSize': '12px',
-  'lineColor': '#000000'
+  'tertiaryFontSize': '12px'
  }, 'flowchart': {
   'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
   'padding': 25,
@@ -235,13 +230,8 @@ This approach minimizes latency by performing reranking at the source level rath
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px',
-  'actorBackgroundColor': '#ffffff',
-  'actorBorderColor': '#000000'
+  'secondaryFontSize': '12px'
  }}}%%
 sequenceDiagram
     participant Client
@@ -306,12 +296,8 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '16px',
-  'secondaryFontSize': '13px',
-  'lineColor': '#000000'
+  'secondaryFontSize': '13px'
  }, 'flowchart': {
   'padding': 20,
   'nodeSpacing': 35,
@@ -405,15 +391,8 @@ The diagrams below document **AOSE principles** using AUML notation—showing ag
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
-  'tertiaryColor': '#000000',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px',
-  'classLabelBoxBackgroundColor': '#ffffff',
-  'classLabelBoxBorderColor': '#000000',
-  'classLabelFontSize': '14px'
+  'secondaryFontSize': '12px'
  }}}%%
 classDiagram
     %% AOSE Design: Worker Pattern Realization
@@ -522,9 +501,6 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -552,9 +528,6 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -581,9 +554,6 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -627,9 +597,6 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
-  'primaryColor': '#000000',
-  'primaryTextColor': '#000000',
-  'secondaryColor': '#000000',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
