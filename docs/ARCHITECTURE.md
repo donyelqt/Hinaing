@@ -250,8 +250,7 @@ This approach minimizes latency by performing reranking at the source level rath
   'secondaryFontSize': '12px',
   'actorBackgroundColor': '#ffffff',
   'actorBorderColor': '#333333'
-}}}
-%%
+}}}%%
 sequenceDiagram
     participant Client
     participant API as FastAPI
@@ -325,8 +324,7 @@ sequenceDiagram
   'padding': 20,
   'nodeSpacing': 35,
   'rankSpacing': 50
-}}}
-%%
+}}}%%
 graph LR
     subgraph External["External Services"]
         LS[LangSearch API]
@@ -424,8 +422,7 @@ The diagrams below document **AOSE principles** using AUML notation—showing ag
   'classLabelBoxBackgroundColor': '#ffffff',
   'classLabelBoxBorderColor': '#333333',
   'classLabelFontSize': '14px'
-}}}
-%%
+}}}%%
 classDiagram
     %% AOSE Design: Worker Pattern Realization
     
@@ -538,8 +535,7 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
   'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}
-%%
+}}}%%
 sequenceDiagram
     participant C as CoordinatorAgent
     participant QO as QueryOrchestratorAgent
@@ -569,8 +565,7 @@ sequenceDiagram
   'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}
-%%
+}}}%%
 sequenceDiagram
     participant CA as ContextAugmentationAgent
     participant SA as SentimentAgent
@@ -599,8 +594,7 @@ sequenceDiagram
   'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}
-%%
+}}}%%
 sequenceDiagram
     participant TR as ThemeRouterAgent
     participant TA as ThemeAnalyzer
@@ -646,8 +640,7 @@ sequenceDiagram
   'secondaryColor': '#f0f0f0',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
-}}}
-%%
+}}}%%
 sequenceDiagram
     participant MA as MemoryAgent
     participant VS as VectorStore
