@@ -1,8 +1,16 @@
 # Hinaing System Architecture
 
-> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
-
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+>
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
+>
+> **Future Implementation:** Hinaing v3.0 (Multi-Node Distributed System)
 
 ## Overview
 
@@ -16,11 +24,17 @@ Multi-Agentic AI system with real-time intelligent search and self learning RAG 
 |----------|--------|-------|
 | **Core Pipeline Agents** | 7 | QueryOrchestrator, Retrieval, Sentiment, Credibility, Context, ThemeRouter, Coordinator |
 | **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned by ThemeRouter) |
-| **Total** | **13** | 7 core + 6 theme-specific sub-agents |
+## Agent Count Summary (Federated Multi-Agent System)
 
-> **Sub-Agent Note**: Theme Agents are sub-agents dynamically spawned by the ThemeRouterAgent. They are only instantiated when their corresponding theme bucket contains documents. For example, if a user selects only "health" and "safety" focus areas, only HealthAgent and SafetyAgent will be spawned (2 sub-agents), not all 6.
+| Category | Agents | Responsibility |
+|----------|--------|----------------|
+| **Core Executive Agents** | 7 | Orchestration, Retrieval, Ensemble Sentiment, 5-Signal Credibility, Context, Routing, Synthesis |
+| **Specialist Domain Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (Conditional Parallel Experts) |
+| **Total Distributed Agents** | **13** | Hierarchical Multi-Agent Graph |
 
-> **Optimization Note**: Sentiment, Credibility, and Theme Router agents now run **in parallel** via `asyncio.gather` in a single unified analysis node, reducing latency significantly.
+> **Federated Autonomy**: Theme Agents are sub-agents dynamically spawned by the ThemeRouterAgent. They are only instantiated when their corresponding theme bucket contains documents. This **Conditional Parallel Execution** ensures high-performance resource management (SLA-driven).
+
+> **Neuro-Symbolic Optimization**: Sentiment, Credibility, and Theme Router agents run **concurrently** via `asyncio.gather`, while the Ensemble logic utilizes both statistical (RoBERTa) and neural (Gemini) weights.
 
 ## LLM Configuration
 
@@ -35,59 +49,57 @@ Multi-Agentic AI system with real-time intelligent search and self learning RAG 
 | **RoBERTa** | `twitter-roberta-base-sentiment-latest` | Local model, 40% ensemble weight |
 | **Embeddings** | `BAAI/bge-small-en-v1.5` | Local 384-dim vectors for RAG (upgraded from MiniLM) |
 
-## 7-Node Self-Learning Pipeline
+## 7-Node Self-Learning Pipeline (Control Flow)
 
-The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop where fresh external data is merged with internal memory, analyzed, and then consolidated back into the knowledge base.
+The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop where fresh external data is merged with internal memory, analyzed, and then consolidated back into the knowledge base (Temporal Memory Persistence).
 
 **Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
 **State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
 
-> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency. The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating the need for retry loops. This architecture ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (Sub-30 seconds end-to-end) while enabling continuous systemic learning.
 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    7-NODE MULTI-AGENT SELF-LEARNING PIPELINE                │
+│                 (13-Agent Orchestrated Cognitive Architecture)              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
 │  │   NODE 1     │    │   NODE 2     │    │   NODE 3     │                  │
-│  │   Query      │───▶│  Retrieval   │───▶│   Context    │                  │
-│  │ Orchestrator │    │    Agent     │    │    Agent     │                  │
-│  │    Agent     │    │ (Web/FB/RD)  │    │  (Recall)    │                  │
+│  │  Query Plan  │───▶│   Ingestion  │───▶│   Recall     │                  │
+│  │ (Orchestrator)│    │   (Retrieval)│    │ (Context/RAG)│                  │
 │  └──────────────┘    └──────────────┘    └──────────────┘                  │
 │                                                 │                           │
 │                                                 ▼                           │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
 │  │   NODE 7     │    │   NODE 6     │    │   NODE 4     │                  │
-│  │ Coordinator  │◀───│  6 Theme     │◀───│  3 Agents    │                  │
-│  │    Agent     │    │   Agents     │    │  (Parallel)  │                  │
-│  │ (Narrative)  │    │  (Parallel)  │    │ Sent+Cred+TR │                  │
+│  │  Executive   │◀───│  Specialist  │◀───│  Enrichment  │                  │
+│  │ (Synthesis)  │    │  (Experts)   │    │  (Analysis)  │                  │
 │  └──────────────┘    └──────────────┘    └──────────────┘                  │
 │                                                 │                           │
 │                                                 ▼                           │
 │                                          ┌──────────────┐                  │
 │                                          │   NODE 5     │                  │
-│                                          │   Context    │◀─── LEARNING     │
-│                                          │    Agent     │     LOOP         │
-│                                          │ (Consolidate)│                  │
+│                                          │ Consolidation│◀── LEARNING      │
+│                                          │ (Consolidate)│     LOOP         │
 │                                          └──────────────┘                  │
 │                                                                             │
-│  TOTAL: 13 AGENTS (7 Core + 6 Theme)                                       │
+│  TOTAL: 13 AGENTS (Federated Hierarchy)                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Node Descriptions (Agent Mapping)
+### Node Descriptions (Agent & Node Mapping)
 
 | Node | Agent(s) | Function | Key Components |
 |------|----------|----------|----------------|
-| 1 | **QueryOrchestratorAgent** | ReAct reasoning to generate diverse search queries | KEYWORD_CLUSTERS (context engineering), 4 tools, Gemini 2.5 Flash |
-| 2 | **RetrievalAgent** | Fetch fresh documents from web, Facebook, Reddit | LangSearch, PRAW, Apify, parallel batching |
-| 3 | **ContextAugmentationAgent** | RAG retrieval: Query embedding → **Cosine similarity** → Top-K with focus_area filtering | Qdrant Cloud, BGE-small-en-v1.5, `retrieve_knowledge()`, keyword reranking |
-| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel sentiment + credibility + theme routing | asyncio.gather, RoBERTa+Gemini ensemble, 5-signal credibility |
-| 5 | **ContextAugmentationAgent** | RAG ingestion: Chunk → Embed → Store in Qdrant with focus_area/topic metadata | SemanticChunker, VectorStore, `consolidate_memory()` |
-| 6 | **ThemeAgent** ×6 (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Generate insights per theme category (sub-agents conditionally spawned) | `run_theme_agent()` ×6 via ThreadPoolExecutor |
-| 7 | **CoordinatorAgent** | Assemble final response with narrative | `coordinator_agent.run()`, Gemini 2.5 Flash-Lite |
+| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (KEYWORD_CLUSTERS), 4 Specialized Tools, Gemini 2.5 Flash-Lite |
+| 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving |
+| 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity |
+| 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Parallel Data Enrichment & Verification | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing |
+| 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors |
+| 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | Conditional Sub-Agent Spawning, `run_theme_agent()` ThreadPoolExecutor |
+| 7 | **Narrative Synthesis Executive** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly |
 
 ## System Architecture: Hierarchical DAG-Based Multi-Agent Agentic Workflow
 
@@ -353,6 +365,252 @@ graph LR
     %% Theme Router routes to Theme Agents
     TRA -.->|routes docs| TH1 & TH2 & TH3 & TH4 & TH5 & TH6
 ```
+
+## Agent UML Design (AOSE Methodology)
+
+> **Methodology:** Agent-Oriented Software Engineering (AOSE)
+> 
+> This section presents the Agent UML (AUML) diagrams demonstrating the AOSE design principles applied in the Hinaing system. AUML extends UML to model agent-based systems, showing agent roles, responsibilities, and interaction protocols.
+
+### Agent Class Hierarchy (AUML Class Diagram)
+
+```mermaid
+classDiagram
+    %% Core Agent Base Class
+    class BaseAgent {
+        +String agent_id
+        +String agent_type
+        +String agent_role
+        +execute(input)
+        +communicate(message)
+    }
+
+    %% Core Pipeline Agents
+    class QueryOrchestratorAgent {
+        +llm: ChatGoogleGenerativeAI
+        +tools: List
+        +KEYWORD_CLUSTERS
+        +max_queries: int
+        +run(request) QueryPlan
+    }
+
+    class RetrievalAgent {
+        +sources: List
+        +fetch_documents(QueryPlan) List~WebDocument~
+        +merge_results() List~WebDocument~
+    }
+
+    class ContextAugmentationAgent {
+        +vector_store: VectorStore
+        +chunker: SemanticChunker
+        +retrieve_knowledge()
+        +consolidate_memory()
+        +search_with_sentiment()
+    }
+
+    class SentimentAgent {
+        +roberta_model: RoBERTa
+        +gemini_model: GenerativeModel
+        +batch_size: int
+        +analyze_batch()
+    }
+
+    class CredibilityAgent {
+        +embedding_service: EmbeddingService
+        +llm: LLMCredibilityAnalyzer
+        +tavily_api_key: String
+        +fact_check_api_key: String
+        +run() List~WebDocument~
+    }
+
+    class ThemeRouterAgent {
+        +theme_groups: Dict
+        +embedding_service: EmbeddingService
+        +_theme_embeddings: Dict
+        +_similarity_threshold: float
+        +run() Dict
+    }
+
+    class CoordinatorAgent {
+        +client: GeminiClient
+        +system_prompt: String
+        +run() SnapshotResponse
+    }
+
+    %% Theme Analysis (Function-based, not classes)
+    class ThemeAnalyzer {
+        +gemini_model: GenerativeModel
+        +theme_focus: Dict
+        +run_theme_agent() Insight
+    }
+
+    %% Inheritance Relationships
+    BaseAgent <|-- QueryOrchestratorAgent
+    BaseAgent <|-- RetrievalAgent
+    BaseAgent <|-- ContextAugmentationAgent
+    BaseAgent <|-- SentimentAgent
+    BaseAgent <|-- CredibilityAgent
+    BaseAgent <|-- ThemeRouterAgent
+    BaseAgent <|-- CoordinatorAgent
+
+    %% Composition Relationships
+    QueryOrchestratorAgent "uses" o--> ChatGoogleGenerativeAI
+    QueryOrchestratorAgent "uses" o--> "4" Tool
+    RetrievalAgent "uses" o--> "3" DataSource
+    ContextAugmentationAgent "uses" o--> VectorStore
+    ContextAugmentationAgent "uses" o--> SemanticChunker
+    SentimentAgent "uses" o--> RoBERTa
+    SentimentAgent "uses" o--> GenerativeModel
+    CredibilityAgent "uses" o--> EmbeddingService
+    CredibilityAgent "uses" o--> LLMCredibilityAnalyzer
+    ThemeRouterAgent "uses" o--> EmbeddingService
+    CoordinatorAgent "uses" o--> GeminiClient
+    ThemeAnalyzer "uses" o--> GenerativeModel
+```
+
+### Agent Interaction Protocols (AUML Sequence Diagrams)
+
+#### Protocol 1: Query Planning Protocol (Request-Response)
+
+```mermaid
+sequenceDiagram
+    participant C as CoordinatorAgent
+    participant QO as QueryOrchestratorAgent
+    participant T1 as analyze_focus_areas
+    participant T2 as generate_query
+    participant T3 as expand_contextual_queries
+    participant T4 as evaluate_query
+
+    C->>QO: execute(SnapshotRequest)
+    QO->>T1: analyze_focus_areas(focus_areas)
+    T1-->>QO: KEYWORD_CLUSTERS
+    QO->>T2: generate_query(clusters)
+    T2-->>QO: static_queries
+    QO->>T3: expand_contextual_queries(date)
+    T3-->>QO: contextual_queries
+    QO->>T4: evaluate_query(all_queries)
+    T4-->>QO: coverage_assessment
+    QO-->>C: QueryPlan(6+ diverse queries)
+```
+
+#### Protocol 2: Parallel Analysis Protocol (Fan-Out/Fan-In)
+
+```mermaid
+sequenceDiagram
+    participant CA as ContextAugmentationAgent
+    participant SA as SentimentAgent
+    participant CR as CredibilityAgent
+    participant TR as ThemeRouterAgent
+
+    CA->>SA: analyze(enriched_documents)
+    CA->>CR: verify(enriched_documents)
+    CA->>TR: route(enriched_documents)
+
+    par asyncio.gather (Parallel Execution)
+        SA-->>CA: sentiment_results
+        CR-->>CA: credibility_scores
+        TR-->>CA: theme_routed_docs
+    end
+
+    CA-->>ContextAugmentationAgent: enriched_documents
+```
+
+#### Protocol 3: Conditional Theme Agent Spawning (Dynamic Creation)
+
+```mermaid
+sequenceDiagram
+    participant TR as ThemeRouterAgent
+    participant TA as ThemeAnalyzer
+    participant INFRA as run_theme_agent()
+    participant HEALTH as run_theme_agent()
+    participant SAFETY as run_theme_agent()
+    participant TOURISM as run_theme_agent()
+    participant ECONOMY as run_theme_agent()
+    participant ENV as run_theme_agent()
+
+    TR->>TA: route(documents)
+    TA->>TA: Check active themes based on focus_areas
+
+    alt Bucket has documents
+        TA->>INFRA: run_theme_agent("Infrastructure", docs)
+        TA->>HEALTH: run_theme_agent("Health & Wellness", docs)
+        TA->>SAFETY: run_theme_agent("Public Safety", docs)
+        TA->>TOURISM: run_theme_agent("Tourism & Events", docs)
+        TA->>ECONOMY: run_theme_agent("Business & Economy", docs)
+        TA->>ENV: run_theme_agent("Environment", docs)
+    else Bucket empty
+        TA-->>TR: skip (no agent spawned)
+    end
+
+    par Parallel Execution (ThreadPool)
+        INFRA-->>TA: InfrastructureInsight
+        HEALTH-->>TA: HealthInsight
+        SAFETY-->>TA: SafetyInsight
+        TOURISM-->>TA: TourismInsight
+        ECONOMY-->>TA: EconomyInsight
+        ENV-->>TA: EnvironmentInsight
+    end
+
+    TA-->>TR: theme_insights_map
+```
+
+#### Protocol 4: Self-Learning Memory Protocol (Cyclic RAG)
+
+```mermaid
+sequenceDiagram
+    participant MA as MemoryAgent
+    participant VS as VectorStore
+    participant ES as EmbeddingService
+    participant SC as SemanticChunker
+
+    Note over MA: Node 3: Recall Phase
+    MA->>VS: cosine_similarity_search(query, k=10)
+    VS-->>MA: relevant_chunks
+    MA->>ES: embed(chunks)
+    ES-->>MA: embeddings
+    MA-->>ContextAugmentationAgent: internal_documents
+
+    Note over MA: Node 5: Consolidation Phase
+    MA->>SC: chunk(enriched_documents)
+    SC-->>MA: semantic_chunks
+    MA->>ES: embed(chunks)
+    ES-->>MA: embeddings
+    MA->>VS: upsert(chunks, embeddings, metadata)
+    VS-->>MA: confirm
+
+    Note over MA: Temporal Loop Complete
+    MA-->>ContextAugmentationAgent: memory_consolidated
+```
+
+### Agent Responsibility Model (AUML Responsibility Matrix)
+
+| Agent | Responsibility | Type | AOSE Pattern |
+|-------|----------------|------|--------------|
+| **QueryOrchestratorAgent** | Autonomous query planning with ReAct reasoning | Cognitive | Goal Delegation |
+| **RetrievalAgent** | Multi-source data ingestion and diversity merging | Information | Resource Aggregation |
+| **ContextAugmentationAgent** | Dual operations: memory recall and consolidation | Informational | Knowledge Management |
+| **SentimentAgent** | Ensemble sentiment quantification (RoBERTa + Gemini) | Analytical | Model Composition |
+| **CredibilityAgent** | Multi-signal verification (7 signals) and misinformation detection | Analytical | Trust Assessment |
+| **ThemeRouterAgent** | Semantic content classification using BGE embeddings | Coordination | Task Allocation |
+| **CoordinatorAgent** | Narrative synthesis and response generation | Management | Result Integration |
+| **ThemeAnalyzer** | Domain-specific insight generation (function-based) | Specialized | Expert Pattern |
+
+### AOSE Design Patterns Applied
+
+| Pattern | Application | Benefit |
+|---------|-------------|---------|
+| **Role-Based Design** | 7 core agents with distinct roles | Separation of concerns |
+| **Hierarchical Organization** | Coordinator → Core → ThemeAnalyzer | Delegation structure |
+| **Conditional Execution** | ThemeAnalyzer only called when documents exist | Resource efficiency |
+| **Parallel Protocol Execution** | asyncio.gather for Nodes 4 & 6 | Performance optimization |
+| **Self-Learning Memory Loop** | Read-Write RAG (Nodes 3 & 5) | Non-parametric learning |
+| **Message Passing** | AUML protocol sequences | Inter-agent communication |
+| **Ensemble Composition** | RoBERTa + Gemini for sentiment | Model diversity |
+| **Multi-Signal Verification** | 7 credibility signals | Robust trust assessment |
+
+> **AOSE Validation:** The Agent UML diagrams above demonstrate systematic application of Agent-Oriented Software Engineering principles, including role-based agent design, hierarchical organization, and protocol-based interactions suitable for multi-agent system research.
+
+---
 
 ## Theme Groups
 
