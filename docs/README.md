@@ -1,7 +1,13 @@
 # Hinaing Docs
 
-> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
-> 
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+>
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
 This directory houses the thesis documentation for **Hinaing**, a **hierarchical multi-agent agentic AI system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
@@ -27,21 +33,24 @@ Under this license, others are free to share and adapt this work for non-commerc
 
 > **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
-## Agent Summary (13 Total)
+## Agent Summary (18 Total - Federated Multi-Agent System)
 
 | Category | Count | Agents |
 |----------|-------|--------|
 | **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
-| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (conditionally spawned) |
+| **Credibility Sub-Agents** | 5 | DomainTrustAgent, CrossReferenceAgent, FactCheckAgent, LLMAnalysisAgent, TavilyAgent (parallel execution) |
+| **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (conditionally spawned via get_theme_agent() factory) |
 
-> **Note**: Theme Sub-Agents are dynamically spawned by ThemeRouterAgent only when their theme bucket contains documents.
+> **Theme Sub-Agents**: Spawned only when (1) theme bucket has documents AND (2) theme matches requested focus_areas. Dynamic agent count (0-6).
+>
+> **Credibility Sub-Agents**: All 5 run in parallel via `asyncio.gather()` for 3-5x speedup. Always spawned.
 
 ## Novel Contributions
 
 1. **Neuro-Symbolic Cognitive Architecture (Context-Engineered Multi-Agent System)** – Combines rigid expert rules (Symbolic Safety) with flexible LLM reasoning (Neural Nuance). The **7-node pipeline itself is Context Engineering**: each node, agent specialization, keyword cluster, and theme definition injects domain knowledge into the system (Structural Inductive Bias).
 2. **Self-Learning Cyclic RAG (Non-Parametric Systemic Learning)** – Node 3 recalls memory → Node 5 writes back. System "learns" via state accumulation without weight updates.
-3. **Conditional Sub-Agent Spawning** – Theme agents instantiated only when their bucket has documents (dynamic 7-13 agent count).
-4. **5-Signal Epistemic Credibility Framework** – Domain Trust + Semantic Cross-Reference + Google Fact Check + LLM Pattern Detection + Tavily web verification for rigorous truth quantification.
+3. **Conditional Sub-Agent Spawning** – 11 sub-agents dynamically spawned: 5 Credibility + 6 Theme (dynamic 7-18 agent count based on routing results).
+4. **5-Signal Epistemic Credibility Framework (with True Sub-Agents)** – DomainTrustAgent + CrossReferenceAgent + FactCheckAgent + LLMAnalysisAgent + TavilyAgent for rigorous truth quantification. Each signal is an independent class with `score()` method running in parallel.
 5. **Ensemble Sentiment with Agreement Tracking** – RoBERTa + Gemini with `full_agreement`, `roberta_dominant`, `gemini_dominant` metadata.
 6. **A Priori Ontology (KEYWORD_CLUSTERS)** – Pre-defined hierarchical knowledge structure guides the QueryOrchestratorAgent to generate diverse, location-aware queries (Inductive Bias).
 
@@ -58,24 +67,25 @@ Under this license, others are free to share and adapt this work for non-commerc
 ## Application Overview
 
 ### Frontend (Next.js 15 + React 19)
-- **Sentiment Generator** – Dashboard for configuring and running 13-agent analysis
-- **Chat Analyzer** – Conversational interface with streaming 13-agent pipeline
+- **Sentiment Generator** – Dashboard for configuring and running 18-agent analysis
+- **Chat Analyzer** – Conversational interface with streaming 18-agent pipeline
 - **AI Assistant** – Quick Q&A with single ChatAgent + LangSearch
 
 ### Backend (FastAPI + LangGraph)
-7-Node Multi-Agent Pipeline (13 Agents):
+7-Node Multi-Agent Pipeline (18 Agents):
 
 | Node | Agent(s) | Function |
 |------|----------|----------|
 | 1 | **QueryOrchestratorAgent** | ReAct reasoning with KEYWORD_CLUSTERS for 6 diverse queries |
 | 2 | **RetrievalAgent** | LangSearch + Facebook + Reddit ingestion |
 | 3 | **ContextAugmentationAgent** | Qdrant cosine similarity search for memory recall |
-| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel analysis (asyncio.gather) |
-| 5 | **ContextAugmentationAgent** | Ingest enriched documents to vector store |
-| 6 | **ThemeAgent ×6** | `run_theme_agent()` ×6 via ThreadPoolExecutor |
+| 4 | **SentimentAgent** + **CredibilityAgent** + **ThemeRouterAgent** | Parallel analysis (asyncio.gather - 3 agents) |
+| 6 | **6 Theme Sub-Agents** | get_theme_agent() factory spawns InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 | 7 | **CoordinatorAgent** | `coordinator_agent.run()` for narrative generation |
 
-## Architecture Highlights (13 Agents)
+> **Total: 18 Autonomous Agents** (7 Core + 5 Credibility + 6 Theme)
+
+## Architecture Highlights (18 Agents)
 
 ### 1. QueryOrchestratorAgent (ReAct + Context Engineering)
 Located in `backend/app/services/agents/query_orchestrator.py`:
@@ -97,13 +107,15 @@ Located in `backend/app/services/agents/sentiment_agent.py`:
 - **Gemini** (60%) – Context-aware LLM classification
 - Rich metadata: both predictions, confidence scores, model agreement
 
-### 4. CredibilityAgent (5-Signal)
+### 4. CredibilityAgent (5 True Sub-Agents - Parallel Execution)
 Located in `backend/app/services/agents/credibility_agent.py`:
-- Domain Trust (25%) – Tiered scoring by source type
-- Semantic Cross-Reference (20%) – BGE cosine similarity
-- Google Fact Check API (15%) – External fact-checker verification
-- LLM Pattern Recognition (20%) – Gemini misinformation detection
-- Tavily Web Verification (20%) – Real-time claim verification
+- **DomainTrustAgent** (25%) – Tiered scoring by source type (gov.ph = 0.95, social = 0.45)
+- **CrossReferenceAgent** (20%) – BGE cosine similarity for semantic corroboration
+- **FactCheckAgent** (15%) – Google Fact Check API external verification
+- **LLMAnalysisAgent** (20%) – Gemini misinformation pattern detection
+- **TavilyAgent** (20%) – Real-time web claim verification
+- Each sub-agent is an independent class with `score()` method (no shared base class - orthogonal algorithms)
+- All 5 run in parallel via asyncio.gather for 3-5x speedup
 
 ### 5. ContextAugmentationAgent (RAG)
 Located in `backend/app/services/agents/context_agent.py`:
@@ -118,10 +130,12 @@ Located in `backend/app/services/insights/agents.py`:
 - Routes documents to 6 theme buckets based on keywords
 - Runs in parallel with SentimentAgent and CredibilityAgent
 
-### 7. ThemeAgent (×6 Parallel Execution)
+### 7. ThemeAgent (×6 True Sub-Agents - Worker Pattern)
 Located in `backend/app/services/agents/theme_agent.py`:
-- Single `run_theme_agent()` function called 6 times with different theme labels
-- Themes: Infrastructure, Health & Wellness, Public Safety, Tourism & Events, Business & Economy, Environment
+- 6 true sub-agents with class-based `run()` methods: InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent
+- `get_theme_agent()` factory function for conditional spawning
+- BaseThemeAgent base class with shared logic
+- Each agent is autonomous with theme-specific focus and prompts
 - ThreadPoolExecutor with 6 workers for parallel execution
 
 ### 8. ChatAgent (Control Group)
@@ -130,7 +144,13 @@ Located in `backend/app/services/agents/chat_agent.py`:
 - Gemini 2.0 Flash with function calling
 - Baseline comparison for thesis
 
-## Latest Updates (Dec 12, 2025)
+## Latest Updates (Jan 16, 2026)
+
+### 18-Agent Federated Multi-Agent System
+- **11 True Sub-Agents Implemented**: 5 Credibility + 6 Theme
+- **Credibility Sub-Agents**: DomainTrustAgent, CrossReferenceAgent, FactCheckAgent, LLMAnalysisAgent, TavilyAgent (no shared base class - orthogonal dimensions)
+- **Theme Sub-Agents**: InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (BaseThemeAgent + factory pattern)
+- **AOSE Compliance**: All sub-agents are autonomous with `run()`/`score()` methods
 
 ### 7-Node Multi-Agent Self-Learning Architecture
 - **Node 3**: ContextAugmentationAgent retrieves memories from Qdrant
@@ -194,9 +214,9 @@ Located in `backend/app/services/agents/chat_agent.py`:
 | RetrievalAgent | `backend/app/services/insights/agents.py` |
 | SentimentAgent | `backend/app/services/agents/sentiment_agent.py` |
 | CredibilityAgent | `backend/app/services/agents/credibility_agent.py` |
-| ContextAugmentationAgent | `backend/app/services/agents/context_agent.py` |
+| Credibility Sub-Agents | `backend/app/services/agents/credibility_agent.py` |
 | ThemeRouterAgent | `backend/app/services/insights/agents.py` |
-| ThemeAgent (×6) | `backend/app/services/agents/theme_agent.py` |
+| Theme Sub-Agents (×6) | `backend/app/services/agents/theme_agent.py` |
 | CoordinatorAgent | `backend/app/services/agents/coordinator_agent.py` |
 | ChatAgent (Control) | `backend/app/services/agents/chat_agent.py` |
 | LangGraph Pipeline | `backend/app/services/insights/graph.py` |
