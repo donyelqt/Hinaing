@@ -120,8 +120,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
   'padding': 25,
   'nodeSpacing': 40,
   'rankSpacing': 60
-}}}
-%%
+}}}%%
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Sentiment Dashboard]
