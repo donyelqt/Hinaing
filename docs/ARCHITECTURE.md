@@ -107,9 +107,6 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 > **Note:** This is a **detailed implementation diagram** showing internal agent components, tools, and APIs. For a high-level conceptual diagram showing the overall/summarized pipeline flow and temporal memory loop, see `ARCHITECTURE_SUMMARY.md`.
 
 ```mermaid
----
-config:
-  theme: neutral
 %%{init: {'theme': 'base', 'themeVariables': { 
   'primaryColor': '#1e1e1e',
   'primaryTextColor': '#e0e0e0',
