@@ -16,23 +16,24 @@
 
 Multi-Agentic AI system with real-time intelligent search and self learning RAG for context-aware public opinion analysis in Baguio City. It utilizes a **Neuro-Symbolic Graph-of-Thought** control flow and features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation (Non-Parametric Systemic Learning).
 
-> **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (13 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
+> **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (18 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
 ## Agent Count Summary
 
 | Category | Agents | Notes |
 |----------|--------|-------|
 | **Core Pipeline Agents** | 7 | QueryOrchestrator, Retrieval, Sentiment, Credibility, Context, ThemeRouter, Coordinator |
-| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned by ThemeRouter) |
+| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned by Node 6 based on focus_areas) |
 ## Agent Count Summary (Federated Multi-Agent System)
 
 | Category | Agents | Responsibility |
 |----------|--------|----------------|
 | **Core Executive Agents** | 7 | Orchestration, Retrieval, Ensemble Sentiment, 5-Signal Credibility, Context, Routing, Synthesis |
-| **Specialist Domain Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (Conditional Parallel Experts) |
-| **Total Distributed Agents** | **13** | Hierarchical Multi-Agent Graph |
+| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (Conditional Parallel Execution via get_theme_agent() factory - TRUE class-based sub-agents) |
+| **Credibility Sub-Agents** | 5 | DomainTrust, CrossReference, FactCheck, LLMAnalysis, Tavily (Parallel Ensemble) |
+| **Total Federated Agents** | **18** | Hierarchical Multi-Agent Graph |
 
-> **Federated Autonomy**: Theme Agents are sub-agents dynamically spawned by the ThemeRouterAgent. They are only instantiated when their corresponding theme bucket contains documents. This **Conditional Parallel Execution** ensures high-performance resource management (SLA-driven).
+> **Federated Autonomy**: Theme processing uses `get_theme_agent()` factory function to spawn **true class-based sub-agents** (InfrastructureAgent, HealthAgent, etc.) conditionally invoked by Node 6 based on: (1) theme bucket has documents (from ThemeRouterAgent routing) AND (2) theme matches requested focus_areas. Each theme agent is a dataclass with `run()` method implementing the **Worker Pattern**. This **Conditional Parallel Execution** ensures high-performance resource management (SLA-driven).
 
 > **Neuro-Symbolic Optimization**: Sentiment, Credibility, and Theme Router agents run **concurrently** via `asyncio.gather`, while the Ensemble logic utilizes both statistical (RoBERTa) and neural (Gemini) weights.
 
@@ -62,7 +63,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    7-NODE MULTI-AGENT SELF-LEARNING PIPELINE                │
-│                 (13-Agent Orchestrated Cognitive Architecture)              │
+│              (18-AGENT FEDERATED MULTI-AGENT SYSTEM)                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
@@ -85,7 +86,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 │                                          │ (Consolidate)│     LOOP         │
 │                                          └──────────────┘                  │
 │                                                                             │
-│  TOTAL: 13 AGENTS (Federated Hierarchy)                                     │
+│  FEDERATED: 7 Core + 6 Theme + 5 Credibility = 18 Total Agents              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -98,7 +99,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 | 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity |
 | 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Parallel Data Enrichment & Verification | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing |
 | 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors |
-| 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | Conditional Sub-Agent Spawning, `run_theme_agent()` ThreadPoolExecutor |
+| 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | True Class-Based Sub-Agents with `run()` methods, `get_theme_agent()` factory for conditional spawning |
 | 7 | **Narrative Synthesis Executive** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly |
 
 ## System Architecture: Hierarchical DAG-Based Multi-Agent Agentic Workflow
@@ -106,6 +107,9 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 > **Note:** This is a **detailed implementation diagram** showing internal agent components, tools, and APIs. For a high-level conceptual diagram showing the overall/summarized pipeline flow and temporal memory loop, see `ARCHITECTURE_SUMMARY.md`.
 
 ```mermaid
+---
+config:
+  theme: neutral
 %%{init: {'theme': 'base', 'themeVariables': { 
   'primaryColor': '#1e1e1e',
   'primaryTextColor': '#e0e0e0',
@@ -169,14 +173,21 @@ flowchart TB
                 IntDocs --> Merge
             end
 
-            subgraph Node4["Node 4: Unified Analysis"]
+            subgraph Node4["Node 4: Unified Analysis (asyncio.gather)"]
                 direction TB
-                subgraph Parallel["asyncio.gather"]
+                subgraph Parallel["Node 4: Parallel Agents"]
                     SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
-                    CA[CredibilityAgent<br/>5-Signal Ensemble]
+                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
+                        direction LR
+                        DT[DomainTrustAgent<br/>25%]
+                        CR[CrossReferenceAgent<br/>20%]
+                        FC[FactCheckAgent<br/>15%]
+                        LL[LLMAnalysisAgent<br/>20%]
+                        TV[TavilyAgent<br/>20%]
+                    end
                     TR[ThemeRouterAgent<br/>6 theme buckets]
                 end
-                SA & CA & TR --> ED[Enriched + Routed Docs]
+                SA & Cred & TR --> ED[Enriched + Routed Docs]
             end
 
             subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
@@ -344,7 +355,14 @@ graph LR
         
         subgraph NODE4["Node 4: Unified Analysis (asyncio.gather)"]
             SNA[Sentiment Agent]
-            CRA[Credibility Agent]
+            subgraph CRED["CredibilityAgent (5 Sub-Agents)"]
+                direction LR
+                DT[DomainTrust]
+                CR[CrossRef]
+                FC[FactCheck]
+                LL[LLMAnalysis]
+                TV[Tavily]
+            end
             TRA[Theme Router]
         end
         
@@ -373,8 +391,10 @@ graph LR
     GEMINI --> CRA
     GEMINI --> TH1 & TH2 & TH3 & TH4 & TH5 & TH6
     GEMINI --> NODE7
-    TAVILY --> CRA
-    GFACT --> CRA
+    TAVILY --> CRED
+    GFACT --> CRED
+    TAVILY --> TV
+    GFACT --> FC
     ROBERTA --> SNA
     BGE --> NODE3
     BGE --> NODE5
@@ -475,6 +495,66 @@ classDiagram
         "Narrative synthesis"
     }
 
+    CredibilityAgent "coordinates" o--> "5" CredibilitySubAgent
+    CredibilitySubAgent <|-- DomainTrustAgent
+    CredibilitySubAgent <|-- CrossReferenceAgent
+    CredibilitySubAgent <|-- FactCheckAgent
+    CredibilitySubAgent <|-- LLMAnalysisAgent
+    CredibilitySubAgent <|-- TavilyAgent
+    
+    %% Theme Sub-Agents (6 Domain Experts) - Spawned by get_theme_agent() factory in Node 6
+    %% ThemeRouterAgent only ROUTES to these, does NOT spawn them
+    class ThemeAgent {
+        <<interface>>
+        +theme_label: String
+        +run(documents) List~Insight~
+    }
+    
+    class InfrastructureAgent {
+        <<dataclass>>
+        +theme_label: String = "infrastructure"
+        +run(documents) List~Insight~
+    }
+    
+    class HealthAgent {
+        <<dataclass>>
+        +theme_label: String = "health"
+        +run(documents) List~Insight~
+    }
+    
+    class SafetyAgent {
+        <<dataclass>>
+        +theme_label: String = "safety"
+        +run(documents) List~Insight~
+    }
+    
+    class TourismAgent {
+        <<dataclass>>
+        +theme_label: String = "tourism"
+        +run(documents) List~Insight~
+    }
+    
+    class EconomyAgent {
+        <<dataclass>>
+        +theme_label: String = "economy"
+        +run(documents) List~Insight~
+    }
+    
+    class EnvironmentAgent {
+        <<dataclass>>
+        +theme_label: String = "environment"
+        +run(documents) List~Insight~
+    }
+    
+    %% Node 6 spawns Theme Agents via factory (NOT ThemeRouterAgent)
+    Node6 "spawns via" o--> "6" ThemeAgent
+    ThemeAgent <|-- InfrastructureAgent
+    ThemeAgent <|-- HealthAgent
+    ThemeAgent <|-- SafetyAgent
+    ThemeAgent <|-- TourismAgent
+    ThemeAgent <|-- EconomyAgent
+    ThemeAgent <|-- EnvironmentAgent
+    
     %% Composition (AOSE relationships)
     QueryOrchestratorAgent "uses" o--> ChatGoogleGenerativeAI
     QueryOrchestratorAgent "uses" o--> "4" Tool
@@ -502,7 +582,7 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 | **Node 3** | ContextAugmentationAgent | Knowledge Management | Memory recall |
 | **Node 4** | [3 parallel agents] | Model Composition | asyncio.gather |
 | **Node 5** | ContextAugmentationAgent | Knowledge Management | Memory consolidation |
-| **Node 6** | ThemeAgent | Expert Pattern | ThreadPoolExecutor |
+| **Node 6** | get_theme_agent() (factory) | Expert Pattern | Class-based Theme Agents with run() |
 | **Node 7** | CoordinatorAgent | Result Integration | Narrative synthesis |
 
 ### Defense Statement: AOSE Compliance
@@ -588,39 +668,37 @@ sequenceDiagram
   'secondaryFontSize': '11px'
  }}}%%
 sequenceDiagram
-    participant TR as ThemeRouterAgent
-    participant TA as ThemeAnalyzer
-    participant INFRA as run_theme_agent()
-    participant HEALTH as run_theme_agent()
-    participant SAFETY as run_theme_agent()
-    participant TOURISM as run_theme_agent()
-    participant ECONOMY as run_theme_agent()
-    participant ENV as run_theme_agent()
-
-    TR->>TA: route(documents)
-    TA->>TA: Check active themes based on focus_areas
-
-    alt Bucket has documents
-        TA->>INFRA: run_theme_agent("Infrastructure", docs)
-        TA->>HEALTH: run_theme_agent("Health & Wellness", docs)
-        TA->>SAFETY: run_theme_agent("Public Safety", docs)
-        TA->>TOURISM: run_theme_agent("Tourism & Events", docs)
-        TA->>ECONOMY: run_theme_agent("Business & Economy", docs)
-        TA->>ENV: run_theme_agent("Environment", docs)
-    else Bucket empty
-        TA-->>TR: skip (no agent spawned)
+    participant N4 as Node 4
+    participant TRA as ThemeRouterAgent
+    participant TA as get_theme_agent()
+    participant SA as Sub-Agent*
+    
+    Note over N4: Node 4: Parallel Analysis
+    N4->>TRA: route(documents)
+    TRA-->>N4: theme_documents (dict of theme buckets)
+    
+    Note over TRA: ThemeRouterAgent ONLY routes docs
+    Note over TRA: It does NOT spawn sub-agents!
+    
+    N4->>TA: get_theme_agent(theme_key)
+    TA->>SA: InfrastructureAgent(theme_key, docs)
+    SA-->>TA: agent instance
+    
+    Note over SA: Each ThemeAgent is a true dataclass
+    Note over SA: with run() method (Worker Pattern)
+    
+    TA->>SA: agent.run()
+    SA-->>TA: ThemeInsight
+    
+    alt Bucket has documents AND theme in focus_areas
+        TA->>SA: InfrastructureAgent.run()
+        SA-->>TA: InfrastructureInsight
+        Note over TA: 6 Theme Agents run in parallel (ThreadPool)
+    else Bucket empty OR theme not in focus_areas
+        TA-->>N4: skip (no insights)
     end
 
-    par Parallel Execution (ThreadPool)
-        INFRA-->>TA: InfrastructureInsight
-        HEALTH-->>TA: HealthInsight
-        SAFETY-->>TA: SafetyInsight
-        TOURISM-->>TA: TourismInsight
-        ECONOMY-->>TA: EconomyInsight
-        ENV-->>TA: EnvironmentInsight
-    end
-
-    TA-->>TR: theme_insights_map
+    TA-->>N4: theme_insights
 ```
 
 #### Protocol 4: Self-Learning Memory Protocol (Cyclic RAG)
@@ -667,9 +745,14 @@ sequenceDiagram
 | **ContextAugmentationAgent** | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | Sequential |
 | **SentimentAgent** | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
 | **CredibilityAgent** | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
-| **ThemeRouterAgent** | Semantic content classification using BGE embeddings | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4) |
+| **ThemeRouterAgent** | Semantic content classification using BGE embeddings (routes docs to 6 theme buckets) | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4) |
 | **CoordinatorAgent** | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
-| **ThemeAgent** | Domain-specific insight generation (conditionally spawned by ThemeRouterAgent) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **InfrastructureAgent** | Generate infrastructure insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **HealthAgent** | Generate health insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **SafetyAgent** | Generate safety insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **TourismAgent** | Generate tourism insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **EconomyAgent** | Generate economy insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **EnvironmentAgent** | Generate environment insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
 
 ### Design Patterns Applied (Actual)
 
@@ -812,18 +895,21 @@ index_fields = ["focus_area", "topic"]  # keyword type for exact matching
 - **Dimensions**: 384
 - **Min Score Threshold**: 0.50 (higher precision)
 
-## Data Flow Summary (13 Agents)
+## Data Flow Summary (18 Agents)
 
 ```
 SnapshotRequest
     → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS + Contextual Expansion)
     → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit, parallel batching)
     → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant filtered + semantic fallback)
-    → Node 4: PARALLEL [SentimentAgent + CredibilityAgent + ThemeRouterAgent]
+    → Node 4: PARALLEL [SentimentAgent + CredibilityAgent (5 sub-agents) + ThemeRouterAgent]
+    │           └── CredibilityAgent runs: DomainTrust + CrossReference + FactCheck + LLMAnalysis + Tavily
     → Node 5: ContextAugmentationAgent.consolidate_memory() (Chunk → Embed → Store with focus_area/topic)
     → Node 6: ThemeAgent ×6 in PARALLEL (Infrastructure, Health, Safety, Tourism, Economy, Environment)
     → Node 7: CoordinatorAgent.run() (Narrative Generation with Gemini 2.5 Flash Lite)
     → SnapshotResponse
+
+FEDERATED ARCHITECTURE: 7 Core + 11 Sub-Agents = 18 Total Autonomous Agents
 ```
 
 ## Tech Stack
