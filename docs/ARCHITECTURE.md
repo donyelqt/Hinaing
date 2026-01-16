@@ -106,7 +106,22 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 > **Note:** This is a **detailed implementation diagram** showing internal agent components, tools, and APIs. For a high-level conceptual diagram showing the overall/summarized pipeline flow and temporal memory loop, see `ARCHITECTURE_SUMMARY.md`.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryTextColor': '#000000', 'secondaryTextColor': '#000000', 'tertiaryTextColor': '#000000' }, 'flowchart': { 'subGraphTitleMargin': { 'top': 10, 'bottom': 10 }, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 50 }}}%%
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'tertiaryColor': '#e8f4e8',
+  'primaryFontSize': '18px',
+  'secondaryFontSize': '14px',
+  'tertiaryFontSize': '12px',
+  'lineColor': '#333333'
+}, 'flowchart': {
+  'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
+  'padding': 25,
+  'nodeSpacing': 40,
+  'rankSpacing': 60
+}}}
+%%
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
         UI[Sentiment Dashboard]
@@ -228,6 +243,16 @@ This approach minimizes latency by performing reranking at the source level rath
 ## Detailed Agent Flow (Sequence Diagram)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'actorBackgroundColor': '#ffffff',
+  'actorBorderColor': '#333333'
+}}}
+%%
 sequenceDiagram
     participant Client
     participant API as FastAPI
@@ -290,6 +315,19 @@ sequenceDiagram
 ## Component Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '16px',
+  'secondaryFontSize': '13px',
+  'lineColor': '#333333'
+}, 'flowchart': {
+  'padding': 20,
+  'nodeSpacing': 35,
+  'rankSpacing': 50
+}}}
+%%
 graph LR
     subgraph External["External Services"]
         LS[LangSearch API]
@@ -366,113 +404,143 @@ graph LR
     TRA -.->|routes docs| TH1 & TH2 & TH3 & TH4 & TH5 & TH6
 ```
 
-## Agent UML Design (AOSE Methodology)
+## AUML Design Documentation (AOSE Methodology)
 
-> **Methodology:** Agent-Oriented Software Engineering (AOSE)
+> **Methodology:** Agent-Oriented Software Engineering (AOSE) with **Worker Pattern** implementation
 > 
-> This section presents the Agent UML (AUML) diagrams demonstrating the AOSE design principles applied in the Hinaing system. AUML extends UML to model agent-based systems, showing agent roles, responsibilities, and interaction protocols.
+> This section presents **AUML (Agent UML)** diagrams demonstrating AOSE design principles applied in the Hinaing system. AUML extends UML to model agent-based systems, showing agent roles, responsibilities, and interaction protocols. The implementation uses the **Worker Pattern** (dataclass agents with `run()` methods)—a modern, pragmatic approach that maintains all AOSE semantics while optimizing for production performance.
 
-### Agent Class Hierarchy (AUML Class Diagram)
+### AUML Class Diagram (AOSE Design Model)
+
+The diagrams below document **AOSE principles** using AUML notation—showing agent roles, responsibilities, and relationships. The implementation uses dataclass workers to realize these concepts.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'tertiaryColor': '#e8f4e8',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#ffffff',
+  'classLabelBoxBorderColor': '#333333',
+  'classLabelFontSize': '14px'
+}}}
+%%
 classDiagram
-    %% Core Agent Base Class
-    class BaseAgent {
-        +String agent_id
-        +String agent_type
-        +String agent_role
-        +execute(input)
-        +communicate(message)
-    }
-
-    %% Core Pipeline Agents
+    %% AOSE Design: Worker Pattern Realization
+    
+    %% Agent Workers (Dataclass implementation of AOSE concepts)
     class QueryOrchestratorAgent {
+        <<dataclass>>
         +llm: ChatGoogleGenerativeAI
-        +tools: List
+        +tools: List[Tool]
         +KEYWORD_CLUSTERS
-        +max_queries: int
-        +run(request) QueryPlan
+        +run(request: SnapshotRequest) QueryPlan
+        "Autonomous query planning"
     }
 
     class RetrievalAgent {
-        +sources: List
-        +fetch_documents(QueryPlan) List~WebDocument~
-        +merge_results() List~WebDocument~
-    }
-
-    class ContextAugmentationAgent {
-        +vector_store: VectorStore
-        +chunker: SemanticChunker
-        +retrieve_knowledge()
-        +consolidate_memory()
-        +search_with_sentiment()
+        <<dataclass>>
+        +sources: List[DataSource]
+        +run(request, query_plan) List~WebDocument~
+        "Multi-source ingestion"
     }
 
     class SentimentAgent {
+        <<dataclass>>
         +roberta_model: RoBERTa
         +gemini_model: GenerativeModel
-        +batch_size: int
-        +analyze_batch()
+        +run(documents) List~WebDocument~
+        "Ensemble sentiment analysis"
     }
 
     class CredibilityAgent {
-        +embedding_service: EmbeddingService
-        +llm: LLMCredibilityAnalyzer
+        <<dataclass>>
         +tavily_api_key: String
         +fact_check_api_key: String
-        +run() List~WebDocument~
+        +run(documents) List~WebDocument~
+        "Multi-signal verification"
     }
 
     class ThemeRouterAgent {
+        <<dataclass>>
         +theme_groups: Dict
-        +embedding_service: EmbeddingService
-        +_theme_embeddings: Dict
-        +_similarity_threshold: float
-        +run() Dict
+        +run(documents, request) Dict~str, List~WebDocument~
+        "Content classification"
+    }
+
+    class ContextAugmentationAgent {
+        <<dataclass>>
+        +vector_store: VectorStore
+        +chunker: SemanticChunker
+        +retrieve_knowledge() List~WebDocument~
+        +consolidate_memory() int
+        "Memory recall + consolidation"
     }
 
     class CoordinatorAgent {
+        <<dataclass>>
         +client: GeminiClient
-        +system_prompt: String
-        +run() SnapshotResponse
+        +is_available: bool
+        +run(window, focus_areas, documents, theme_insights) Tuple
+        "Narrative synthesis"
     }
 
-    %% Theme Analysis (Function-based, not classes)
-    class ThemeAnalyzer {
-        +gemini_model: GenerativeModel
-        +theme_focus: Dict
-        +run_theme_agent() Insight
-    }
-
-    %% Inheritance Relationships
-    BaseAgent <|-- QueryOrchestratorAgent
-    BaseAgent <|-- RetrievalAgent
-    BaseAgent <|-- ContextAugmentationAgent
-    BaseAgent <|-- SentimentAgent
-    BaseAgent <|-- CredibilityAgent
-    BaseAgent <|-- ThemeRouterAgent
-    BaseAgent <|-- CoordinatorAgent
-
-    %% Composition Relationships
+    %% Composition (AOSE relationships)
     QueryOrchestratorAgent "uses" o--> ChatGoogleGenerativeAI
     QueryOrchestratorAgent "uses" o--> "4" Tool
     RetrievalAgent "uses" o--> "3" DataSource
-    ContextAugmentationAgent "uses" o--> VectorStore
-    ContextAugmentationAgent "uses" o--> SemanticChunker
     SentimentAgent "uses" o--> RoBERTa
     SentimentAgent "uses" o--> GenerativeModel
-    CredibilityAgent "uses" o--> EmbeddingService
-    CredibilityAgent "uses" o--> LLMCredibilityAnalyzer
+    CredibilityAgent "uses" o--> TavilyAPI
+    CredibilityAgent "uses" o--> GoogleFactCheckAPI
     ThemeRouterAgent "uses" o--> EmbeddingService
+    ContextAugmentationAgent "uses" o--> VectorStore
+    ContextAugmentationAgent "uses" o--> EmbeddingService
     CoordinatorAgent "uses" o--> GeminiClient
-    ThemeAnalyzer "uses" o--> GenerativeModel
 ```
+
+> **AOSE Validation:** This diagram demonstrates **Agent-Oriented Software Engineering** principles: each worker is an **autonomous agent** with distinct **roles**, **responsibilities**, and **capabilities**. The `<<dataclass>>` notation indicates the implementation pattern, while the relationships and responsibilities document the **AOSE design model**.
+
+### Worker Node Mapping (AOSE Execution Model)
+
+Each **graph node** is an **autonomous agent** that executes tasks based on input state:
+
+| Node | Agent | AOSE Pattern | Execution |
+|------|-------|--------------|-----------|
+| **Node 1** | QueryOrchestratorAgent | Goal Delegation | Autonomous ReAct planning |
+| **Node 2** | RetrievalAgent | Resource Aggregation | Multi-source ingestion |
+| **Node 3** | ContextAugmentationAgent | Knowledge Management | Memory recall |
+| **Node 4** | [3 parallel agents] | Model Composition | asyncio.gather |
+| **Node 5** | ContextAugmentationAgent | Knowledge Management | Memory consolidation |
+| **Node 6** | ThemeAnalyzer | Expert Pattern | ThreadPoolExecutor |
+| **Node 7** | CoordinatorAgent | Result Integration | Narrative synthesis |
+
+### Defense Statement: AOSE Compliance
+
+> "This system is **fully compliant with Agent-Oriented Software Engineering (AOSE)** principles:
+> 1. **Autonomous Agents**: Each worker (`QueryOrchestratorAgent`, `RetrievalAgent`, etc.) is an autonomous entity that processes input and produces output independently
+> 2. **Role-Based Design**: Distinct agents with specialized responsibilities (planning, retrieval, analysis, synthesis)
+> 3. **Goal Delegation**: Higher-level agents delegate tasks to specialized agents (Node 4 delegates to Sentiment, Credibility, ThemeRouter)
+> 4. **Inter-Agent Communication**: Sequential nodes pass state; parallel agents coordinate via `asyncio.gather`
+> 5. **Self-Learning Memory**: Dual-phase RAG (recall + consolidation) demonstrates non-parametric learning
+>
+> The **Worker Pattern** (dataclass agents) is a **pragmatic AOSE implementation**—maintaining all AOSE semantics while optimizing for production performance. AUML diagrams document the **design model**; dataclass workers realize the **implementation model**. Both are valid AOSE."
 
 ### Agent Interaction Protocols (AUML Sequence Diagrams)
 
 #### Protocol 1: Query Planning Protocol (Request-Response)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '13px',
+  'secondaryFontSize': '11px'
+}}}
+%%
 sequenceDiagram
     participant C as CoordinatorAgent
     participant QO as QueryOrchestratorAgent
@@ -496,6 +564,14 @@ sequenceDiagram
 #### Protocol 2: Parallel Analysis Protocol (Fan-Out/Fan-In)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '13px',
+  'secondaryFontSize': '11px'
+}}}
+%%
 sequenceDiagram
     participant CA as ContextAugmentationAgent
     participant SA as SentimentAgent
@@ -518,6 +594,14 @@ sequenceDiagram
 #### Protocol 3: Conditional Theme Agent Spawning (Dynamic Creation)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '13px',
+  'secondaryFontSize': '11px'
+}}}
+%%
 sequenceDiagram
     participant TR as ThemeRouterAgent
     participant TA as ThemeAnalyzer
@@ -557,6 +641,14 @@ sequenceDiagram
 #### Protocol 4: Self-Learning Memory Protocol (Cyclic RAG)
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'primaryFontSize': '13px',
+  'secondaryFontSize': '11px'
+}}}
+%%
 sequenceDiagram
     participant MA as MemoryAgent
     participant VS as VectorStore
@@ -582,33 +674,35 @@ sequenceDiagram
     MA-->>ContextAugmentationAgent: memory_consolidated
 ```
 
-### Agent Responsibility Model (AUML Responsibility Matrix)
+### Agent Responsibility Model (Actual Implementation)
 
-| Agent | Responsibility | Type | AOSE Pattern |
-|-------|----------------|------|--------------|
-| **QueryOrchestratorAgent** | Autonomous query planning with ReAct reasoning | Cognitive | Goal Delegation |
-| **RetrievalAgent** | Multi-source data ingestion and diversity merging | Information | Resource Aggregation |
-| **ContextAugmentationAgent** | Dual operations: memory recall and consolidation | Informational | Knowledge Management |
-| **SentimentAgent** | Ensemble sentiment quantification (RoBERTa + Gemini) | Analytical | Model Composition |
-| **CredibilityAgent** | Multi-signal verification (7 signals) and misinformation detection | Analytical | Trust Assessment |
-| **ThemeRouterAgent** | Semantic content classification using BGE embeddings | Coordination | Task Allocation |
-| **CoordinatorAgent** | Narrative synthesis and response generation | Management | Result Integration |
-| **ThemeAnalyzer** | Domain-specific insight generation (function-based) | Specialized | Expert Pattern |
+| Agent (Worker) | Responsibility | Input | Output | Pattern |
+|---------------|----------------|-------|--------|---------|
+| **QueryOrchestratorAgent** | Autonomous query planning with ReAct reasoning | SnapshotRequest | QueryPlan | Sequential |
+| **RetrievalAgent** | Multi-source data ingestion and diversity merging | SnapshotRequest + QueryPlan | List~WebDocument~ | Sequential |
+| **ContextAugmentationAgent** | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | Sequential |
+| **SentimentAgent** | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
+| **CredibilityAgent** | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
+| **ThemeRouterAgent** | Semantic content classification using BGE embeddings | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4) |
+| **CoordinatorAgent** | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
+| **ThemeAnalyzer** | Domain-specific insight generation (function-based) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
 
-### AOSE Design Patterns Applied
+### Design Patterns Applied (Actual)
 
 | Pattern | Application | Benefit |
 |---------|-------------|---------|
-| **Role-Based Design** | 7 core agents with distinct roles | Separation of concerns |
-| **Hierarchical Organization** | Coordinator → Core → ThemeAnalyzer | Delegation structure |
-| **Conditional Execution** | ThemeAnalyzer only called when documents exist | Resource efficiency |
-| **Parallel Protocol Execution** | asyncio.gather for Nodes 4 & 6 | Performance optimization |
+| **Worker Pattern** | Dataclass agents with `run()` methods | Lightweight, no inheritance overhead |
+| **Singleton Workers** | Module-level agent instances | Reusable across nodes |
+| **Delegation** | Nodes delegate to workers | Separation of concerns |
+| **Hierarchical Organization** | Coordinator → Nodes → Workers | Delegation structure |
+| **Conditional Execution** | Theme Agents only called when documents exist | Resource efficiency |
+| **Parallel Protocol Execution** | asyncio.gather for Node 4, ThreadPool for Node 6 | Performance optimization |
 | **Self-Learning Memory Loop** | Read-Write RAG (Nodes 3 & 5) | Non-parametric learning |
-| **Message Passing** | AUML protocol sequences | Inter-agent communication |
+| **Direct Function Calls** | Nodes call worker.run() directly | Minimal overhead |
 | **Ensemble Composition** | RoBERTa + Gemini for sentiment | Model diversity |
-| **Multi-Signal Verification** | 7 credibility signals | Robust trust assessment |
+| **Multi-Signal Verification** | 5 credibility signals | Robust trust assessment |
 
-> **AOSE Validation:** The Agent UML diagrams above demonstrate systematic application of Agent-Oriented Software Engineering principles, including role-based agent design, hierarchical organization, and protocol-based interactions suitable for multi-agent system research.
+> **Implementation Note:** The diagrams above document the **actual implementation**—pragmatic functional composition via dataclass workers. This differs from traditional AOSE inheritance hierarchies but maintains the same semantic behavior: autonomous agents with distinct responsibilities executing tasks based on input states.
 
 ---
 
