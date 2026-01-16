@@ -107,9 +107,14 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
   'primaryFontSize': '18px',
   'secondaryFontSize': '14px',
-  'tertiaryFontSize': '12px'
+  'tertiaryFontSize': '12px',
+  'lineColor': '#e0e0e0'
  }, 'flowchart': {
   'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
   'padding': 25,
@@ -230,8 +235,13 @@ This approach minimizes latency by performing reranking at the source level rath
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px'
+  'secondaryFontSize': '12px',
+  'actorBackgroundColor': '#1e1e1e',
+  'actorBorderColor': '#e0e0e0'
  }}}%%
 sequenceDiagram
     participant Client
@@ -296,8 +306,12 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '16px',
-  'secondaryFontSize': '13px'
+  'secondaryFontSize': '13px',
+  'lineColor': '#e0e0e0'
  }, 'flowchart': {
   'padding': 20,
   'nodeSpacing': 35,
@@ -391,8 +405,15 @@ The diagrams below document **AOSE principles** using AUML notation—showing ag
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
   'primaryFontSize': '14px',
-  'secondaryFontSize': '12px'
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#1e1e1e',
+  'classLabelBoxBorderColor': '#e0e0e0',
+  'classLabelFontSize': '14px'
  }}}%%
 classDiagram
     %% AOSE Design: Worker Pattern Realization
@@ -481,7 +502,7 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 | **Node 3** | ContextAugmentationAgent | Knowledge Management | Memory recall |
 | **Node 4** | [3 parallel agents] | Model Composition | asyncio.gather |
 | **Node 5** | ContextAugmentationAgent | Knowledge Management | Memory consolidation |
-| **Node 6** | ThemeAnalyzer | Expert Pattern | ThreadPoolExecutor |
+| **Node 6** | ThemeAgent | Expert Pattern | ThreadPoolExecutor |
 | **Node 7** | CoordinatorAgent | Result Integration | Narrative synthesis |
 
 ### Defense Statement: AOSE Compliance
@@ -501,6 +522,9 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -528,6 +552,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -554,6 +581,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -597,6 +627,9 @@ sequenceDiagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
   'primaryFontSize': '13px',
   'secondaryFontSize': '11px'
  }}}%%
@@ -636,7 +669,7 @@ sequenceDiagram
 | **CredibilityAgent** | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
 | **ThemeRouterAgent** | Semantic content classification using BGE embeddings | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4) |
 | **CoordinatorAgent** | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
-| **ThemeAnalyzer** | Domain-specific insight generation (function-based) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+| **ThemeAgent** | Domain-specific insight generation (conditionally spawned by ThemeRouterAgent) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
 
 ### Design Patterns Applied (Actual)
 
