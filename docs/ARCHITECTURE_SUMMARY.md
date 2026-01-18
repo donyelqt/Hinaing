@@ -1,6 +1,16 @@
-# Hinaing: 7-Node Cognitive Architecture (13-Agent System)
+# Hinaing: 7-Node Cognitive Architecture (18-Agent Federated System)
+  
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
  
-> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title:** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
 > 
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
  
@@ -10,44 +20,49 @@
 ---
 
 ## 1. Executive Summary for Defense
-Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **13 Specialized Agents** organized in a **Directed Acyclic Graph (DAG)** pipeline. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next (Self-Learning Cyclic RAG - Read-Write Memory Loop).
+Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **18 Specialized Agents** organized in a **Hierarchical Federated System**. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next (Self-Learning Cyclic RAG - Read-Write Memory Loop).
 
 ---
 
-## 2. The 13-Agent Breakdown
+## 2. The 18-Agent Breakdown (Federated Hierarchy)
 
 The system represents a **Distributed Cognition** approach, utilizing a **Hierarchical Map-Reduce** pattern to decompose complex analytical tasks.
 
-### Tier 1: The Executive Agents (Pipeline Management)
+### Tier 1: Core Executive Agents (Pipeline Orchestration - 7 Agents)
 *These agents handle planning, data retrieval, and synthesis.*
 
 | Agent | Responsibility | Complexity |
 |-------|----------------|------------|
-| **1. QueryOrchestratorAgent** | **The Planner**. Uses ReAct logic to decompose high-level directives (e.g., "Analyze Baguio") into diverse, specific search strategies strategies (e.g., "Baguio medical shortage", "Session road traffic"). | **High** (ReAct) |
-| **2. RetrievalAgent** | **The Researcher**. A tool-enabled agent that interfaces with external APIs (Social Media, Web) in parallel batches to fetch raw data. | Medium (Async) |
-| **3. ContextAugmentationAgent** | **The Memory**. Manages the RAG pipeline. Novel contribution: It performs **Dual-Directional Memory** operations—*Recall* (fetching past learnings) and *Consolidation* (writing new learnings). | **High** (Vector/RAG) |
-| **4. CoordinatorAgent** | **The Manager (Reducer)**. Synthesizes conflicting data points from all other agents into a coherent final narrative and structural dashboard. | Medium (Synthesis) |
+| **1. QueryOrchestratorAgent** | **The Planner**. Uses ReAct logic to decompose high-level directives into diverse search strategies. | **High** (ReAct) |
+| **2. RetrievalAgent** | **The Researcher**. Interfaces with external APIs (Social Media, Web) in parallel batches. | Medium (Async) |
+| **3. ContextAugmentationAgent** | **The Memory**. Manages Dual-Directional Memory—Recall and Consolidation. | **High** (Vector/RAG) |
+| **4. SentimentAgent** | **The Analyst**. Hybrid Ensemble Agent combining RoBERTa + Gemini. | **High** (Ensemble) |
+| **5. CredibilityAgent** | **The Judge**. Coordinates 5 sub-agents for multi-signal verification. | **High** (Multi-Signal) |
+| **6. ThemeRouterAgent** | **The Distributor**. Routes documents to domain experts. | Medium (Classification) |
+| **7. CoordinatorAgent** | **The Manager (Reducer)**. Synthesizes parallel streams into final narrative. | Medium (Synthesis) |
 
-### Tier 2: The Specialist Agents (Map Phase: Analysis and Verification)
-*These agents apply specific analytical frameworks to the raw data in parallel (Fan-Out).*
+### Tier 2: Credibility Sub-Agents (5 Agents - Spawned by CredibilityAgent)
+*These 5 agents run in parallel within Node 4 to verify source credibility.*
 
-| Agent | Responsibility | Complexity |
-|-------|----------------|------------|
-| **5. SentimentAgent** | **The Analyst**. A Hybrid Ensemble Agent. It combines a local **RoBERTa** model (for speed/consistency) with **Gemini Connect** (for nuance) to grade public emotion with higher accuracy than single models. | **High** (Ensemble) |
-| **6. CredibilityAgent** | **The Judge**. A "Safety" agent that cross-references 5 distinct signals (Domain Trust, Fact Check API, Semantic Consistency, etc.) to detect misinformation before it reaches the consensus layer. | **High** (Multi-Signal) |
-| **7. ThemeRouterAgent** | **The Distributor**. A "Sorting Hat" classification agent that analyzes semantic content to route documents to the appropriate domain expert(s) below. | Medium (Classification) |
+| Agent | Signal | Weight | Method |
+|-------|--------|--------|--------|
+| **8. DomainTrustAgent** | Domain Reputation | 25% | Lookup table |
+| **9. CrossReferenceAgent** | Semantic Corroboration | 20% | BGE Embeddings |
+| **10. FactCheckAgent** | External Verification | 15% | Google Fact Check API |
+| **11. LLMAnalysisAgent** | Content Quality | 20% | Gemini Analysis |
+| **12. TavilyAgent** | Web Cross-Reference | 20% | Tavily Web Search |
 
-### Tier 3: The Domain Experts (Map Phase: Theme Specific)
-*These 6 agents run simultaneously via ThreadPoolExecutor to provide deep, sector-specific expertise.*
+### Tier 3: Theme Sub-Agents (6 Agents - Spawned by Node 6)
+*These 6 agents run simultaneously via ThreadPoolExecutor.*
 
 | Agent | Domain | Focus Area |
 |-------|--------|------------|
-| **8. Infrastructure Agent** | **Public Works** | Roads, Water Supply, Power Grid, Transport |
-| **9. Health Agent** | **Public Health** | Disease Outbreaks (Dengue), Hospital Capacity, Sanitation |
-| **10. Safety Agent** | **Civil Defense** | Crime Rates, Disaster Risk (Landslides), Emergency Response |
-| **11. Tourism Agent** | **Economy/Visitor** | Tourist Influx, Event Management (Panagbenga), Traffic Impact |
-| **12. Economy Agent** | **Livelihood** | Market Vendor Issues, Cost of Living, Employment |
-| **13. Environment Agent** | **Ecology** | Waste Management, Pollution, Green Spaces |
+| **13. InfrastructureAgent** | Public Works | Roads, Water Supply, Power Grid, Transport |
+| **14. HealthAgent** | Public Health | Disease Outbreaks, Hospital Capacity, Sanitation |
+| **15. SafetyAgent** | Civil Defense | Crime Rates, Disaster Risk, Emergency Response |
+| **16. TourismAgent** | Economy/Visitor | Tourist Influx, Event Management, Traffic Impact |
+| **17. EconomyAgent** | Livelihood | Market Vendor Issues, Cost of Living, Employment |
+| **18. EnvironmentAgent** | Ecology | Waste Management, Pollution, Green Spaces |
 
 ---
 
@@ -79,6 +94,20 @@ We do not rely on the LLM's internal safety filters alone. We implemented an ext
 > **Note:** This is a **high-level conceptual diagram** showing the overall/summary pipeline flow and temporal memory loop. For a detailed implementation diagram showing internal agent components, tools, and APIs, see `ARCHITECTURE.md`.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#ffffff',
+  'primaryTextColor': '#000000',
+  'secondaryColor': '#f0f0f0',
+  'tertiaryColor': '#e8f4e8',
+  'primaryFontSize': '16px',
+  'secondaryFontSize': '13px',
+  'tertiaryFontSize': '11px',
+  'lineColor': '#333333'
+}, 'flowchart': {
+  'padding': 20,
+  'nodeSpacing': 35,
+  'rankSpacing': 50
+}}}%%
 graph TD
     User[User Request] --> N1
     
