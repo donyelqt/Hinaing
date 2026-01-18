@@ -1,19 +1,30 @@
 # Thesis Defense Strategy: Hinaing vs. Frontier AI
 
-> **Thesis Title:** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
+
+> **Thesis Title:** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
 
 > **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
 ## The Core Argument
 **"We are not competing with Gemini or ChatGPT on General Intelligence. We are competing on Hyper-Local Situational Awareness with Self-Learning Memory."**
 
-Your thesis contribution is not the model (the brain), but the **Cognitive Architecture** (the 7-node workflow with **13 specialized agents**) designed specifically for Civic Analysis with persistent learning.
+Your thesis contribution is not the model (the brain), but the **Cognitive Architecture** (the 7-node workflow with **18 specialized agents**) designed specifically for Civic Analysis with persistent learning.
 
-## Agent Summary (13 Total)
+## Agent Summary (18 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
 | **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
+| **Credibility Sub-Agents** | 5 | DomainTrustAgent, CrossReferenceAgent, FactCheckAgent, LLMAnalysisAgent, TavilyAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ---
@@ -56,11 +67,11 @@ You have built three systems to prove your point.
 | **Documents** | ~5 results | Up to 50 | Up to 100 |
 | **Purpose** | "What is happening?" | "Analyze this topic" | "What **matters** right now?" |
 
-**The Win:** "We demonstrated that for Policy Making, the **13-Agent Self-Learning Architecture** provides 10x more actionable depth than standard approaches. Furthermore, the system **learns from each run** via ContextAugmentationAgent's memory loop, improving future analyses."
+**The Win:** "We demonstrated that for Policy Making, the **18-Agent Self-Learning Architecture** provides 10x more actionable depth than standard approaches. Furthermore, the system **learns from each run** via ContextAugmentationAgent's memory loop, improving future analyses."
 
 ---
 
-## 3. The 7-Node Self-Learning Architecture (13 Agents)
+## 3. The 7-Node Self-Learning Architecture (18 Agents)
 
 This is your **key differentiator**. Explain it clearly using Graph Theory terms:
 
@@ -214,24 +225,25 @@ This visual contrast proves your hypothesis immediately.
 
 ---
 
-## 8. Novel Contributions Summary (13 Agents)
+## 8. Novel Contributions Summary (18 Agents)
 
 | Contribution | Agent(s) | Evidence |
 |--------------|----------|----------|
-| 7-Node Self-Learning Architecture | All 12 agents | `graph.py` - DAG pipeline with memory |
+| 7-Node Self-Learning Architecture | All 18 agents | `graph.py` - DAG pipeline with memory |
 | Multi-Query Diversity Strategy | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS |
 | RAG Memory with Cosine Similarity | **ContextAugmentationAgent** | `context_agent.py`, `vector_store.py` - Qdrant + BGE |
 | Hybrid Sentiment Ensemble | **SentimentAgent** | `sentiment_agent.py` - RoBERTa + Gemini |
-| 5-Signal Credibility Framework | **CredibilityAgent** | `credibility_agent.py` - Multi-signal verification |
-| Parallel Theme Analysis | **ThemeAgent ×6** | `theme_agent.py` - `run_theme_agent()` ×6 via ThreadPoolExecutor |
+| 5-Signal Credibility Framework | **CredibilityAgent** + 5 sub-agents | `credibility_agent.py` - Multi-signal verification |
+| Parallel Credibility Analysis | **5 Credibility Sub-Agents** | `credibility_agent.py` - DomainTrust, CrossReference, FactCheck, LLMAnalysis, Tavily |
+| Parallel Theme Analysis | **ThemeAgent ×6** | `theme_agent.py` - Class-based agents with run() |
 | Domain-Specific Grounding | **ThemeRouterAgent** | FOCUS_CONCERN_KEYWORDS for Baguio |
 
 ---
 
 ## 9. Defense Readiness Checklist
 
-- [x] **Architecture:** Defensible (7-Node Linear DAG with **13 Agents**)
-- [x] **Agent Count:** 13 total (7 core + 6 theme)
+- [x] **Architecture:** Defensible (7-Node Linear DAG with **18 Agents**)
+- [x] **Agent Count:** 18 total (7 core + 5 credibility + 6 theme)
 - [x] **Self-Learning:** Verified (ContextAugmentationAgent Memory Loop)
 - [x] **RAG Pipeline:** Cosine similarity search in Qdrant (Node 3)
 - [x] **Credibility:** Defensible (5-Signal Ensemble)
@@ -243,8 +255,8 @@ This visual contrast proves your hypothesis immediately.
 
 ## 10. Closing Statement
 
-> "Hinaing is not just another AI chatbot. It is a **13-Agent Specialized Cognitive Architecture** for Civic Situational Awareness.
+> "Hinaing is not just another AI chatbot. It is a **18-Agent Specialized Cognitive Architecture** for Civic Situational Awareness.
 >
-> **QueryOrchestratorAgent** plans diverse queries, **RetrievalAgent** fetches from multiple sources, **ContextAugmentationAgent** recalls past knowledge via cosine similarity search, **CredibilityAgent** verifies with 5 signals, **SentimentAgent** quantifies opinion, **ThemeAgent** (×6) generates domain insights in parallel, and **CoordinatorAgent** synthesizes the final narrative.
+> **QueryOrchestratorAgent** plans diverse queries, **RetrievalAgent** fetches from multiple sources, **ContextAugmentationAgent** recalls past knowledge via cosine similarity search, **CredibilityAgent** coordinates 5 sub-agents for multi-signal verification, **SentimentAgent** quantifies opinion, **ThemeAgents** (×6) generate domain insights in parallel, and **CoordinatorAgent** synthesizes the final narrative.
 >
 > This is the future of AI-assisted governance: not generic assistants, but **domain-specific, self-learning multi-agent systems** that grow smarter with every analysis."
