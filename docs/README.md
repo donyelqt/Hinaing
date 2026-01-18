@@ -33,6 +33,55 @@ Under this license, others are free to share and adapt this work for non-commerc
 
 > **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
 
+---
+
+## Key Terminology: 7-Node Pipeline vs 7 Core Agents
+
+> **Key Terminology:** "7-Node Pipeline" and "7 Core Agents" are distinct architectural concepts. The following section defines each to prevent ambiguity throughout this documentation.
+
+### **7-Node Pipeline = Graph Execution Stages**
+
+The **7 nodes** represent **execution stages** (steps) in the LangGraph workflow:
+
+```
+Node 1 → Node 2 → Node 3 → Node 4 → Node 5 → Node 6 → Node 7
+```
+
+### **7 Core Agents = Unique Agent Classes**
+
+The **7 core agents** are **unique agent CLASSES** that implement the worker pattern:
+
+| Node | Execution | Agent Class |
+|------|-----------|-------------|
+| **Node 1** | Sequential | `QueryOrchestratorAgent` |
+| **Node 2** | Sequential | `RetrievalAgent` |
+| **Node 3** | Sequential | `ContextAugmentationAgent` |
+| **Node 4** | **Parallel (3 agents)** | `SentimentAgent` + `CredibilityAgent` + `ThemeRouterAgent` |
+| **Node 5** | Sequential | `ContextAugmentationAgent` (SAME instance as Node 3) |
+| **Node 6** | **Parallel (up to 6)** | 6 Theme Sub-Agents (conditionally spawned) |
+| **Node 7** | Sequential | `CoordinatorAgent` |
+
+### **Key Insight: Node 4 Runs 3 Agents in Parallel**
+
+Node 4 is unique—it runs **3 agents simultaneously** via `asyncio.gather`:
+
+```python
+# Node 4: Parallel execution of 3 agents
+await asyncio.gather(
+    sentiment_agent.run(),   # Agent 1
+    credibility_agent.run(), # Agent 2 (with 5 sub-agents internally)
+    theme_router.run()       # Agent 3
+)
+```
+
+### **Count Summary**
+
+| Concept | Count | Explanation |
+|---------|-------|-------------|
+| **7-Node Pipeline** | 7 | Execution stages (graph steps) |
+| **7 Core Agent Classes** | 7 | Unique agent types |
+| **Total Agent Instances at Runtime** | **18** | 7 core + 5 credibility + 6 theme |
+
 ## Agent Summary (18 Total - Federated Multi-Agent System)
 
 | Category | Count | Agents |

@@ -59,6 +59,68 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 
 > **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (Sub-30 seconds end-to-end) while enabling continuous systemic learning.
 
+---
+
+## Key Terminology: 7-Node Pipeline vs 7 Core Agents
+
+> **Key Terminology:** "7-Node Pipeline" and "7 Core Agents" are distinct architectural concepts. The following section defines each to prevent ambiguity throughout this documentation.
+
+### **7-Node Pipeline = Graph Execution Stages**
+
+The **7 nodes** represent **execution stages** (steps) in the LangGraph workflow:
+
+```
+Node 1 → Node 2 → Node 3 → Node 4 → Node 5 → Node 6 → Node 7
+```
+
+### **7 Core Agents = Unique Agent Classes**
+
+The **7 core agents** are **unique agent CLASSES** that implement the worker pattern:
+
+| Node | Execution | Agent Class |
+|------|-----------|-------------|
+| **Node 1** | Sequential | `QueryOrchestratorAgent` |
+| **Node 2** | Sequential | `RetrievalAgent` |
+| **Node 3** | Sequential | `ContextAugmentationAgent` |
+| **Node 4** | **Parallel (3 agents)** | `SentimentAgent` + `CredibilityAgent` + `ThemeRouterAgent` |
+| **Node 5** | Sequential | `ContextAugmentationAgent` (SAME instance as Node 3) |
+| **Node 6** | **Parallel (up to 6)** | 6 Theme Sub-Agents (conditionally spawned) |
+| **Node 7** | Sequential | `CoordinatorAgent` |
+
+### **Visual Summary**
+
+```
+7-NODE PIPELINE:     1 → 2 → 3 → 4 → 5 → 6 → 7
+                     ↓   ↓   ↓   ↓↓↓  ↓   ↓↓↓↓↓↓
+7 CORE AGENTS:       Q   R   C   S C T  C   I H Sa To E En
+                                      (3 parallel)
+```
+
+**Legend:** Q=QueryOrchestrator, R=Retrieval, C=ContextAugmentation, S=Sentiment, C=Credibility, T=ThemeRouter, I=Infrastructure, H=Health, Sa=Safety, To=Tourism, E=Economy, En=Environment
+
+### **Count Summary**
+
+| Concept | Count | Explanation |
+|---------|-------|-------------|
+| **7-Node Pipeline** | 7 | Execution stages (graph steps) |
+| **7 Core Agent Classes** | 7 | Unique agent types |
+| **Total Agent Instances at Runtime** | **18** | 7 core + 5 credibility + 6 theme |
+
+### **Key Insight: Node 4 Runs 3 Agents in Parallel**
+
+Node 4 is unique—it runs **3 agents simultaneously** via `asyncio.gather`:
+
+```python
+# Node 4: Parallel execution of 3 agents
+await asyncio.gather(
+    sentiment_agent.run(),   # Agent 1
+    credibility_agent.run(), # Agent 2 (with 5 sub-agents internally)
+    theme_router.run()       # Agent 3
+)
+```
+
+This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents running in parallel.
+
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -100,7 +162,7 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 | 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Parallel Data Enrichment & Verification | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing |
 | 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors |
 | 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | True Class-Based Sub-Agents with `run()` methods, `get_theme_agent()` factory for conditional spawning |
-| 7 | **Narrative Synthesis Executive** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly |
+| 7 | **CoordinatorAgent** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly |
 
 ## System Architecture: Hierarchical DAG-Based Multi-Agent Agentic Workflow
 
@@ -736,20 +798,29 @@ sequenceDiagram
 ### Agent Responsibility Model (Actual Implementation)
 
 | Agent (Worker) | Responsibility | Input | Output | Pattern |
-|---------------|----------------|-------|--------|---------|
-| **QueryOrchestratorAgent** | Autonomous query planning with ReAct reasoning | SnapshotRequest | QueryPlan | Sequential |
-| **RetrievalAgent** | Multi-source data ingestion and diversity merging | SnapshotRequest + QueryPlan | List~WebDocument~ | Sequential |
-| **ContextAugmentationAgent** | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | Sequential |
-| **SentimentAgent** | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
-| **CredibilityAgent** | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4) |
-| **ThemeRouterAgent** | Semantic content classification using BGE embeddings (routes docs to 6 theme buckets) | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4) |
-| **CoordinatorAgent** | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
-| **InfrastructureAgent** | Generate infrastructure insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
-| **HealthAgent** | Generate health insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
-| **SafetyAgent** | Generate safety insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
-| **TourismAgent** | Generate tourism insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
-| **EconomyAgent** | Generate economy insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
-| **EnvironmentAgent** | Generate environment insights via Gemini (conditionally spawned by Node 6 if docs exist AND theme in focus_areas) | List~WebDocument~ | List~Insight~ | Parallel (ThreadPool) |
+|---------------|----------------|-------|---------|---------|
+| **Core Pipeline Agents (7)** |
+| QueryOrchestratorAgent | Autonomous query planning with ReAct reasoning | SnapshotRequest | QueryPlan | Sequential |
+| RetrievalAgent | Multi-source data ingestion and diversity merging | SnapshotRequest + QueryPlan | List~WebDocument~ | Sequential |
+| ContextAugmentationAgent | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | Sequential (Node 3 & 5) |
+| SentimentAgent | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4 - asyncio.gather) |
+| CredibilityAgent | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4 - asyncio.gather) |
+| ThemeRouterAgent | Semantic content classification using BGE embeddings (routes docs to 6 theme buckets) | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4 - asyncio.gather) |
+| CoordinatorAgent | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
+| **Credibility Sub-Agents (5)** |
+| DomainTrustAgent | Tiered source reputation scoring | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
+| CrossReferenceAgent | BGE embedding-based semantic corroboration | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
+| FactCheckAgent | Google Fact Check API verification | WebDocument | float (0-1) | Parallel (async API call) |
+| LLMAnalysisAgent | Gemini-based misinformation detection | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
+| TavilyAgent | Real-time web claim verification | WebDocument | float (0-1) | Parallel (async API call) |
+| **Theme Sub-Agents (6)** |
+| InfrastructureAgent | Generate infrastructure insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| HealthAgent | Generate health insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| SafetyAgent | Generate safety insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| TourismAgent | Generate tourism insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| EconomyAgent | Generate economy insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| EnvironmentAgent | Generate environment insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| **Total** | **18 Autonomous Agents** | | | |
 
 ### Design Patterns Applied (Actual)
 
