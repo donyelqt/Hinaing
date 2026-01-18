@@ -1,22 +1,33 @@
 # Thesis Findings
 
-> **Thesis Title:** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis **OR** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening **OR** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
+
+> **Thesis Title:** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
 > 
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
 ## Overview
-The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop that improves analysis quality over time.
+The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **18 specialized agents** for context-aware public opinion analysis in Baguio City. The architecture combines external retrieval with internal memory recall and consolidation, creating what we term **"Self-Learning Cyclic RAG"** — a Read-Write Memory Loop that improves analysis quality over time.
 
 **Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
 **State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
 
 > **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
 
-## Agent Summary (13 Total)
+## Agent Summary (18 Total)
 
 | Category | Count | Agents |
 |----------|-------|--------|
 | **Core Pipeline Agents** | 7 | QueryOrchestratorAgent, RetrievalAgent, SentimentAgent, CredibilityAgent, ContextAugmentationAgent, ThemeRouterAgent, CoordinatorAgent |
+| **Credibility Sub-Agents** | 5 | DomainTrustAgent, CrossReferenceAgent, FactCheckAgent, LLMAnalysisAgent, TavilyAgent |
 | **Theme Sub-Agents** | 6 | InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent |
 
 ## Current Capabilities
@@ -36,7 +47,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **13 s
 
 ### 1. Multi-Agent Self-Learning Architecture Verified (Dec 12, 2025)
 
-**Hypothesis:** The 13-agent system can improve its analysis by referencing its own past memories.
+**Hypothesis:** The 18-agent system can improve its analysis by referencing its own past memories.
 
 **Verified Outcome:** CONFIRMED
 
@@ -144,22 +155,22 @@ KEYWORD_CLUSTERS = {
 
 ### 6. Comparative Architecture Analysis (Control vs Novel)
 
-| Feature | Chat Agent (Control - 1 Agent) | Sentiment Generator (Novel - 13 Agents) |
+| Feature | Chat Agent (Control - 1 Agent) | Sentiment Generator (Novel - 18 Agents) |
 |---------|-------------------------------|----------------------------------------|
 | Architecture | Agentic RAG (ReAct) | 7-Node Multi-Agent Graph |
-| Agent Count | 1 | **13** (7 core + 6 theme) |
+| Agent Count | 1 | **18** (7 core + 5 credibility + 6 theme) |
 | Execution | Serial | Parallelized (3 agents + 6 theme agents) |
 | Data Scope | Atomic (~5 results) | Holistic (50+ documents) |
 | Output | Unstructured Text | Structured Intelligence |
 | Memory | None | Persistent (Qdrant) |
 
-**Finding:** The single-agent Chat Agent answers single questions but fails to provide strategic situational awareness. The 13-agent Sentiment Generator identifies, quantifies, and visualizes emerging risks without user prompting.
+**Finding:** The single-agent Chat Agent answers single questions but fails to provide strategic situational awareness. The 18-agent Sentiment Generator identifies, quantifies, and visualizes emerging risks without user prompting.
 
 ## Novel Contributions
 
-1. **Context-Engineered 7-Node Multi-Agent Architecture (13 Agents)**
+1. **Context-Engineered 7-Node Multi-Agent Architecture (18 Agents)**
    - The entire architecture is context engineering - pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals inject domain knowledge
-   - Cyclic graph with 7 core agents + 6 theme sub-agents (conditionally spawned)
+   - Cyclic graph with 7 core agents + 5 credibility sub-agents + 6 theme sub-agents (conditionally spawned)
    - **ContextAugmentationAgent** handles both recall (Node 3) and consolidation (Node 5)
    - Verified self-reference loop
 
@@ -180,11 +191,12 @@ KEYWORD_CLUSTERS = {
    - Verified source tracking
 
 5. **Conditional Sub-Agent Spawning**
+   - 5 Credibility Sub-Agents (DomainTrust, CrossReference, FactCheck, LLMAnalysis, Tavily)
    - 6 Theme Agents dynamically spawned only when their bucket has documents
-   - Dynamic agent count (7-13) based on routing results
+   - Dynamic agent count (7-18) based on routing results
    - ThreadPoolExecutor for parallel execution
 
-## Architecture Flow (13 Agents)
+## Architecture Flow (18 Agents)
 
 ```
 SnapshotRequest
@@ -248,10 +260,10 @@ SnapshotResponse
 ## Gaps and Next Steps
 
 ### Completed
-- [x] 7-Node Multi-Agent Architecture (13 agents)
+- [x] 7-Node Multi-Agent Architecture (18 agents)
 - [x] QueryOrchestratorAgent with Multi-Query Diversity
 - [x] SentimentAgent with Ensemble (RoBERTa + Gemini)
-- [x] CredibilityAgent with 5-Signal Framework
+- [x] CredibilityAgent with 5-Signal Sub-Agents Framework
 - [x] ContextAugmentationAgent with RAG Memory
 - [x] 6 Theme Agents with parallel execution
 - [x] RetrievalAgent with Reddit Integration
@@ -272,7 +284,7 @@ SnapshotResponse
 
 | Aspect | Status | Evidence |
 |--------|--------|----------|
-| Multi-Agent Architecture | Defensible | 13 Agents in 7-Node Graph |
+| Multi-Agent Architecture | Defensible | 18 Agents in 7-Node Graph |
 | Agent Specialization | Defensible | Each agent has distinct role |
 | Data Persistence | Defensible | Qdrant Cloud |
 | Accuracy | Defensible | Multi-Agent Consensus |
