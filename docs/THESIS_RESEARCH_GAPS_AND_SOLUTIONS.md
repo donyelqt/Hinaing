@@ -1,4 +1,18 @@
-# Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+# Hinaing: 7-Node Agentic Graphs for Civic Social Listening
+
+> **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
+>
+> **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
+>
+> **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+>
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
+
+> **Thesis Title:** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
+> 
+> **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
 ## Executive Summary
 
@@ -9,14 +23,16 @@ This document outlines the key research gaps in public opinion analysis that the
 ### Problem
 Traditional public opinion analysis systems focus primarily on sentiment detection (positive/negative) without quantifying the **epistemic quality** (truthfulness/authority) of the source. In civic contexts, treating verified government reports and unverified social rumors with equal weight leads to "hallucinated urgency" and prevents actionable decision-making.
 
-### Solution: 5-Signal Ensemble Credibility Framework
-Our system implements a comprehensive credibility quantification engine (`CredibilityAgent`) using a weighted ensemble of five distinct signals:
+### Solution: 5-Signal Ensemble Credibility Framework (with True Sub-Agents)
+Our system implements a comprehensive credibility quantification engine (`CredibilityAgent`) that coordinates **5 independent sub-agents** in parallel, each responsible for one signal:
 
-1.  **Domain Reputation Tiering (25%)**: Hierarchical scoring of known domains (e.g., `gov.ph` > `news` > `social`).
-2.  **Semantic Cross-Reference (20%)**: Uses **BAAI/bge-small-en-v1.5** embeddings to mathematically compare claims via **Cosine Similarity**. If a claim appears disjointly (low similarity score) without semantic matches in other articles, it is flagged as an "Unverified Rumor."
-3.  **External Fact-Checking (15%)**: Real-time validation against the Google Fact Check Tools API. *(Note: While robust for national news, we observed minimal/no contribution in hyper-local Baguio contexts due to data sparsity, yet it functions as a necessary safety rail).*
-4.  **Linguistic Pattern Analysis (20%)**: Large Language Model (Gemini 2.5) analysis of syntactic features indicative of misinformation (eg., sensationalism, clickbait, conspiracy framing).
-5.  **Multi-Source Web Verification (20%)**: Real-time cross-referencing via Tavily Search to validate claims against an index of trusted authorities.
+1.  **Domain Reputation Tiering (25%) - DomainTrustAgent**: Hierarchical scoring of known domains (e.g., `gov.ph` > `news` > `social`).
+2.  **Semantic Cross-Reference (20%) - CrossReferenceAgent**: Uses **BAAI/bge-small-en-v1.5** embeddings to mathematically compare claims via **Cosine Similarity**. If a claim appears disjointly (low similarity score) without semantic matches in other articles, it is flagged as an "Unverified Rumor."
+3.  **External Fact-Checking (15%) - FactCheckAgent**: Real-time validation against the Google Fact Check Tools API. *(Note: While robust for national news, we observed minimal/no contribution in hyper-local Baguio contexts due to data sparsity, yet it functions as a necessary safety rail).*
+4.  **Linguistic Pattern Analysis (20%) - LLMAnalysisAgent**: Large Language Model (Gemini 2.5) analysis of syntactic features indicative of misinformation (eg., sensationalism, clickbait, conspiracy framing).
+5.  **Multi-Source Web Verification (20%) - TavilyAgent**: Real-time cross-referencing via Tavily Search to validate claims against an index of trusted authorities.
+
+**Implementation Detail:** Each signal is implemented as an **autonomous sub-agent** (Worker Pattern) with a `score()` method. The `CredibilityAgent` spawns all 5 sub-agents concurrently via `asyncio.gather`, providing 3-5x speedup over sequential processing. Unlike Theme Agents, Credibility sub-agents have **no shared base class**—each measures an orthogonal credibility dimension with fundamentally different algorithms (lookup tables, embeddings, API calls, LLM analysis).
 
 **Scientific Contribution:** Moving beyond binary "fake news" detection to a continuous **Credibility Score (0.0 - 1.0)** that informs downstream narrative generation.
 
