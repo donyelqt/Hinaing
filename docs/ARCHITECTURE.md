@@ -18,12 +18,6 @@ Multi-Agentic AI system with real-time intelligent search and self learning RAG 
 
 > **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (18 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
-## Agent Count Summary
-
-| Category | Agents | Notes |
-|----------|--------|-------|
-| **Core Pipeline Agents** | 7 | QueryOrchestrator, Retrieval, Sentiment, Credibility, Context, ThemeRouter, Coordinator |
-| **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (conditionally spawned by Node 6 based on focus_areas) |
 ## Agent Count Summary (Federated Multi-Agent System)
 
 | Category | Agents | Responsibility |
