@@ -434,7 +434,7 @@ class QueryOrchestratorAgent:
                 agent=agent,
                 tools=tools,
                 max_iterations=self.max_iterations,
-                verbose=True,
+                verbose=False,
                 handle_parsing_errors=True,
                 return_intermediate_steps=True,
             )

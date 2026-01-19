@@ -1,7 +1,8 @@
 import gc
 import logging
-
+import psutil
 from contextlib import asynccontextmanager
+from .core.executor import GLOBAL_EXECUTOR
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .routers import agent, health, snapshot, chat, chat_analyze, metrics
 
+# CTO-Grade Memory & Execution Tuning for 16GB Environment
+# 1. Increase GC thresholds: less frequent, more efficient collections
+gc.set_threshold(50000, 500, 500)
+
 logger = logging.getLogger(__name__)
 
-# Track concurrent requests to prevent memory exhaustion
+# Leverage 16GB RAM: Increase from 2 to 8 concurrent heavy pipelines
 _active_requests = 0
-_MAX_CONCURRENT_HEAVY_REQUESTS = 2
+_MAX_CONCURRENT_HEAVY_REQUESTS = 8
 
 
 def _load_models_sync():
@@ -60,12 +65,15 @@ async def memory_cleanup_middleware(request: Request, call_next):
     """Clean up memory after heavy requests."""
     global _active_requests
     
-    # Track heavy endpoints
-    is_heavy = request.url.path in ["/insights/snapshot", "/api/snapshot"]
+    # Track all requests for transparency
+    logger.info(f"-> {request.method} {request.url.path}")
+    
+    # Track heavy endpoints for specialized memory handling
+    is_heavy = request.url.path in ["/insights/snapshot", "/api/snapshot", "/agents/gemini", "/chat/analyze"]
     
     if is_heavy:
         _active_requests += 1
-        logger.info(f"[memory] Active heavy requests: {_active_requests}")
+        logger.info(f"[memory] Starting heavy task: {request.url.path} (Active: {_active_requests})")
     
     try:
         response = await call_next(request)
@@ -74,21 +82,25 @@ async def memory_cleanup_middleware(request: Request, call_next):
         if is_heavy:
             _active_requests -= 1
             try:
-                from .services.rag.embeddings import clear_embedding_cache
-                
-                # Clear embedding cache (still uses local RAM)
-                clear_embedding_cache()
-                
-                # Force garbage collection
-                gc.collect()
-                
-                # Log memory after cleanup
-                import psutil
+                # CTO-Grade: Conditional Cleanup
+                # We only flush RAM if we are actually reaching limits (75% of 16GB)
+                # This keeps our embedding cache and resident models 'Hot' in memory
+                vm = psutil.virtual_memory()
                 process = psutil.Process()
                 mem_mb = process.memory_info().rss / 1024 / 1024
-                logger.info(f"[memory] Cleanup done. Memory: {mem_mb:.1f}MB, Active: {_active_requests}")
+                
+                # Check if system RAM is tight (>75%) or process exceeds 8GB
+                should_cleanup = vm.percent > 75 or mem_mb > 8192
+                
+                if should_cleanup:
+                    logger.info(f"[memory] High memory pressure ({vm.percent}%). Clearing caches...")
+                    from .services.rag.embeddings import clear_embedding_cache
+                    clear_embedding_cache()
+                    gc.collect()
+                    
+                logger.info(f"[memory] Request complete. Resident Memory: {mem_mb:.1f}MB, Active: {_active_requests}")
             except Exception as e:
-                logger.warning(f"[memory] Cleanup error: {e}")
+                logger.warning(f"[memory] Cleanup heuristic error: {e}")
                 gc.collect()
 
 
@@ -102,7 +114,11 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
     # CORS: Allow frontend origin, or all origins if not specified
-    allowed_origins = [settings.frontend_origin] if settings.frontend_origin else ["*"]
+    if settings.frontend_origin:
+        allowed_origins = [o.strip() for o in settings.frontend_origin.split(",")]
+    else:
+        allowed_origins = ["*"]
+        
     if settings.environment != "development":
         # In production, also allow common patterns
         allowed_origins = ["*"]  # Allow all for now; restrict later if needed
