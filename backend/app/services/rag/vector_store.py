@@ -38,10 +38,17 @@ class VectorStore:
         settings = get_settings()
         
         # Use Qdrant Cloud if URL is configured, otherwise fall back to local
-        if settings.qdrant_url:
-            logger.info(f"[VectorStore] Connecting to Qdrant Cloud: {settings.qdrant_url}")
+        qdrant_url = (settings.qdrant_url or "").strip()
+        
+        if qdrant_url:
+            # Validate URL format
+            if not qdrant_url.startswith(("http://", "https://")):
+                logger.error(f"[VectorStore] Invalid QDRANT_URL format: {qdrant_url[:50]}...")
+                raise ValueError(f"QDRANT_URL must start with http:// or https://")
+            
+            logger.info(f"[VectorStore] Connecting to Qdrant Cloud: {qdrant_url[:60]}...")
             self.client = QdrantClient(
-                url=settings.qdrant_url,
+                url=qdrant_url,
                 api_key=settings.qdrant_api_key,
             )
             self._is_cloud = True
