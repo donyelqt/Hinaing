@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from collections import Counter
-from typing import TypedDict
+from typing import Any, TypedDict
 from langchain_core.runnables import RunnableLambda
 from pydantic import ValidationError
 
@@ -341,25 +341,25 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
         if docs and theme_key in active_themes:
             tasks.append((theme_key, docs))
     
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    
     insights = []
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = {
-            executor.submit(_synthesize_single_theme, theme_key, docs, contexts): theme_key
-            for theme_key, docs in tasks
-        }
-        
-        for future in as_completed(futures):
-            try:
-                result = future.result()
-                if isinstance(result, list):
-                    insights.extend(result)
-                elif isinstance(result, Insight):
-                    insights.append(result)
-            except Exception as exc:
-                theme_key = futures[future]
-                logger.exception("Theme agent task failed for %s: %s", theme_key, exc)
+    from app.core.executor import GLOBAL_EXECUTOR
+    from concurrent.futures import as_completed
+    
+    futures = {
+        GLOBAL_EXECUTOR.submit(_synthesize_single_theme, theme_key, docs, contexts): theme_key
+        for theme_key, docs in tasks
+    }
+    
+    for future in as_completed(futures):
+        try:
+            result = future.result()
+            if isinstance(result, list):
+                insights.extend(result)
+            elif isinstance(result, Insight):
+                insights.append(result)
+        except Exception as exc:
+            theme_key = futures[future]
+            logger.exception("Theme agent task failed for %s: %s", theme_key, exc)
     
     state["theme_insights"] = insights
     return state
@@ -504,7 +504,9 @@ def _parse_agent_json(raw_text: str) -> Any | None:
     return None
 
 def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> list[Insight]:
-    """Helper for Theme Agent execution."""
+    """Helper for Theme Agent execution - spawns true sub-agents."""
+    from ..agents.theme_agent import get_theme_agent
+    
     current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
     meta = current_theme_groups.get(theme_key)
     label = meta["label"] if meta else theme_key.title()
@@ -514,81 +516,46 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
     if not docs:
         logger.info(f"[ThemeAgent] {label} has no documents, skipping")
         return []
-        
+    
     internal_count = sum(1 for d in docs if (d.metadata or {}).get("source") == "internal_memory")
+    logger.info(f"[ThemeAgent] {label}: {internal_count} memory docs, {len(docs)-internal_count} fresh docs")
     
     enriched_docs = [
         {**doc.model_dump(), "url": str(doc.url) if doc.url else ""}
         for doc in docs[:100]
     ]
-
-    evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
+    
     try:
         if len(docs) < 1:
             raise ValueError("skip_gemini_fallback")
-        from ..agents.theme_agent import run_theme_agent
-
-        prompt = (
-            "You are a civic operations analyst for Baguio City. "
-            f"Focus on the theme '{label}'. "
-            "Write JSON with a key 'insights' containing a list of objects. Each object must have keys: "
-            "'title', 'detail', 'evidence' (array of source URLs). "
-            f"You have {len(docs)} documents ({internal_count} historical/memory, {len(docs)-internal_count} fresh). "
-            "Identify distinct sub-issues. Do not merge unrelated problems. If there are multiple distinct risks, list them separately."
-        )
-        response = run_theme_agent(
-            theme_label=label,
-            prompt=prompt,
-            documents=enriched_docs,
-        )
-        parsed = _parse_agent_json(response)
         
-        logger.debug(f"[ThemeAgent] {label} parsed response type: {type(parsed)}")
+        # SPAWN TRUE SUB-AGENT using factory
+        agent = get_theme_agent(theme_key)
+        logger.info(f"[ThemeAgent] Spawned {type(agent).__name__} for '{label}'")
         
+        # Run the sub-agent's autonomous reasoning (async method from ThreadPool)
+        insights = asyncio.run(agent.run(enriched_docs))
+        
+        # Convert to Insight objects
+        evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
         results = []
-        
-        # normalized parsing
-        items = []
-        if isinstance(parsed, dict) and "insights" in parsed and isinstance(parsed["insights"], list):
-            items = parsed["insights"]
-            logger.debug(f"[ThemeAgent] {label} found {len(items)} insights in dict format")
-        elif isinstance(parsed, list):
-            items = parsed
-            logger.debug(f"[ThemeAgent] {label} found {len(items)} insights in list format")
-        elif isinstance(parsed, dict) and "title" in parsed:
-            items = [parsed]
-            logger.debug(f"[ThemeAgent] {label} found 1 insight in single dict format")
-
-        for item in items:
+        for item in insights:
             title = item.get("title") or f"Update in {label}"
             detail = item.get("detail") or "Context unavailable"
-            parsed_evidence = item.get("evidence")
-            evidence = []
-            if isinstance(parsed_evidence, list) and parsed_evidence:
-                valid_urls = [str(url) for url in parsed_evidence if url and str(url).startswith("http")]
-                if valid_urls:
-                    evidence = valid_urls
-            else:
-                 # fallback to seed evidence if none specific provided
-                 evidence = evidence_seed
-
+            evidence = item.get("evidence") or evidence_seed
             results.append(Insight(category=label, title=title, detail=detail[:500], evidence=evidence))
-            
-        if not results:
-             # If parsing found nothing structured, use fallback
-             raise ValueError("No structured insights found")
         
-        # Validation: Log insight generation quality
+        if not results:
+            raise ValueError("No structured insights found")
+        
+        # Validation
         if len(results) < 3:
-            logger.warning(
-                f"[ThemeAgent] {label} has {len(docs)} docs but only {len(results)} insight(s). "
-                f"Expected 3 insights. LLM may be over-merging issues or hit token limit."
-            )
+            logger.warning(f"[ThemeAgent] {label} has {len(docs)} docs but only {len(results)} insight(s)")
         elif len(results) == 3:
             logger.info(f"[ThemeAgent] {label} generated {len(results)} insights ✓ (target met)")
         else:
-            logger.info(f"[ThemeAgent] {label} generated {len(results)} insights (exceeded target of 3)")
-
+            logger.info(f"[ThemeAgent] {label} generated {len(results)} insights")
+        
         return results
         
     except Exception as exc:
