@@ -202,7 +202,8 @@ class GeminiClient:
             title = sanitize_text(doc.get('title', ''))
             snippet = sanitize_text(doc.get('snippet', ''))[:300]  # Truncate long snippets
             sentiment = doc.get('sentiment', 'neutral')
-            doc_lines.append(f"{idx}. [{sentiment.upper()}] {title}: {snippet}")
+            credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
+            doc_lines.append(f"{idx}. [{sentiment.upper()} | Cred:{credibility:.2f}] {title}: {snippet}")
         docs_block = "\n".join(doc_lines) or "No documents available."
 
         return (
