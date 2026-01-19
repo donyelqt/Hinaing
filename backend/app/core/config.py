@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Service metadata
     app_name: str = "Public Sentiment Agent Backend"
     environment: str = "development"
-    frontend_origin: str = "http://localhost:3000"
+    frontend_origin: str = "http://localhost:3000,http://localhost:3001"
 
     # External services (all optional with defaults to prevent startup crash)
     supabase_url: str = ""
