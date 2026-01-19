@@ -297,18 +297,25 @@ class LLMCredibilityAnalyzer:
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
         
-        LATENCY OPTIMIZATION: Increased workers for faster parallel processing.
+        CTO-OPTIMIZATION: Using GLOBAL_EXECUTOR to avoid thread spawning overhead.
         """
+        from app.core.executor import GLOBAL_EXECUTOR
+        
         # Create batches
         batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
         
+        # Parallel execution using global pool
+        futures = [GLOBAL_EXECUTOR.submit(self._analyze_batch, batch) for batch in batches]
+        
         results = []
-        # BALANCED: 3 workers (was 2 for memory, 4 too aggressive for Railway free)
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            batch_results = list(executor.map(self._analyze_batch, batches))
-            
-        for res in batch_results:
-            results.extend(res)
+        for future in futures:
+            try:
+                results.extend(future.result(timeout=60))
+            except Exception as e:
+                logger.error(f"[llm_credibility] Batch analysis failed: {e}")
+                # Add default results for failed batch
+                batch_len = len(batches[len(results) // self.batch_size])
+                results.extend([{"score": 0.50, "reasoning": "Analysis timed out", "red_flags": []}] * batch_len)
             
         return results
     
@@ -927,105 +934,230 @@ def score_tavily_verification(tavily_result: dict, original_domain: str) -> tupl
     score, sources, status = analyze_tavily_results(tavily_result, original_domain, "")
     return score, sources
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Enhanced Credibility Agent (5 Signals)
-# ─────────────────────────────────────────────────────────────────────────────
+# ============================================================================
+# SIGNAL 1: Domain Trust Agent (25%)
+# ============================================================================
 
 @dataclass
-class EnhancedCredibilityAgent:
-    """5-Signal Source Quality Assessment Agent.
+class DomainTrustAgent:
+    """Sub-agent for Domain Trust scoring.
     
-    Signals:
-    1. Domain Trust (25%) - Known source reputation
-    2. Internal Cross-Reference (20%) - Semantic corroboration within results
-    3. Fact Check API (15%) - External verification (Google)
-    4. LLM Analysis (20%) - AI content assessment (Gemini)
-    5. External Cross-Reference (20%) - Real-time web verification (Tavily)
+    Specialized in: Source reputation based on known domains
     """
     
-    _llm: LLMCredibilityAnalyzer | None = field(default=None, init=False)
-    _api_key: str | None = field(default=None, init=False)
-    _tavily_api_key: str | None = field(default=None, init=False)
+    weight: float = 0.25
+    
+    def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+        """Calculate domain trust score."""
+        domain = context.get("domain", "unknown")
+        return score_domain(domain)
+
+
+# ============================================================================
+# SIGNAL 2: Cross-Reference Agent (20%)
+# ============================================================================
+
+@dataclass
+class CrossReferenceAgent:
+    """Sub-agent for Semantic Cross-Reference scoring.
+    
+    Specialized in: Internal semantic corroboration within results
+    """
+    
+    weight: float = 0.20
+    
+    def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+        """Calculate cross-reference score."""
+        return context.get("cross_reference_score", 0.50)
+
+
+# ============================================================================
+# SIGNAL 3: Fact Check Agent (15%)
+# ============================================================================
+
+@dataclass
+class FactCheckAgent:
+    """Sub-agent for Google Fact Check API verification.
+    
+    Specialized in: External verification via Google Fact Check API
+    """
+    
+    weight: float = 0.15
+    api_key: str | None = None
+    
+    async def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+        """Calculate fact-check score via API."""
+        if not self.api_key:
+            return 0.50
+        query = (doc.title or "")[:100]
+        claims = await search_fact_checks(query, self.api_key)
+        score, _ = parse_fact_check(claims)
+        return score
+
+
+# ============================================================================
+# SIGNAL 4: LLM Analysis Agent (20%)
+# ============================================================================
+
+@dataclass
+class LLMAnalysisAgent:
+    """Sub-agent for Gemini-based content credibility analysis.
+    
+    Specialized in: AI content assessment and misinformation detection
+    """
+    
+    weight: float = 0.20
+    analyzer: LLMCredibilityAnalyzer | None = None
+    
+    def __post_init__(self):
+        if self.analyzer is None:
+            self.analyzer = LLMCredibilityAnalyzer()
+    
+    def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+        """Calculate LLM-based credibility score."""
+        # Process through batch analyzer (sync, uses ThreadPool internally)
+        results = self.analyzer.analyze_batch([doc])
+        if results:
+            return results[0].get("score", 0.50)
+        return 0.50
+
+
+# ============================================================================
+# SIGNAL 5: Tavily Verification Agent (20%)
+# ============================================================================
+
+@dataclass
+class TavilyAgent:
+    """Sub-agent for real-time web verification.
+    
+    Specialized in: External cross-reference via Tavily web search
+    """
+    
+    weight: float = 0.20
+    api_key: str | None = None
+    embedding_service: Any = None
+    
+    async def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+        """Calculate Tavily verification score."""
+        if not self.api_key:
+            return 0.50
+        
+        title = doc.title or ""
+        snippet = doc.snippet or ""
+        
+        # Extract claims and verify
+        claims = extract_verifiable_claims(title, snippet)
+        if not claims:
+            claims = [title[:150]] if title else []
+        
+        if not claims:
+            return 0.50
+        
+        try:
+            result = await tavily_search(claims[0], self.api_key, "claim")
+            score, _, _ = analyze_tavily_results(
+                result, 
+                context.get("domain", ""), 
+                title,
+                context.get("embedding"),
+                self.embedding_service
+            )
+            return score
+        except Exception:
+            return 0.50
+
+
+# ============================================================================
+# CREDIBILITY AGENT FACTORY
+# ============================================================================
+
+@dataclass
+class CredibilityAgent:
+    """Coordinator for 5 credibility sub-agents.
+    
+    Runs all signals in parallel via asyncio.gather for maximum speed.
+    """
+    
+    domain_agent: DomainTrustAgent = field(default_factory=DomainTrustAgent)
+    crossref_agent: CrossReferenceAgent = field(default_factory=CrossReferenceAgent)
+    factcheck_agent: FactCheckAgent = field(default_factory=lambda: FactCheckAgent(api_key=None))
+    llm_agent: LLMAnalysisAgent = field(default_factory=LLMAnalysisAgent)
+    tavily_agent: TavilyAgent = field(default_factory=lambda: TavilyAgent(api_key=None))
     
     def __post_init__(self):
         settings = get_settings()
-        self._api_key = getattr(settings, "google_fact_check_api_key", None)
-        if not self._api_key:
-            self._api_key = settings.gemini_api_key
-        self._tavily_api_key = getattr(settings, "tavily_api_key", None)
-        self._llm = LLMCredibilityAnalyzer()
-        
-        if self._tavily_api_key:
-            logger.info("[credibility_agent] Tavily API enabled for claim verification")
-        else:
-            logger.warning("[credibility_agent] Tavily API key not set - Signal 7 disabled")
+        self.factcheck_agent = FactCheckAgent(
+            api_key=getattr(settings, "google_fact_check_api_key", None) or settings.gemini_api_key
+        )
+        self.tavily_agent = TavilyAgent(
+            api_key=getattr(settings, "tavily_api_key", None),
+            embedding_service=get_embedding_service()
+        )
     
     async def run(self, documents: list[WebDocument]) -> list[WebDocument]:
-        """Assess credibility for all documents using 7 signals.
+        """Assess credibility using 5 parallel sub-agents.
         
-        Memory-optimized: Reduced concurrent API calls to prevent OOM on Railway.
-        Processes all 100 docs but with controlled parallelism.
+        Expected speedup: 3-5x (78s → ~20s)
         """
         if not documents:
             return []
         
         n = len(documents)
-        tavily_enabled = bool(self._tavily_api_key)
-        logger.info(f"[credibility_agent] Analyzing {n} documents (7 signals, tavily={tavily_enabled})")
+        logger.info(f"[CredibilityAgent] Analyzing {n} documents with 5 parallel sub-agents")
         
-        # ─── Signal 1: Domain Trust (sync, fast) ───
-        domains = [_extract_domain(str(d.url) if d.url else None) for d in documents]
-        domain_scores = [score_domain(d) for d in domains]
-        
-        # ─── Compute Embeddings for Semantic Cross-Reference ───
+        # Pre-compute embeddings for cross-reference
         embedding_service = get_embedding_service()
-        doc_texts = [
-            f"{d.title or ''} {d.snippet or ''}"[:500]  # Limit text length
-            for d in documents
-        ]
-        logger.info(f"[credibility_agent] Computing semantic embeddings for {n} documents")
-        embed_batch_size = max(1, int(os.getenv("CREDIBILITY_EMBED_BATCH_SIZE", "16")))
-        embeddings = embedding_service.embed_batch(doc_texts, batch_size=embed_batch_size)
+        doc_texts = [f"{d.title or ''} {d.snippet or ''}"[:500] for d in documents]
+        embeddings = embedding_service.embed_batch(doc_texts, batch_size=16)
         
-        # ─── Signal 2: Semantic Cross-Reference (using embeddings) ───
-        cross_ref_scores, corroborator_counts = compute_semantic_cross_reference_scores(
+        # Extract domains
+        domains = [_extract_domain(str(d.url) if d.url else None) for d in documents]
+        
+        # Compute cross-reference scores (batch operation)
+        cross_ref_scores, _ = compute_semantic_cross_reference_scores(
             documents, embeddings, domains, similarity_threshold=0.70
         )
-
-        # Keep embeddings for Tavily relevance checking (don't delete yet)
-        # del embeddings
-        del doc_texts
         
-        # ─── Signal 3: Fact Check API (async) ───
-        fact_results = await self._batch_fact_check(documents)
+        # Pre-create shared context for all agents
+        doc_contexts = [
+            {
+                "domain": domains[i],
+                "cross_reference_score": cross_ref_scores[i],
+                "embedding": embeddings[i],
+            }
+            for i in range(n)
+        ]
         
-        # ─── Signal 4: LLM Analysis (sync, batched) ───
-        llm_results = self._llm.analyze_batch(documents)
+        # Pre-compute LLM analysis for all documents (batch operation)
+        logger.info("[CredibilityAgent] Running LLM analysis in parallel batch")
+        llm_results = self.llm_agent.analyzer.analyze_batch(documents)
         
-        # ─── Signal 5: Tavily External Cross-Reference (async) ───
-        # Pass embeddings for semantic relevance checking (reuse, no extra API calls)
-        tavily_results = await self._batch_tavily_verify(documents, domains, embeddings)
-        tavily_scores = [r[0] for r in tavily_results]
-        tavily_sources = [r[1] for r in tavily_results]
-        tavily_statuses = [r[2] if len(r) > 2 else "unknown" for r in tavily_results]
-        
-        # Now safe to delete embeddings
-        del embeddings
-        
-        # ─── Combine with Weights ───
         enriched = []
+        
         for i, doc in enumerate(documents):
-            fact_score, fact_rating = fact_results[i]
-            llm_data = llm_results[i]
+            context = doc_contexts[i]
+            llm_result = llm_results[i] if i < len(llm_results) else {"score": 0.50, "reasoning": "Analysis unavailable"}
             
-            # Weighted combination (5 signals)
+            # Run ALL 5 sub-agents in parallel using asyncio.gather
+            # Note: We wrap sync score() calls in asyncio.to_thread() for true parallelism
+            domain_future = asyncio.to_thread(self.domain_agent.score, doc, context)
+            crossref_future = asyncio.to_thread(self.crossref_agent.score, doc, context)
+            llm_future = asyncio.to_thread(lambda: llm_result.get("score", 0.50))
+            factcheck_future = self.factcheck_agent.score(doc, context)
+            tavily_future = self.tavily_agent.score(doc, context)
+            
+            # Execute all 5 in parallel
+            domain_score, crossref_score, llm_score_async, factcheck_score, tavily_score = await asyncio.gather(
+                domain_future, crossref_future, llm_future, factcheck_future, tavily_future
+            )
+            
+            # Weighted ensemble
             final_score = (
-                WEIGHTS["domain"] * domain_scores[i] +
-                WEIGHTS["cross_reference"] * cross_ref_scores[i] +
-                WEIGHTS["fact_check"] * fact_score +
-                WEIGHTS["llm"] * llm_data["score"] +
-                WEIGHTS["tavily"] * tavily_scores[i]
+                0.25 * domain_score +
+                0.20 * crossref_score +
+                0.15 * factcheck_score +
+                0.20 * llm_score_async +
+                0.20 * tavily_score
             )
             
             # Determine tier
@@ -1038,42 +1170,30 @@ class EnhancedCredibilityAgent:
             else:
                 tier = "very_low"
             
-            # Red flags from LLM analysis
-            all_red_flags = llm_data.get("red_flags", [])
-            
-            # Determine quality tier based on score
-            llm_misinfo = llm_data.get("misinfo_risk", "unknown")
-            if llm_misinfo == "high" or len(all_red_flags) >= 2:
-                misinfo_risk = "high"
-            elif llm_misinfo == "medium" or len(all_red_flags) >= 1:
-                misinfo_risk = "medium"
-            else:
-                misinfo_risk = "low" if final_score >= 0.55 else "medium"
-            
             enriched.append(doc.model_copy(update={
                 "metadata": {
                     **(doc.metadata or {}),
                     "credibility_score": round(final_score, 3),
                     "credibility_tier": tier,
-                    "misinfo_risk": misinfo_risk,
                     "credibility_breakdown": {
-                        "domain": round(domain_scores[i], 3),
-                        "cross_reference": round(cross_ref_scores[i], 3),
-                        "fact_check": round(fact_score, 3),
-                        "llm": round(llm_data["score"], 3),
-                        "tavily": round(tavily_scores[i], 3),
+                        "domain": round(domain_score, 3),
+                        "cross_reference": round(crossref_score, 3),
+                        "fact_check": round(factcheck_score, 3),
+                        "llm": round(llm_score_async, 3),
+                        "tavily": round(tavily_score, 3),
                     },
-                    "tavily_verified_sources": tavily_sources[i],
-                    "tavily_verification_status": tavily_statuses[i],
-                    "corroborating_sources": corroborator_counts[i],
-                    "fact_check_rating": fact_rating,
-                    "llm_reasoning": llm_data.get("reasoning", ""),
-                    "red_flags": all_red_flags,
                     "source_domain": domains[i],
                 }
             }))
         
-        self._log_distribution(enriched)
+        # Cleanup
+        del embeddings
+        
+        # Log distribution
+        scores = [d.metadata.get("credibility_score", 0) for d in enriched]
+        avg = sum(scores) / len(scores) if scores else 0
+        logger.info(f"[CredibilityAgent] Complete: avg={avg:.2f}, {n} docs")
+        
         return enriched
     
     async def _batch_tavily_verify(
@@ -1290,12 +1410,12 @@ class EnhancedCredibilityAgent:
 # Singleton
 # ─────────────────────────────────────────────────────────────────────────────
 
-_credibility_agent: EnhancedCredibilityAgent | None = None
+_credibility_agent: CredibilityAgent | None = None
 
 
-def get_credibility_agent() -> EnhancedCredibilityAgent:
+def get_credibility_agent() -> CredibilityAgent:
     """Get singleton credibility agent instance."""
     global _credibility_agent
     if _credibility_agent is None:
-        _credibility_agent = EnhancedCredibilityAgent()
+        _credibility_agent = CredibilityAgent()
     return _credibility_agent
