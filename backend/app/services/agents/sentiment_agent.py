@@ -5,6 +5,7 @@ Both models analyze ALL documents, predictions are combined for maximum accuracy
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import logging
 import os
@@ -217,33 +218,34 @@ class EnsembleSentimentAgent:
             texts.append(f"{title}. {snippet}"[:512])
         
         # PERFORMANCE OPTIMIZATION: Run RoBERTa and Gemini in PARALLEL
-        # RoBERTa is CPU-intensive, Gemini is Network-intensive.
+        # Using the GLOBAL_EXECUTOR from main to avoid the overhead of spawning new threads
+        from app.core.executor import GLOBAL_EXECUTOR
+        
         logger.info("[EnsembleSentimentAgent] Starting Parallel Ensemble (RoBERTa + Gemini)...")
         
         # Track counts for metrics
         roberta_probs = []
         gemini_probs = []
         
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Task 1: RoBERTa (Local Transformer)
-            ro_future = executor.submit(self.roberta.predict_batch_with_probs, texts)
-            # Task 2: Gemini (Cloud LLM)
-            ge_future = executor.submit(self._gemini_analyze_all, documents)
-            
-            # Wait for both (with global timeout)
-            try:
-                # RoBERTa is usually fast, but Gemini can hang.
-                # We give ge_future a bit more room.
-                roberta_probs = ro_future.result(timeout=TOTAL_TIMEOUT)
-                gemini_probs = ge_future.result(timeout=TOTAL_TIMEOUT)
-            except Exception as e:
-                logger.error(f"[EnsembleSentimentAgent] Parallel ensemble failed or timed out: {e}")
-                # Fallback: ensure we have something to combine
-                default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
-                if not roberta_probs:
-                    roberta_probs = [default_probs.copy()] * len(documents)
-                if not gemini_probs:
-                    gemini_probs = [default_probs.copy()] * len(documents)
+        # Task 1: RoBERTa (Local Transformer)
+        ro_future = GLOBAL_EXECUTOR.submit(self.roberta.predict_batch_with_probs, texts)
+        # Task 2: Gemini (Cloud LLM)
+        ge_future = GLOBAL_EXECUTOR.submit(self._gemini_analyze_all, documents)
+        
+        # Wait for both (with global timeout)
+        try:
+            # RoBERTa is usually fast, but Gemini can hang.
+            # We give ge_future a bit more room.
+            roberta_probs = ro_future.result(timeout=TOTAL_TIMEOUT)
+            gemini_probs = ge_future.result(timeout=TOTAL_TIMEOUT)
+        except Exception as e:
+            logger.error(f"[EnsembleSentimentAgent] Parallel ensemble failed or timed out: {e}")
+            # Fallback: ensure we have something to combine
+            default_probs = {"negative": 0.33, "neutral": 0.34, "positive": 0.33}
+            if not roberta_probs:
+                roberta_probs = [default_probs.copy()] * len(documents)
+            if not gemini_probs:
+                gemini_probs = [default_probs.copy()] * len(documents)
         
         logger.info(f"[EnsembleSentimentAgent] Ensemble analysis completed in {time.time() - start_time:.1f}s")
         
@@ -384,31 +386,29 @@ class EnsembleSentimentAgent:
         # MEMORY OPTIMIZATION: Process batches in PARALLEL to reduce latency
         # Reverting strict sequential processing - using Semaphore to control concurrency instead
         # This reduces 39s bottlenecks to ~10s
-        import concurrent.futures
-        
+        from app.core.executor import GLOBAL_EXECUTOR
         results_map = {}
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            # Create a future for each batch
-            future_to_batch = {
-                executor.submit(self._gemini_batch_with_probs, batch): i 
-                for i, batch in enumerate(batches)
-            }
-            
-            for future in concurrent.futures.as_completed(future_to_batch):
-                batch_idx = future_to_batch[future]
-                try:
-                    # Check total timeout
-                    if time.time() - total_start > TOTAL_TIMEOUT:
-                        logger.warning(f"[EnsembleSentimentAgent] Global timeout reached at batch {batch_idx}")
-                        results_map[batch_idx] = [default_probs.copy() for _ in range(len(batches[batch_idx]))]
-                        continue
-
-                    batch_results = future.result()
-                    results_map[batch_idx] = batch_results
-                except Exception as e:
-                    logger.warning(f"[EnsembleSentimentAgent] Batch {batch_idx} failed: {e}")
+        # Create a future for each batch using the global hot pool
+        future_to_batch = {
+            GLOBAL_EXECUTOR.submit(self._gemini_batch_with_probs, batch): i 
+            for i, batch in enumerate(batches)
+        }
+        
+        for future in concurrent.futures.as_completed(future_to_batch):
+            batch_idx = future_to_batch[future]
+            try:
+                # Check total timeout
+                if time.time() - total_start > TOTAL_TIMEOUT:
+                    logger.warning(f"[EnsembleSentimentAgent] Global timeout reached at batch {batch_idx}")
                     results_map[batch_idx] = [default_probs.copy() for _ in range(len(batches[batch_idx]))]
+                    continue
+
+                batch_results = future.result()
+                results_map[batch_idx] = batch_results
+            except Exception as e:
+                logger.warning(f"[EnsembleSentimentAgent] Batch {batch_idx} failed: {e}")
+                results_map[batch_idx] = [default_probs.copy() for _ in range(len(batches[batch_idx]))]
         
         # Reassemble results in order
         for i in range(len(batches)):
@@ -447,18 +447,15 @@ Return JSON array of results:
 [{{"i": 0, "s": "negative", "c": 0.85}}, {{"i": 1, "s": "neutral", "c": 0.70}}]"""
 
         try:
-            # Use asyncio timeout as backup (the request_options timeout doesn't always work)
-            import concurrent.futures
-            
             def _call_gemini():
                 return self.gemini_model.generate_content(
                     prompt,
                     generation_config=genai.GenerationConfig(
                         temperature=0.0,
-                        max_output_tokens=2000,  # 30 docs * ~50 chars per doc = 1500 tokens is plenty
+                        max_output_tokens=2000,
                     ),
                     safety_settings=SAFETY_SETTINGS,
-                    request_options={"timeout": 25},  # 25 second timeout per batch
+                    request_options={"timeout": 25},
                 )
             
             # Execute with thread timeout as backup
