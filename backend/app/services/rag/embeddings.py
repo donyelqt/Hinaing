@@ -23,8 +23,9 @@ def sanitize_text(text: str | None) -> str:
     cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
     return cleaned.strip() or "empty"
 
-# Optimize CPU threading for Railway containers (typically 1-2 vCPUs)
-CPU_THREADS = int(os.getenv("EMBEDDING_CPU_THREADS", "4"))
+# Optimize CPU threading for Hugging Face (2 vCPUs)
+# We use 3 threads to allow one for orchestration/background tasks
+CPU_THREADS = int(os.getenv("EMBEDDING_CPU_THREADS", "3"))
 torch.set_num_threads(CPU_THREADS)
 torch.set_num_interop_threads(1)
 
@@ -39,14 +40,13 @@ logger = logging.getLogger(__name__)
 class EmbeddingService:
     """Generate embeddings for documents and queries.
     
-    Optimized for CPU inference with:
-    - Controlled thread count for container environments
-    - Disabled gradients for faster inference
+    Optimized for 16GB RAM environments:
+    - Expanded LRU cache for high-speed repeated query retrieval
+    - Controlled thread count to avoid vCPU contention
     - Normalized embeddings for cosine similarity
-    - LRU cache for repeated queries
     """
     
-    # Using BGE-small: Better quality than MiniLM, same speed, 384 dimensions
+    # Using BGE-small: SOTA efficiency for CPU
     DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
     
     def __init__(self, model_name: str | None = None):
@@ -56,19 +56,18 @@ class EmbeddingService:
             model_name: Name of sentence-transformer model to use
         """
         self.model_name = model_name or self.DEFAULT_MODEL
-        logger.info(f"Loading embedding model: {self.model_name}")
-        logger.info(f"CPU threads: {CPU_THREADS}")
+        logger.info(f"Loading embedding service with 16GB RAM profile")
+        logger.info(f"Targeting {CPU_THREADS} vCPU threads")
         
         self._model = SentenceTransformer(
             self.model_name,
             device="cpu",
         )
-        # Put model in eval mode for inference optimization
         self._model.eval()
         
-        # Cache for repeated query embeddings
+        # Aggressive RAM Caching: Store up to 5000 query embeddings in-memory
         self._query_cache: dict[str, list[float]] = {}
-        self._cache_max_size = 100
+        self._cache_max_size = 5000
         
         logger.info(f"Embedding model loaded. Dimension: {self.embedding_dim}")
     
