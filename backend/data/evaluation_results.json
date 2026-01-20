@@ -1,0 +1,127 @@
+{
+  "evaluation_date": "1767863654.2289023",
+  "total_samples": 100,
+  "label_distribution": {
+    "negative": 35,
+    "neutral": 32,
+    "positive": 33
+  },
+  "results": {
+    "roberta": {
+      "model_name": "RoBERTa (twitter-roberta-base-sentiment)",
+      "accuracy": 0.6,
+      "precision": {
+        "positive": 0.9565,
+        "negative": 0.8889,
+        "neutral": 0.4412
+      },
+      "recall": {
+        "positive": 0.6667,
+        "negative": 0.2286,
+        "neutral": 0.9375
+      },
+      "f1": {
+        "positive": 0.7857,
+        "negative": 0.3636,
+        "neutral": 0.6
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 22,
+          "negative": 0,
+          "neutral": 11
+        },
+        "negative": {
+          "positive": 0,
+          "negative": 8,
+          "neutral": 27
+        },
+        "neutral": {
+          "positive": 1,
+          "negative": 1,
+          "neutral": 30
+        }
+      }
+    },
+    "gemini": {
+      "model_name": "Gemini 2.5 Flash-Lite",
+      "accuracy": 0.98,
+      "precision": {
+        "positive": 0.9429,
+        "negative": 1.0,
+        "neutral": 1.0
+      },
+      "recall": {
+        "positive": 1.0,
+        "negative": 1.0,
+        "neutral": 0.9375
+      },
+      "f1": {
+        "positive": 0.9706,
+        "negative": 1.0,
+        "neutral": 0.9677
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 33,
+          "negative": 0,
+          "neutral": 0
+        },
+        "negative": {
+          "positive": 0,
+          "negative": 35,
+          "neutral": 0
+        },
+        "neutral": {
+          "positive": 2,
+          "negative": 0,
+          "neutral": 30
+        }
+      }
+    },
+    "ensemble": {
+      "model_name": "Ensemble (40% RoBERTa + 60% Gemini)",
+      "accuracy": 0.98,
+      "precision": {
+        "positive": 0.9429,
+        "negative": 1.0,
+        "neutral": 1.0
+      },
+      "recall": {
+        "positive": 1.0,
+        "negative": 1.0,
+        "neutral": 0.9375
+      },
+      "f1": {
+        "positive": 0.9706,
+        "negative": 1.0,
+        "neutral": 0.9677
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 33,
+          "negative": 0,
+          "neutral": 0
+        },
+        "negative": {
+          "positive": 0,
+          "negative": 35,
+          "neutral": 0
+        },
+        "neutral": {
+          "positive": 2,
+          "negative": 0,
+          "neutral": 30
+        }
+      }
+    }
+  },
+  "agreement_analysis": {
+    "full_agreement": 62,
+    "gemini_dominant": 38
+  },
+  "ensemble_improvement": {
+    "over_roberta": 63.33,
+    "over_gemini": 0.0
+  }
+}
