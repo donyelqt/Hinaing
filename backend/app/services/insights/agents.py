@@ -389,6 +389,8 @@ class CredibilityAgent:
                 return await agent.run(list(documents))
             except Exception as exc:
                 logger.warning("[credibility_agent] Enhanced failed, using fallback: %s", exc)
+                import traceback
+                logger.error("[credibility_agent] Traceback: %s", traceback.format_exc())
         
         # Fallback to simple heuristic scoring
         scored = score_credibility(list(documents))
