@@ -137,7 +137,7 @@ def get_gemini_agent() -> AgentExecutor:
     return AgentExecutor(
         agent=agent_runnable,
         tools=tools,
-        verbose=False,
+        verbose=True,
         handle_parsing_errors=True,
         max_iterations=5,  # Prevent runaway iterations
         max_execution_time=20,  # 20 second timeout per agent
