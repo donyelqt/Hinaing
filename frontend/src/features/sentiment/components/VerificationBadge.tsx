@@ -286,7 +286,7 @@ export function VerificationBadge({
                   Partially Verified
                 </span>
               )}
-              {(!tavilyVerificationStatus || tavilyVerificationStatus === 'unverified' || tavilyVerificationStatus === 'no_claims') && (
+              {!hasTavilyVerification && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold">
                   <Shield className="h-4 w-4" />
                   No External Verification Found
@@ -301,38 +301,38 @@ export function VerificationBadge({
             </div>
             
             {/* Verified Sources List */}
-            {hasTavilyVerification && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] text-slate-500 mb-1">Corroborating sources found:</p>
-                {tavilyVerifiedSources.map((source, idx) => {
-                  // Handle both old format (string) and new format (object with url, domain, title)
-                  const isObject = typeof source === 'object' && source !== null;
-                  const url = isObject ? (source as TavilySource).url : `https://www.google.com/search?q=site:${encodeURIComponent(source as string)}`;
-                  const domain = isObject ? (source as TavilySource).domain : (source as string);
-                  const title = isObject ? (source as TavilySource).title : (source as string);
-                  
-                  return (
-                    <a
-                      key={idx}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs transition-colors group"
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="block truncate font-medium">{title}</span>
-                        <span className="block truncate text-[10px] text-emerald-600 opacity-75">{domain}</span>
-                      </div>
-                      <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
-                    </a>
-                  );
-                })}
-                <p className="mt-1.5 text-[9px] text-slate-400">
-                  Click to view the original articles
-                </p>
-              </div>
-            )}
+            {(hasTavilyVerification && tavilyVerificationStatus !== 'unverified') && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-slate-500 mb-1">Corroborating sources found:</p>
+                  {tavilyVerifiedSources.map((source, idx) => {
+                    // Handle both old format (string) and new format (object with url, domain, title)
+                    const isObject = typeof source === 'object' && source !== null;
+                    const url = isObject ? (source as TavilySource).url : `https://www.google.com/search?q=site:${encodeURIComponent(source as string)}`;
+                    const domain = isObject ? (source as TavilySource).domain : (source as string);
+                    const title = isObject ? (source as TavilySource).title : (source as string);
+                    
+                    return (
+                      <a
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs transition-colors group"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="block truncate font-medium">{title}</span>
+                          <span className="block truncate text-[10px] text-emerald-600 opacity-75">{domain}</span>
+                        </div>
+                        <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                      </a>
+                    );
+                  })}
+                  <p className="mt-1.5 text-[9px] text-slate-400">
+                    Click to view the original articles
+                  </p>
+                </div>
+              )}
           </div>
 
           {/* Fact Check Rating */}
