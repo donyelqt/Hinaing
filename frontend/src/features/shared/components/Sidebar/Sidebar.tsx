@@ -137,7 +137,7 @@ export function Sidebar({
             <div>
               <p>AI Assistant</p>
               <p className={`text-xs ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
-                Quick Q&A (Single-Agent)
+                Quick Q&A (Agentic RAG)
               </p>
             </div>
           </button>
