@@ -444,7 +444,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 I <span className="font-semibold text-blue-600">intelligently route</span> your questions to the right system.
             </p>
             <p className="text-[10px] sm:text-xs text-slate-400 text-center mb-5 sm:mb-8 max-w-md">
-                Sentiment analysis → 7-agent pipeline and 11 sub-agents | Q&A → Fast search
+                Civic social listening and epistemic truth discovery → 7-agent pipeline and 11 sub-agents | Q&A → Fast search
             </p>
 
             {/* Analysis Suggestions */}
@@ -952,7 +952,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                         </button>
                                     </form>
                                     <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
-                                        Smart routing: Sentiment → 18 autonomous agents | Q&A → Fast search
+                                        Smart routing: Civic social listening and epistemic truth discovery → 18 autonomous agents | Q&A → Fast search
                                     </p>
                                 </div>
                             </div>
