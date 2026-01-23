@@ -165,11 +165,12 @@ class RetrievalAgent:
         query_plan: QueryPlan | None = None,
     ) -> list[WebDocument]:
         logger.info(
-            "[retrieval_agent] planning",
+            "[retrieval_agent] planning (CONCURRENT execution)",
             extra={
                 "platforms": request.platforms,
                 "focus": request.focus_areas,
                 "queries": len(query_plan.queries) if query_plan else 0,
+                "execution_model": "concurrent_asyncio",
             },
         )
 
@@ -184,7 +185,7 @@ class RetrievalAgent:
                 queries_to_run = query_plan.queries
                 
                 logger.info(
-                    "[retrieval_agent] executing %d diverse web queries with PARALLEL batching",
+                    "[retrieval_agent] executing %d diverse web queries with CONCURRENT batching",
                     len(queries_to_run),
                 )
                 
