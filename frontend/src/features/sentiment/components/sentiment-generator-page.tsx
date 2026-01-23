@@ -384,6 +384,12 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const credibilityBreakdown = React.useMemo(() => computeCredibilityBreakdown(snapshot?.sources), [snapshot?.sources]);
 
   const handleGenerate = async () => {
+    // Check if backend is ready
+    if (!backendStatus || backendError) {
+      setSnapshotError("System is still initializing. Please wait a moment and try again.");
+      return;
+    }
+
     // Validate all steps before generating
     const errors = validation.validate();
 
@@ -544,16 +550,18 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <button
                       type="button"
                       onClick={handleGenerate}
-                      disabled={state.isGenerating}
+                      disabled={state.isGenerating || !backendStatus || !!backendError}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
                       aria-label="Generate new sentiment report with current settings"
                     >
                       {state.isGenerating ? (
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : !backendStatus || backendError ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
                       ) : (
                         <BarChart3 className="h-4 w-4" aria-hidden="true" />
                       )}
-                      {state.isGenerating ? 'Generating Report...' : 'Generate Sentiment Report'}
+                      {state.isGenerating ? 'Generating Report...' : !backendStatus || backendError ? 'Initializing...' : 'Generate Sentiment Report'}
                     </button>
                   </div>
                 </div>
