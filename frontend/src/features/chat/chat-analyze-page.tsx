@@ -620,28 +620,63 @@ function MessageBubble({ msg }: { msg: Message }) {
 // --- Main Page ---
 
 export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
-    const [input, setInput] = React.useState("");
-    const [messages, setMessages] = React.useState<Message[]>([]);
-    const [isLoading, setIsLoading] = React.useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-    const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [input, setInput] = React.useState("");
+  const [messages, setMessages] = React.useState<Message[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
+  const [backendError, setBackendError] = React.useState<string | null>(null);
 
     const bottomRef = React.useRef<HTMLDivElement>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        // Scroll within the container only, not the whole page
-        if (scrollContainerRef.current && bottomRef.current) {
-            const container = scrollContainerRef.current;
-            const bottom = bottomRef.current;
-            const scrollTop = bottom.offsetTop - container.offsetTop;
-            container.scrollTo({ top: scrollTop, behavior: "smooth" });
+      // Check backend status
+      const checkBackendStatus = async () => {
+        try {
+          const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+          const response = await fetch(`${apiBase}/health`);
+          if (response.ok) {
+            const data = await response.json();
+            setBackendStatus(data.status);
+            setBackendError(null);
+          } else {
+            setBackendStatus(null);
+            setBackendError("Backend unavailable");
+          }
+        } catch (error) {
+          setBackendStatus(null);
+          setBackendError("Connection failed");
         }
+      };
+  
+      checkBackendStatus();
+    }, []);
+  
+    React.useEffect(() => {
+      // Scroll within the container only, not the whole page
+      if (scrollContainerRef.current && bottomRef.current) {
+        const container = scrollContainerRef.current;
+        const bottom = bottomRef.current;
+        const scrollTop = bottom.offsetTop - container.offsetTop;
+        container.scrollTo({ top: scrollTop, behavior: "smooth" });
+      }
     }, [messages, isLoading]);
 
     const handleSubmit = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!input.trim() || isLoading) return;
+      e?.preventDefault();
+      if (!input.trim() || isLoading) return;
+  
+      // Check if backend is ready
+      if (!backendStatus || backendError) {
+        setMessages((prev) => [...prev, {
+          role: "model",
+          content: "❌ System is still initializing. Please wait a moment and try again.",
+          isStreaming: false
+        }]);
+        return;
+      }
 
         const userMsg: Message = { role: "user", content: input };
         setMessages((prev) => [...prev, userMsg]);
@@ -936,18 +971,28 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                         />
                                         <button
                                             type="submit"
-                                            disabled={!input.trim() || isLoading}
+                                            disabled={!input.trim() || isLoading || !backendStatus || !!backendError}
                                             className={clsx(
-                                                "p-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95",
-                                                input.trim() && !isLoading
+                                                "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
+                                                input.trim() && !isLoading && backendStatus && !backendError
                                                     ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
-                                                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                                                    : "bg-slate-100 text-slate-600 cursor-not-allowed"
                                             )}
                                         >
                                             {isLoading ? (
-                                                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                                                <>
+                                                    <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                                                </>
+                                            ) : !backendStatus || backendError ? (
+                                                <>
+                                                    <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                                                    Initializing...
+                                                </>
                                             ) : (
-                                                <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                                                <>
+                                                    <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+                                                 
+                                                </>
                                             )}
                                         </button>
                                     </form>
