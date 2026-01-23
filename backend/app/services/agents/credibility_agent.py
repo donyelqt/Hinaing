@@ -1,16 +1,21 @@
 """Multi-Signal Credibility & Source Quality Assessment Agent for Thesis.
 
 5-Signal Ensemble for Source Quality Filtering:
-1. Domain Trust (25%) - Source reputation based on known domains
-2. Internal Cross-Reference (20%) - SEMANTIC corroboration using MiniLM embeddings
-3. Google Fact Check API (15%) - External fact-checker verification
-4. LLM Analysis (20%) - AI content quality assessment (Gemini)
-5. External Cross-Reference (20%) - Real-time web verification via Tavily
+1. Domain Trust (25%) - Source reputation based on known domains (CONCURRENT)
+2. Internal Cross-Reference (20%) - SEMANTIC corroboration using MiniLM embeddings (CONCURRENT)
+3. Google Fact Check API (15%) - External fact-checker verification (CONCURRENT)
+4. LLM Analysis (20%) - AI content quality assessment (Gemini) (PARALLEL)
+5. External Cross-Reference (20%) - Real-time web verification via Tavily (CONCURRENT)
 
 Note: This is a source quality filtering mechanism, not a misinformation detector.
 Validation requires labeled ground truth data (documented as thesis limitation).
 
 Each signal is independently measurable for thesis ablation studies.
+
+EXECUTION MODEL: Hybrid Concurrent/Parallel Architecture
+- Concurrent signals: asyncio.gather for I/O-bound operations (signals 1,2,3,5)
+- Parallel signal: ThreadPoolExecutor for CPU-bound LLM inference (signal 4)
+- Expected speedup: 3-5x (78s → ~20s) through optimal workload matching
 """
 from __future__ import annotations
 
@@ -292,7 +297,7 @@ class LLMCredibilityAnalyzer:
             "gemini-2.5-flash-lite",
             safety_settings=SAFETY_SETTINGS,
         )
-        self.batch_size = 20  # Increased from 15 for fewer API calls
+        self.batch_size = 25  # Optimized for speed (fewer API calls)
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
@@ -652,6 +657,13 @@ TRUSTED_VERIFICATION_DOMAINS = [
     "reuters.com", "ap.org", "bbc.com",  # International
 ]
 
+# High-trust domains that don't need fact-checking (optimization)
+SKIP_FACT_CHECK_DOMAINS = {
+    "gov.ph", "pia.gov.ph", "pna.gov.ph",  # Government sources
+    "inquirer.net", "philstar.com", "gmanetwork.com",  # Major news
+    "verafiles.org", "rappler.com",  # Fact-checkers
+}
+
 # Keywords that indicate claim contradiction (must be strong indicators)
 # These should only trigger when the claim itself is being disputed
 CONTRADICTION_KEYWORDS = [
@@ -986,9 +998,13 @@ class FactCheckAgent:
     api_key: str | None = None
     
     async def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
-        """Calculate fact-check score via API."""
+        """Calculate fact-check score via API.
+        
+        Analyzes ALL documents - no skip logic.
+        """
         if not self.api_key:
             return 0.50
+        
         query = (doc.title or "")[:100]
         claims = await search_fact_checks(query, self.api_key)
         score, _ = parse_fact_check(claims)
@@ -1038,7 +1054,10 @@ class TavilyAgent:
     embedding_service: Any = None
     
     async def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
-        """Calculate Tavily verification score."""
+        """Calculate Tavily verification score.
+        
+        Analyzes ALL documents - no skip logic.
+        """
         if not self.api_key:
             return 0.50
         
@@ -1108,7 +1127,7 @@ class CredibilityAgent:
         # Pre-compute embeddings for cross-reference
         embedding_service = get_embedding_service()
         doc_texts = [f"{d.title or ''} {d.snippet or ''}"[:500] for d in documents]
-        embeddings = embedding_service.embed_batch(doc_texts, batch_size=16)
+        embeddings = embedding_service.embed_batch(doc_texts, batch_size=24)
         
         # Extract domains
         domains = [_extract_domain(str(d.url) if d.url else None) for d in documents]
@@ -1132,23 +1151,35 @@ class CredibilityAgent:
         logger.info("[CredibilityAgent] Running LLM analysis in parallel batch")
         llm_results = self.llm_agent.analyzer.analyze_batch(documents)
         
+        # Pre-compute Tavily verification for all documents (batch operation)
+        logger.info("[CredibilityAgent] Running Tavily verification in parallel batch")
+        tavily_results = await self._batch_tavily_verify(documents, domains, embeddings, llm_results)
+        
+        # Pre-compute Fact Check scores for all documents (batch operation with concurrency control)
+        logger.info("[CredibilityAgent] Running Google Fact Check API in parallel batch")
+        factcheck_results = await self._batch_fact_check(documents, domains)
+        
         enriched = []
         
         for i, doc in enumerate(documents):
             context = doc_contexts[i]
             llm_result = llm_results[i] if i < len(llm_results) else {"score": 0.50, "reasoning": "Analysis unavailable"}
+            tavily_result = tavily_results[i] if i < len(tavily_results) else (0.50, [], "unverified")
+            factcheck_score = factcheck_results[i][0] if i < len(factcheck_results) else 0.50
             
             # Run ALL 5 sub-agents in parallel using asyncio.gather
             # Note: We wrap sync score() calls in asyncio.to_thread() for true parallelism
             domain_future = asyncio.to_thread(self.domain_agent.score, doc, context)
             crossref_future = asyncio.to_thread(self.crossref_agent.score, doc, context)
             llm_future = asyncio.to_thread(lambda: llm_result.get("score", 0.50))
-            factcheck_future = self.factcheck_agent.score(doc, context)
-            tavily_future = self.tavily_agent.score(doc, context)
             
-            # Execute all 5 in parallel
-            domain_score, crossref_score, llm_score_async, factcheck_score, tavily_score = await asyncio.gather(
-                domain_future, crossref_future, llm_future, factcheck_future, tavily_future
+            # Use pre-computed Fact Check and Tavily results instead of making second API calls
+            # This fixes the discrepancy between score and verification status
+            tavily_score = tavily_result[0]
+            
+            # Execute all 3 remaining agents in parallel
+            domain_score, crossref_score, llm_score_async = await asyncio.gather(
+                domain_future, crossref_future, llm_future
             )
             
             # Weighted ensemble
@@ -1159,6 +1190,12 @@ class CredibilityAgent:
                 0.20 * llm_score_async +
                 0.20 * tavily_score
             )
+            
+            # Extract Tavily verification status
+            if isinstance(tavily_result, tuple):
+                tavily_verification_status = tavily_result[2]
+            else:
+                tavily_verification_status = tavily_result.get("verification_status", "unverified")
             
             # Determine tier
             if final_score >= 0.75:
@@ -1183,6 +1220,9 @@ class CredibilityAgent:
                         "tavily": round(tavily_score, 3),
                     },
                     "source_domain": domains[i],
+                    "llm_reasoning": llm_result.get("reasoning", ""),
+                    "tavily_verified_sources": tavily_result[1] if isinstance(tavily_result, tuple) else tavily_result.get("verified_sources", []),
+                    "tavily_verification_status": tavily_verification_status,
                 }
             }))
         
@@ -1201,51 +1241,61 @@ class CredibilityAgent:
         docs: list[WebDocument],
         domains: list[str],
         embeddings: list[list[float]] | None = None,
+        llm_results: list[dict] | None = None,  # Pass LLM results here
     ) -> list[tuple[float, list[str], str]]:
-        """Run Tavily claim verification with rate limiting.
+        """Run Tavily claim verification for ALL documents.
         
-        Uses claim extraction to search for specific verifiable claims,
-        not just general topic matching. Uses pre-computed embeddings for
-        semantic relevance checking (no extra API calls).
+        No priority sampling - analyzes every document.
         
         Args:
             docs: Documents to verify
             domains: Pre-extracted domains
             embeddings: Pre-computed embeddings for semantic relevance (optional)
-        
+            llm_results: Pre-computed LLM analysis results
+            
         Returns:
             List of (score, verified_sources, verification_status) tuples
         """
-        if not self._tavily_api_key:
+        if not self.tavily_agent.api_key:
             # Return neutral scores if Tavily not configured
             return [(0.50, [], "disabled") for _ in docs]
         
         # Get embedding service for Tavily result comparison
         embedding_service = get_embedding_service() if embeddings else None
         
-        # LATENCY OPTIMIZATION: Probe test to fail fast if rate limited
-        # This saves ~30s by not iterating through 56 docs when Tavily is unavailable
-        try:
-            probe_result = await tavily_search("test query", self._tavily_api_key, "claim")
-        except Exception as e:
-            if "limit" in str(e).lower() or "exceeds" in str(e).lower():
-                logger.warning("[tavily] Rate limit detected on probe, skipping all verification")
-                return [(0.50, [], "rate_limited") for _ in docs]
+        # VERIFY ALL DOCUMENTS - no skip logic
+        docs_to_verify = []
+        for i, doc in enumerate(docs):
+            domain = domains[i]
+            docs_to_verify.append((i, doc, domain))
         
-        # Use semaphore=3 for moderate parallelism (was 1 = too slow)
-        semaphore = asyncio.Semaphore(3)
+        logger.info(
+            f"[tavily] Verifying ALL {len(docs_to_verify)}/{len(docs)} documents"
+        )
+        
+        # LATENCY OPTIMIZATION: Probe test to fail fast if rate limited
+        if docs_to_verify:
+            try:
+                probe_result = await tavily_search("test query", self.tavily_agent.api_key, "claim")
+            except Exception as e:
+                if "limit" in str(e).lower() or "exceeds" in str(e).lower():
+                    logger.warning("[tavily] Rate limit detected on probe, skipping all verification")
+                    return [(0.50, [], "rate_limited") for _ in docs]
+        
+        # Use semaphore=8 for improved parallelism (balance between speed and rate limits)
+        semaphore = asyncio.Semaphore(8)
         limit_reached = False
         
-        async def verify_one(doc: WebDocument, domain: str, idx: int) -> tuple[float, list[str], str]:
+        async def verify_one(doc: WebDocument, domain: str, doc_idx: int, verify_idx: int) -> tuple[int, float, list[str], str]:
             nonlocal limit_reached
             if limit_reached:
-                return 0.50, [], "skipped_limit"
+                return doc_idx, 0.50, [], "skipped_limit"
 
             async with semaphore:
                 if limit_reached: # Double check after acquiring semaphore
-                     return 0.50, [], "skipped_limit"
+                     return doc_idx, 0.50, [], "skipped_limit"
 
-                if idx > 0:
+                if verify_idx > 0:
                     await asyncio.sleep(0.1)  # Minimal rate limiting
                 
                 title = doc.title or ""
@@ -1259,13 +1309,13 @@ class CredibilityAgent:
                     claims = [title[:150]] if title else []
                 
                 if not claims:
-                    return 0.50, [], "no_claims"
+                    return doc_idx, 0.50, [], "no_claims"
                 
                 # Search for the primary claim (most important)
                 primary_claim = claims[0]
                 
                 try:
-                    result = await tavily_search(primary_claim, self._tavily_api_key, "claim")
+                    result = await tavily_search(primary_claim, self.tavily_agent.api_key, "claim")
                     
                     # Check for rate limit error in result (if it returns a dict with error)
                     # Note: tavily_search currently catches exceptions and returns {}, 
@@ -1282,11 +1332,11 @@ class CredibilityAgent:
                      if "429" in str(e) or "limit" in str(e).lower():
                          limit_reached = True
                          logger.warning("[tavily] Rate limit reached, skipping remaining items")
-                         return 0.50, [], "rate_limit"
-                     return 0.50, [], "error"
+                         return doc_idx, 0.50, [], "rate_limit"
+                     return doc_idx, 0.50, [], "error"
 
                 # Analyze results with semantic relevance checking
-                doc_embedding = embeddings[idx] if embeddings else None
+                doc_embedding = embeddings[doc_idx] if embeddings else None
                 score, sources, status = analyze_tavily_results(
                     result, domain, title, doc_embedding, embedding_service
                 )
@@ -1297,22 +1347,24 @@ class CredibilityAgent:
                 elif status == "verified":
                     logger.info(f"[tavily] VERIFIED: '{title[:50]}...' by {sources}")
                 
-                return score, sources, status
+                return doc_idx, score, sources, status
         
-        tasks = [verify_one(d, domains[i], i) for i, d in enumerate(docs)]
+        # Only verify selected documents
+        tasks = [verify_one(doc, domain, doc_idx, i) for i, (doc_idx, doc, domain) in enumerate(docs_to_verify)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        final = []
+        # Build final results array - all documents are verified
+        final = [(0.50, [], "unverified") for _ in docs]
         stats = {"verified": 0, "contradicted": 0, "unverified": 0, "skipped": 0, "errors": 0}
         
-        for i, r in enumerate(results):
+        for r in results:
             if isinstance(r, Exception):
                 logger.warning(f"[tavily] Verification error: {r}")
-                final.append((0.50, [], "error"))
                 stats["errors"] += 1
             else:
-                final.append(r)
-                score, sources, status = r
+                doc_idx, score, sources, status = r
+                final[doc_idx] = (score, sources, status)
+                
                 if status == "verified":
                     stats["verified"] += 1
                 elif status in ["contradicted", "disputed"]:
@@ -1331,28 +1383,32 @@ class CredibilityAgent:
     
     async def _batch_fact_check(
         self, 
-        docs: list[WebDocument]
+        docs: list[WebDocument],
+        domains: list[str]
     ) -> list[tuple[float, str | None]]:
-        """Run fact checks with controlled concurrency.
+        """Run fact checks with controlled concurrency - analyzes ALL documents.
         
         MEMORY OPTIMIZATION: Reduced concurrency to prevent OOM on Railway.
         Each httpx request holds memory until complete.
         """
         global _fact_check_api_warned
         
-        # BALANCED: 10 concurrent (was 5 for memory, 20 too aggressive for Railway free)
-        # Each request ~100KB, 10 concurrent = ~1MB memory overhead
-        semaphore = asyncio.Semaphore(10)
+        # BALANCED: 20 concurrent connections (optimized for speed vs Railway limits)
+        # Each request ~100KB, 20 concurrent = ~2MB memory overhead
+        semaphore = asyncio.Semaphore(20)
         
-        async def check_one(doc: WebDocument, idx: int) -> tuple[float, str | None]:
+        async def check_one(doc: WebDocument, domain: str, idx: int) -> tuple[float, str | None]:
             async with semaphore:
                 query = (doc.title or "")[:100]
-                claims = await search_fact_checks(query, self._api_key)
+                claims = await search_fact_checks(query, self.factcheck_agent.api_key)
                 return parse_fact_check(claims)
         
-        # Run all fact checks in parallel
-        tasks = [check_one(d, i) for i, d in enumerate(docs)]
+        # Run all fact checks in parallel (analyzes ALL documents)
+        tasks = [check_one(d, domains[i], i) for i, d in enumerate(docs)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # No longer skipping any documents - all are analyzed
+        logger.info(f"[fact_check] Analyzed ALL {len(docs)} documents")
         
         final = []
         has_rating = False
@@ -1404,6 +1460,13 @@ class CredibilityAgent:
         logger.info(
             f"[credibility_agent] Signals: {signal_avgs}"
         )
+        
+        # Debug: Log the first document's metadata to inspect structure
+        if docs:
+            first_doc_metadata = docs[0].metadata or {}
+            logger.debug("[credibility_agent] First document metadata keys: %s", list(first_doc_metadata.keys()))
+            if "credibility_breakdown" in first_doc_metadata:
+                logger.debug("[credibility_agent] First document credibility_breakdown: %s", first_doc_metadata["credibility_breakdown"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
