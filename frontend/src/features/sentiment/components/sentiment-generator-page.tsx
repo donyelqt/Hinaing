@@ -265,20 +265,20 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [hoveredCardIndex, setHoveredCardIndex] = React.useState<number | null>(null);
 
-  // Auto-hover effect for cards every 3 seconds
-  React.useEffect(() => {
-    if (!snapshot) return; // Only run when snapshot data is available
-
-    const cards = [0, 1, 2, 3, 4, 5]; // Indices for the 6 cards (sentiment + 3 stats + 3 credibility)
-    let currentIndex = 0;
-
-    const interval = setInterval(() => {
-      setHoveredCardIndex(cards[currentIndex]);
-      currentIndex = (currentIndex + 1) % cards.length;
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [snapshot]);
+  // Removed auto-hover effect as requested
+  // React.useEffect(() => {
+  //   if (!snapshot) return; // Only run when snapshot data is available
+  //
+  //   const cards = [0, 1, 2, 3, 4, 5]; // Indices for the 6 cards (sentiment + 3 stats + 3 credibility)
+  //   let currentIndex = 0;
+  //
+  //   const interval = setInterval(() => {
+  //     setHoveredCardIndex(cards[currentIndex]);
+  //     currentIndex = (currentIndex + 1) % cards.length;
+  //   }, 3000);
+  //
+  //   return () => clearInterval(interval);
+  // }, [snapshot]);
 
   React.useEffect(() => {
     apiGet<{ status: string }>("/health")
@@ -292,15 +292,37 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
       });
   }, []);
 
-  const negativePercent = snapshot?.overall_sentiment?.scores?.negative !== undefined
-    ? Math.round(snapshot.overall_sentiment.scores.negative * 100)
-    : 54;
-  const neutralPercent = snapshot?.overall_sentiment?.scores?.neutral !== undefined
-    ? Math.round(snapshot.overall_sentiment.scores.neutral * 100)
-    : 31;
-  const positivePercent = snapshot?.overall_sentiment?.scores?.positive !== undefined
-    ? Math.round(snapshot.overall_sentiment.scores.positive * 100)
-    : 15;
+  // Calculate sentiment percentages with rounding that ensures sum to 100%
+  let negativePercent = 54;
+  let neutralPercent = 31;
+  let positivePercent = 15;
+  
+  if (snapshot?.overall_sentiment?.scores) {
+    const { negative, neutral, positive } = snapshot.overall_sentiment.scores;
+    const neg = Math.round(negative * 100);
+    const neu = Math.round(neutral * 100);
+    const pos = Math.round(positive * 100);
+    const total = neg + neu + pos;
+    
+    if (total !== 100) {
+      // Adjust the largest percentage to make sum 100%
+      const diff = 100 - total;
+      const values = [
+        { value: neg, key: 'negative' },
+        { value: neu, key: 'neutral' },
+        { value: pos, key: 'positive' }
+      ];
+      const largest = values.reduce((a, b) => a.value > b.value ? a : b);
+      
+      if (largest.key === 'negative') negativePercent = neg + diff;
+      else if (largest.key === 'neutral') neutralPercent = neu + diff;
+      else positivePercent = pos + diff;
+    } else {
+      negativePercent = neg;
+      neutralPercent = neu;
+      positivePercent = pos;
+    }
+  }
 
   const narrativeSummary = React.useMemo(() => parseNarrativeSummary(snapshot?.overall_sentiment?.summary), [snapshot?.overall_sentiment?.summary]);
 
