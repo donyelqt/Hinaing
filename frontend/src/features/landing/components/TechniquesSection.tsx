@@ -68,7 +68,7 @@ export function TechniquesSection() {
     {
       id: "CRD-08",
       title: "Multi-Signal Credibility",
-      description: "5-signal ensemble for source quality filtering: domain trust, cross-reference, fact-check API, LLM analysis, and web verification.",
+      description: "5 sub-agents for source quality filtering: domain trust, cross-reference, fact-check, LLM analysis, and web verification.",
       icon: Zap,
       color: "text-rose-500 bg-rose-50 border-rose-100",
       tilt: "rotate-2",
