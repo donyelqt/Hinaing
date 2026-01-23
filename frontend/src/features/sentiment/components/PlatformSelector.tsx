@@ -24,7 +24,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
       <div className="grid gap-3 sm:grid-cols-2">
         {PLATFORM_OPTIONS.map((option) => {
           const isActive = platforms.includes(option.value);
-          const isDisabled = option.value === "facebook";
+          const isDisabled = option.value === "facebook" || option.value === "reddit";
           return (
             <button
               key={option.value}
