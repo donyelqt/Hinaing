@@ -6,7 +6,7 @@ export function TechniquesSection() {
     {
       id: "SYS-01",
       title: "Multi-Agent AI System",
-      description: "A 13-agent hierarchical architecture built on a dependency-aware DAG, orchestrating core processes and expandable theme-specific agents.",
+      description: "A 18-agent hierarchical architecture built on a dependency-aware DAG, orchestrating core processes and expandable theme-specific agents.",
       icon: Users,
       color: "text-violet-500 bg-violet-50 border-violet-100",
       tilt: "-rotate-1",
