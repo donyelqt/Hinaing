@@ -258,16 +258,16 @@ flowchart TB
             subgraph Node4["Node 4: Unified Analysis (Concurrent Execution)"]
                 direction TB
                 subgraph Concurrent["Node 4: Concurrent Agents (asyncio.gather)"]
-                    SA["SentimentAgent\nRoBERTa 40% + Gemini 60%\n(I/O-bound)"]
+                    SA["SentimentAgent<br/>RoBERTa 40% + Gemini 60%<br/>(I/O-bound)"]
                     subgraph Cred["CredibilityAgent (Hybrid)"]
                         direction LR
-                        DT["DomainTrustAgent\n25%\n(Sequential)"]
-                        CR["CrossReferenceAgent\n20%\n(Sequential)"]
-                        FC["FactCheckAgent\n15%\n(Concurrent)"]
-                        LL["LLMAnalysisAgent\n20%\n(Parallel)"]
-                        TV["TavilyAgent\n20%\n(Concurrent)"]
+                        DT["DomainTrustAgent 25%(Sequential)"]
+                        CR["CrossReferenceAgent 20%(Sequential)"]
+                        FC["FactCheckAgent 15%(Concurrent)"]
+                        LL["LLMAnalysisAgent 20%(Parallel)"]
+                        TV["TavilyAgent 20%(Concurrent)"]
                     end
-                    TR["ThemeRouterAgent\n6 theme buckets\n(Sequential)"]
+                    TR["ThemeRouterAgent<br/>6 theme buckets<br/>(Sequential)"]
                 end
                 SA & Cred & TR --> ED[Enriched + Routed Docs]
             end
