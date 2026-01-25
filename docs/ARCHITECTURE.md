@@ -50,8 +50,37 @@ The system implements what we term **"Self-Learning Cyclic RAG"** — a Read-Wri
 
 **Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
 **State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
+**Execution Model:** Hybrid Concurrent/Parallel Architecture (Optimized for Python GIL).
 
 > **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (Sub-30 seconds end-to-end) while enabling continuous systemic learning.
+
+### Execution Patterns: Concurrent vs Parallel Architecture
+
+**CRITICAL DISTINCTION FOR THESIS DEFENSE:**
+
+| Pattern | Implementation | Workload Type | Python Model | Performance Gain |
+|---------|----------------|---------------|--------------|------------------|
+| **Concurrent** | `asyncio.gather()` | I/O-bound (Network, API) | Single-threaded event loop | Latency hiding (no true speedup) |
+| **Parallel** | `ThreadPoolExecutor` | CPU-bound (LLM, Computation) | Multi-threaded (bypasses GIL) | 3-5x true speedup |
+
+**Architecture Rationale:**
+- **Concurrent for I/O**: Network-bound operations (LangSearch, Tavily, Fact Check APIs) use asyncio to overlap wait times
+- **Parallel for CPU**: Computationally-intensive operations (Gemini LLM inference) use ThreadPoolExecutor for multi-core processing
+- **Hybrid Optimization**: Combines both patterns for maximum throughput across heterogeneous workloads
+
+**Component-Specific Execution Patterns:**
+
+| Component | Execution Pattern | Reasoning |
+|-----------|-------------------|-----------|
+| **QueryOrchestratorAgent** | Sequential (CPU-bound) | ReAct reasoning and query planning are CPU-intensive and require sequential execution |
+| **RetrievalAgent** | Concurrent (I/O-bound) | Network-bound operations (LangSearch, Facebook, Reddit) benefit from asyncio to overlap wait times |
+| **ContextAugmentationAgent (Recall)** | Sequential (CPU-bound) | Memory recall involves vector search and is CPU-intensive |
+| **ContextAugmentationAgent (Consolidation)** | Parallel (CPU-bound) | Memory consolidation involves chunking and embedding, which are CPU-intensive and benefit from ThreadPoolExecutor |
+| **SentimentAgent** | Concurrent (I/O-bound) | Network-bound operations (Gemini API calls) benefit from asyncio to overlap wait times |
+| **CredibilityAgent** | Hybrid (Concurrent I/O + Parallel CPU) | Combines concurrent I/O operations (Fact Check, Tavily) with parallel CPU operations (LLM Analysis) |
+| **ThemeRouterAgent** | Concurrent (I/O-bound) | Network-bound operations (BGE embeddings) benefit from asyncio to overlap wait times |
+| **Theme Agents (×6)** | Parallel (CPU-bound) | Theme-specific insight generation is CPU-intensive and benefits from ThreadPoolExecutor |
+| **CoordinatorAgent** | Sequential (CPU-bound) | Narrative synthesis is CPU-intensive and requires sequential execution |
 
 ---
 
@@ -148,15 +177,15 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 
 ### Node Descriptions (Agent & Node Mapping)
 
-| Node | Agent(s) | Function | Key Components |
-|------|----------|----------|----------------|
-| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (KEYWORD_CLUSTERS), 4 Specialized Tools, Gemini 2.5 Flash-Lite |
-| 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving |
-| 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity |
-| 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Parallel Data Enrichment & Verification | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing |
-| 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors |
-| 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | True Class-Based Sub-Agents with `run()` methods, `get_theme_agent()` factory for conditional spawning |
-| 7 | **CoordinatorAgent** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly |
+| Node | Agent(s) | Function | Key Components | Execution Model |
+|------|----------|----------|----------------|------------------|
+| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (KEYWORD_CLUSTERS), 4 Specialized Tools, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
+| 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving | **Concurrent** (asyncio.gather, I/O-bound) |
+| 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity | Sequential (CPU-bound) |
+| 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Data Enrichment & Verification | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing | **Concurrent** (asyncio.gather, I/O-bound) |
+| 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | True Class-Based Sub-Agents with `run()` methods, `get_theme_agent()` factory for conditional spawning | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| 7 | **CoordinatorAgent** | Executive Assembly & Strategic Narrative Generation | Context-Aware Synthesis, Gemini 2.5 Flash-Lite, Global State Assembly | Sequential (CPU-bound) |
 
 ## System Architecture: Hierarchical DAG-Based Multi-Agent Agentic Workflow
 
@@ -226,21 +255,24 @@ flowchart TB
                 IntDocs --> Merge
             end
 
-            subgraph Node4["Node 4: Unified Analysis (asyncio.gather)"]
+            subgraph Node4["Node 4: Unified Analysis (Concurrent Execution)"]
                 direction TB
-                subgraph Parallel["Node 4: Parallel Agents"]
-                    SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
-                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
+                subgraph Concurrent["Node 4: Concurrent Agents (asyncio.gather)"]
+                    SA["SentimentAgent\nRoBERTa 40% + Gemini 60%\n(I/O-bound)"]
+                    subgraph Cred["CredibilityAgent (Hybrid)"]
                         direction LR
-                        DT[DomainTrustAgent<br/>25%]
-                        CR[CrossReferenceAgent<br/>20%]
-                        FC[FactCheckAgent<br/>15%]
-                        LL[LLMAnalysisAgent<br/>20%]
-                        TV[TavilyAgent<br/>20%]
+                        DT["DomainTrustAgent\n25%\n(Sequential)"]
+                        CR["CrossReferenceAgent\n20%\n(Sequential)"]
+                        FC["FactCheckAgent\n15%\n(Concurrent)"]
+                        LL["LLMAnalysisAgent\n20%\n(Parallel)"]
+                        TV["TavilyAgent\n20%\n(Concurrent)"]
                     end
-                    TR[ThemeRouterAgent<br/>6 theme buckets]
+                    TR["ThemeRouterAgent\n6 theme buckets\n(Sequential)"]
                 end
                 SA & Cred & TR --> ED[Enriched + Routed Docs]
+                
+                Note: LLMAnalysisAgent uses ThreadPoolExecutor for true parallelism
+                Note: Other agents use asyncio for concurrent I/O operations
             end
 
             subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
@@ -681,7 +713,7 @@ sequenceDiagram
     QO-->>C: QueryPlan(6+ diverse queries)
 ```
 
-#### Protocol 2: Parallel Analysis Protocol (Fan-Out/Fan-In)
+#### Protocol 2: Concurrent Analysis Protocol (Fan-Out/Fan-In)
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
@@ -701,13 +733,16 @@ sequenceDiagram
     CA->>CR: verify(enriched_documents)
     CA->>TR: route(enriched_documents)
 
-    par asyncio.gather (Parallel Execution)
+    par asyncio.gather (Concurrent Execution)
         SA-->>CA: sentiment_results
         CR-->>CA: credibility_scores
         TR-->>CA: theme_routed_docs
     end
 
     CA-->>ContextAugmentationAgent: enriched_documents
+    
+    Note over CA: Concurrent I/O-bound operations
+    Note over CR: Hybrid: Concurrent I/O + Parallel CPU
 ```
 
 #### Protocol 3: Conditional Theme Agent Spawning (Dynamic Creation)
@@ -794,26 +829,26 @@ sequenceDiagram
 | Agent (Worker) | Responsibility | Input | Output | Pattern |
 |---------------|----------------|-------|---------|---------|
 | **Core Pipeline Agents (7)** |
-| QueryOrchestratorAgent | Autonomous query planning with ReAct reasoning | SnapshotRequest | QueryPlan | Sequential |
-| RetrievalAgent | Multi-source data ingestion and diversity merging | SnapshotRequest + QueryPlan | List~WebDocument~ | Sequential |
-| ContextAugmentationAgent | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | Sequential (Node 3 & 5) |
-| SentimentAgent | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4 - asyncio.gather) |
-| CredibilityAgent | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | Parallel (Node 4 - asyncio.gather) |
-| ThemeRouterAgent | Semantic content classification using BGE embeddings (routes docs to 6 theme buckets) | List~WebDocument~ | Dict[str, List~WebDocument~] | Parallel (Node 4 - asyncio.gather) |
-| CoordinatorAgent | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential |
+| QueryOrchestratorAgent | Autonomous query planning with ReAct reasoning | SnapshotRequest | QueryPlan | Sequential (CPU-bound) |
+| RetrievalAgent | Multi-source data ingestion and diversity merging | SnapshotRequest + QueryPlan | List~WebDocument~ | **Concurrent** (asyncio.gather, I/O-bound) |
+| ContextAugmentationAgent | Dual operations: memory recall and consolidation | List~WebDocument~ | Recall: List~WebDocument~; Consolidate: int | **Parallel** (ThreadPoolExecutor, CPU-bound) for consolidation |
+| SentimentAgent | Ensemble sentiment quantification (RoBERTa + Gemini) | List~WebDocument~ | List~WebDocument~ | **Concurrent** (asyncio.gather, I/O-bound) |
+| CredibilityAgent | Multi-signal verification (5 signals) and misinformation detection | List~WebDocument~ | List~WebDocument~ | **Hybrid** (Concurrent I/O + Parallel CPU) |
+| ThemeRouterAgent | Semantic content classification using BGE embeddings (routes docs to 6 theme buckets) | List~WebDocument~ | Dict[str, List~WebDocument~] | **Concurrent** (asyncio.gather, I/O-bound) |
+| CoordinatorAgent | Narrative synthesis and response generation | Dict | SnapshotResponse | Sequential (CPU-bound) |
 | **Credibility Sub-Agents (5)** |
-| DomainTrustAgent | Tiered source reputation scoring | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
-| CrossReferenceAgent | BGE embedding-based semantic corroboration | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
-| FactCheckAgent | Google Fact Check API verification | WebDocument | float (0-1) | Parallel (async API call) |
-| LLMAnalysisAgent | Gemini-based misinformation detection | WebDocument | float (0-1) | Parallel (asyncio.to_thread) |
-| TavilyAgent | Real-time web claim verification | WebDocument | float (0-1) | Parallel (async API call) |
+| DomainTrustAgent | Tiered source reputation scoring | WebDocument | float (0-1) | **Concurrent** (asyncio.to_thread, I/O-bound) |
+| CrossReferenceAgent | BGE embedding-based semantic corroboration | WebDocument | float (0-1) | **Concurrent** (asyncio.to_thread, I/O-bound) |
+| FactCheckAgent | Google Fact Check API verification | WebDocument | float (0-1) | **Concurrent** (async API call, I/O-bound) |
+| LLMAnalysisAgent | Gemini-based misinformation detection | WebDocument | float (0-1) | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| TavilyAgent | Real-time web claim verification | WebDocument | float (0-1) | **Concurrent** (async API call, I/O-bound) |
 | **Theme Sub-Agents (6)** |
-| InfrastructureAgent | Generate infrastructure insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
-| HealthAgent | Generate health insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
-| SafetyAgent | Generate safety insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
-| TourismAgent | Generate tourism insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
-| EconomyAgent | Generate economy insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
-| EnvironmentAgent | Generate environment insights via Gemini | List~WebDocument~ | List~Insight~ | Parallel (ThreadPoolExecutor) |
+| InfrastructureAgent | Generate infrastructure insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| HealthAgent | Generate health insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| SafetyAgent | Generate safety insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| TourismAgent | Generate tourism insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| EconomyAgent | Generate economy insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
+| EnvironmentAgent | Generate environment insights via Gemini | List~WebDocument~ | List~Insight~ | **Parallel** (ThreadPoolExecutor, CPU-bound) |
 | **Total** | **18 Autonomous Agents** | | | |
 
 ### Design Patterns Applied (Actual)
@@ -825,7 +860,7 @@ sequenceDiagram
 | **Delegation** | Nodes delegate to workers | Separation of concerns |
 | **Hierarchical Organization** | Coordinator → Nodes → Workers | Delegation structure |
 | **Conditional Execution** | Theme Agents only called when documents exist | Resource efficiency |
-| **Parallel Protocol Execution** | asyncio.gather for Node 4, ThreadPool for Node 6 | Performance optimization |
+| **Concurrent/Parallel Protocol Execution** | asyncio.gather for Node 4 (I/O-bound), ThreadPool for Node 6 (CPU-bound) | Heterogeneous workload optimization |
 | **Self-Learning Memory Loop** | Read-Write RAG (Nodes 3 & 5) | Non-parametric learning |
 | **Direct Function Calls** | Nodes call worker.run() directly | Minimal overhead |
 | **Ensemble Composition** | RoBERTa + Gemini for sentiment | Model diversity |
