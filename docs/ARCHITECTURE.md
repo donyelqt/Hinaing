@@ -270,9 +270,13 @@ flowchart TB
                     TR["ThemeRouterAgent\n6 theme buckets\n(Sequential)"]
                 end
                 SA & Cred & TR --> ED[Enriched + Routed Docs]
-                
-                Note: LLMAnalysisAgent uses ThreadPoolExecutor for true parallelism
-                Note: Other agents use asyncio for concurrent I/O operations
+
+                note right of LL
+                  LLMAnalysisAgent uses ThreadPoolExecutor for true parallelism
+                end note
+                note right of SA
+                  Other agents use asyncio for concurrent I/O operations
+                end note
             end
 
             subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
