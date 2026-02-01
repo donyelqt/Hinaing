@@ -1,33 +1,93 @@
 #!/usr/bin/env python3
-"""Script to delete the Baguio documents collection from Qdrant."""
+"""Script to delete ALL documents from the Baguio documents collection in Qdrant Cloud."""
 
 import sys
 import os
-import asyncio
 
 # Add the backend directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.services.rag.vector_store import get_vector_store
+from qdrant_client import QdrantClient
+from app.core.config import get_settings
 
 def main():
-    """Delete the Baguio documents collection."""
+    """Delete all points from the Baguio documents collection."""
     try:
-        # Initialize the vector store
-        vector_store = get_vector_store()
+        settings = get_settings()
         
-        # Delete the Baguio documents collection
-        asyncio.run(vector_store.clear())
-        
-        # Verify that the collection was deleted
-        stats = vector_store.get_stats()
-        if stats.get("vector_count", 0) == 0:
-            print("Baguio documents collection deleted successfully.")
-        else:
-            print("Error: Baguio documents collection still exists.")
+        # Connect to Qdrant Cloud
+        if not settings.qdrant_url:
+            print("Error: QDRANT_URL not configured in .env")
             sys.exit(1)
+        
+        print(f"Connecting to Qdrant Cloud: {settings.qdrant_url[:60]}...")
+        client = QdrantClient(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key,
+            timeout=30.0,
+        )
+        
+        collection_name = "baguio_documents"
+        
+        # Get current count
+        collection_info = client.get_collection(collection_name)
+        initial_count = collection_info.points_count
+        print(f"Current points in collection: {initial_count}")
+        
+        if initial_count == 0:
+            print("Collection is already empty.")
+            return
+        
+        # Delete ALL points from the collection
+        print(f"Deleting all {initial_count} points from '{collection_name}'...")
+        
+        # Method 1: Delete by filter (delete everything)
+        from qdrant_client.models import Filter, FieldCondition, MatchAny
+        
+        # This deletes ALL points (no filter = match all)
+        client.delete(
+            collection_name=collection_name,
+            points_selector=Filter(
+                must=[
+                    # Match any point (this will match everything)
+                ]
+            )
+        )
+        
+        # Alternative: Delete the entire collection and recreate it
+        # This is faster for large collections
+        print("Recreating collection to ensure complete deletion...")
+        client.delete_collection(collection_name)
+        
+        # Recreate the collection
+        from qdrant_client.models import Distance, VectorParams
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=384,  # MiniLM embedding dimension
+                distance=Distance.COSINE
+            )
+        )
+        
+        # Verify deletion
+        collection_info = client.get_collection(collection_name)
+        final_count = collection_info.points_count
+        
+        print(f"\n✅ Success!")
+        print(f"   Before: {initial_count} points")
+        print(f"   After: {final_count} points")
+        print(f"   Deleted: {initial_count - final_count} points")
+        
+        if final_count == 0:
+            print("\n🎉 All Baguio documents deleted successfully!")
+        else:
+            print(f"\n⚠️  Warning: {final_count} points still remain")
+            sys.exit(1)
+            
     except Exception as e:
-        print(f"Error deleting Baguio documents collection: {e}")
+        print(f"\n❌ Error deleting Baguio documents: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
