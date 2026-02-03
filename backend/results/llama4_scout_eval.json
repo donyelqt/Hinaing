@@ -1,0 +1,167 @@
+{
+  "evaluation_date": "2026-02-02 00:49:49",
+  "total_samples": 100,
+  "label_distribution": {
+    "negative": 35,
+    "neutral": 32,
+    "positive": 33
+  },
+  "results": {
+    "roberta": {
+      "model_name": "RoBERTa (twitter-roberta-base)",
+      "accuracy": 0.6,
+      "precision": {
+        "positive": 0.9565,
+        "negative": 0.8889,
+        "neutral": 0.4412
+      },
+      "recall": {
+        "positive": 0.6667,
+        "negative": 0.2286,
+        "neutral": 0.9375
+      },
+      "f1": {
+        "positive": 0.7857,
+        "negative": 0.3636,
+        "neutral": 0.6
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 22,
+          "negative": 0,
+          "neutral": 11
+        },
+        "negative": {
+          "positive": 0,
+          "negative": 8,
+          "neutral": 27
+        },
+        "neutral": {
+          "positive": 1,
+          "negative": 1,
+          "neutral": 30
+        }
+      },
+      "total_time": 1.677544116973877,
+      "avg_time_per_sample": 0.01677544116973877
+    },
+    "llama4_scout": {
+      "model_name": "Llama-4-Scout-17b",
+      "accuracy": 0.96,
+      "precision": {
+        "positive": 0.8919,
+        "negative": 1.0,
+        "neutral": 1.0
+      },
+      "recall": {
+        "positive": 1.0,
+        "negative": 0.9714,
+        "neutral": 0.9062
+      },
+      "f1": {
+        "positive": 0.9429,
+        "negative": 0.9855,
+        "neutral": 0.9508
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 33,
+          "negative": 0,
+          "neutral": 0
+        },
+        "negative": {
+          "positive": 1,
+          "negative": 34,
+          "neutral": 0
+        },
+        "neutral": {
+          "positive": 3,
+          "negative": 0,
+          "neutral": 29
+        }
+      },
+      "total_time": 4.100385665893555,
+      "avg_time_per_sample": 0.04100385665893555
+    },
+    "qwen3_32b": {
+      "model_name": "Qwen3-32b",
+      "accuracy": 0.97,
+      "precision": {
+        "positive": 0.9167,
+        "negative": 1.0,
+        "neutral": 1.0
+      },
+      "recall": {
+        "positive": 1.0,
+        "negative": 0.9714,
+        "neutral": 0.9375
+      },
+      "f1": {
+        "positive": 0.9565,
+        "negative": 0.9855,
+        "neutral": 0.9677
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 33,
+          "negative": 0,
+          "neutral": 0
+        },
+        "negative": {
+          "positive": 1,
+          "negative": 34,
+          "neutral": 0
+        },
+        "neutral": {
+          "positive": 2,
+          "negative": 0,
+          "neutral": 30
+        }
+      },
+      "total_time": 11.054684400558472,
+      "avg_time_per_sample": 0.11054684400558472
+    },
+    "ensemble_scout": {
+      "model_name": "Ensemble (RoBERTa + Scout)",
+      "accuracy": 0.96,
+      "precision": {
+        "positive": 0.8919,
+        "negative": 1.0,
+        "neutral": 1.0
+      },
+      "recall": {
+        "positive": 1.0,
+        "negative": 0.9714,
+        "neutral": 0.9062
+      },
+      "f1": {
+        "positive": 0.9429,
+        "negative": 0.9855,
+        "neutral": 0.9508
+      },
+      "confusion_matrix": {
+        "positive": {
+          "positive": 33,
+          "negative": 0,
+          "neutral": 0
+        },
+        "negative": {
+          "positive": 1,
+          "negative": 34,
+          "neutral": 0
+        },
+        "neutral": {
+          "positive": 3,
+          "negative": 0,
+          "neutral": 29
+        }
+      },
+      "total_time": 5.777929782867432,
+      "avg_time_per_sample": 0.05777929782867432
+    }
+  },
+  "recommendations": {
+    "best_accuracy": "Qwen3-32b",
+    "fastest": "RoBERTa (twitter-roberta-base)"
+  }
+}
