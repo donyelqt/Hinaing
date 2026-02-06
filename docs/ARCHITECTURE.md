@@ -302,6 +302,125 @@ The Retrieval Agent performs platform-specific retrieval with built-in reranking
 
 This approach minimizes latency by performing reranking at the source level rather than as a separate post-merge step. When both "web" and "facebook" platforms are selected, an additional reranking step is applied to the combined results for enhanced relevance.
 
+---
+
+## Detailed 7-Node Architecture with Self-Learning Loop
+
+> **Simplified Conceptual Diagram**: This diagram shows the complete 7-node pipeline with detailed internal components while maintaining a clean self-learning loop visualization. Each node shows its key agents and operations.
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '16px',
+  'secondaryFontSize': '13px',
+  'tertiaryFontSize': '11px',
+  'lineColor': '#e0e0e0'
+ }, 'flowchart': {
+  'subGraphTitleMargin': { 'top': 12, 'bottom': 12 },
+  'padding': 20,
+  'nodeSpacing': 35,
+  'rankSpacing': 55
+ }}}%%
+flowchart TB
+    subgraph Pipeline["7-Node Self-Learning Cyclic RAG Pipeline"]
+        
+        subgraph Node1["Node 1: Query Orchestrator"]
+            QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning<br/>KEYWORD_CLUSTERS<br/>Contextual Expansion]
+        end
+
+        subgraph Node2["Node 2: External Retrieval"]
+            RA[RetrievalAgent<br/>━━━━━━━━━━━━━━━<br/>LangSearch Web<br/>Facebook Apify<br/>Reddit PRAW<br/>Round-Robin Merge]
+        end
+
+        subgraph Node3["Node 3: Internal Recall"]
+            CTX[ContextAugmentationAgent<br/>━━━━━━━━━━━━━━━<br/>Qdrant Vector Search<br/>BGE Embeddings<br/>Cosine Similarity<br/>Top-K Retrieval]
+        end
+
+        subgraph Node4["Node 4: Unified Analysis + Smart Reuse"]
+            direction TB
+            Cache[Smart Reuse Cache<br/>Check enriched docs]
+            
+            subgraph Parallel["3 Concurrent Agents asyncio.gather"]
+                SA[SentimentAgent<br/>RoBERTa 40%<br/>Gemini 60%]
+                CA[CredibilityAgent<br/>5-Signal Ensemble<br/>DomainTrust + CrossRef<br/>FactCheck + LLM + Tavily]
+                TR[ThemeRouterAgent<br/>6 Theme Buckets<br/>BGE Classification]
+            end
+            
+            Cache --> Parallel
+        end
+
+        subgraph Node5["Node 5: Memory Consolidation"]
+            CTX2[ContextAugmentationAgent<br/>━━━━━━━━━━━━━━━<br/>SemanticChunker<br/>BGE Embeddings<br/>Qdrant Storage<br/>Metadata Enrichment]
+        end
+
+        subgraph Node6["Node 6: Theme Agents"]
+            direction TB
+            TA[6 Domain Experts ThreadPool<br/>━━━━━━━━━━━━━━━<br/>Infrastructure • Health • Safety<br/>Tourism • Economy • Environment<br/>Gemini 2.5 Flash-Lite]
+        end
+
+        subgraph Node7["Node 7: Coordinator"]
+            COORD[CoordinatorAgent<br/>━━━━━━━━━━━━━━━<br/>Narrative Synthesis<br/>Sentiment Alignment<br/>Gemini 2.5 Flash-Lite]
+        end
+
+        %% Linear Flow
+        Node1 --> Node2
+        Node2 --> Node3
+        Node3 --> Node4
+        Node4 --> Node5
+        Node5 --> Node6
+        Node6 --> Node7
+        
+        %% Self-Learning Loop
+        Node5 -.->|Self-Learning Loop<br/>Store Enriched Docs| Node3
+    end
+
+    %% External I/O
+    Request[SnapshotRequest] --> Node1
+    Node7 --> Response[SnapshotResponse]
+
+    style Cache fill:#2d2d2d,stroke:#e0e0e0,stroke-width:2px
+    style Parallel fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
+```
+
+### Node-by-Node Breakdown
+
+| Node | Primary Agent | Key Operations | Execution Pattern | Performance Notes |
+|------|---------------|----------------|-------------------|-------------------|
+| **1** | QueryOrchestratorAgent | ReAct reasoning, KEYWORD_CLUSTERS lookup, contextual query expansion, diversity validation | Sequential (CPU-bound) | Generates 6+ diverse queries |
+| **2** | RetrievalAgent | Multi-platform ingestion (Web/Facebook/Reddit), source-level reranking, round-robin merge | Concurrent (I/O-bound) | Batches of 2 parallel requests |
+| **3** | ContextAugmentationAgent | Vector search in Qdrant, BGE embeddings, cosine similarity, top-K retrieval | Sequential (CPU-bound) | Retrieves enriched historical docs |
+| **4** | SentimentAgent + CredibilityAgent + ThemeRouterAgent | **Smart Reuse check** → Parallel analysis (sentiment + credibility + routing) | Concurrent (I/O-bound) | **81% API cost savings** via cache |
+| **5** | ContextAugmentationAgent | Semantic chunking, BGE embedding, Qdrant storage, metadata enrichment | Parallel (CPU-bound) | Stores enriched docs for future reuse |
+| **6** | 6 Theme Agents (factory-spawned) | Domain-specific insight generation (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Parallel (CPU-bound) | Conditional execution based on focus areas |
+| **7** | CoordinatorAgent | Narrative synthesis, sentiment alignment, final response assembly | Sequential (CPU-bound) | Ensures summary matches sentiment % |
+
+### Self-Learning Loop Mechanics
+
+**Loop Flow**: Node 5 → Qdrant → Node 3
+
+1. **Node 5 (Write)**: Stores enriched documents with metadata:
+   - `sentiment`: positive/neutral/negative
+   - `credibility_score`: 0.0-1.0
+   - `analyzed_at`: timestamp
+   - `focus_area`: category
+   - `topic`: granular classification
+
+2. **Qdrant Persistence**: Documents stored in Qdrant Cloud/Disk (survives restarts, sessions, days, weeks)
+
+3. **Node 3 (Read)**: Retrieves enriched documents from previous runs:
+   - Vector search by focus area
+   - Cosine similarity ranking
+   - Returns documents with existing enrichment
+
+4. **Node 4 (Smart Reuse)**: Checks retrieved documents:
+   - **Already enriched** → Skip analysis, reuse directly (81% cache hit)
+   - **New/stale** → Run full analysis (sentiment + credibility)
+
+**Result**: System gets smarter over time as memory grows (0% cache → 95%+ cache over weeks/months)
+
 
 
 ## Detailed Agent Flow (Sequence Diagram)
