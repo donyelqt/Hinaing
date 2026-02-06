@@ -55,11 +55,12 @@ export function TechniquesSection() {
     },
     {
       id: "CYC-07",
-      title: "Self-Learning RAG",
-      description: "Continuous learning system that consolidates new information into persistent memory, enabling iterative knowledge refinement.",
+      title: "Self-Learning Cyclic RAG",
+      description: "Two interconnected learning loops: (1) Memory Persistence - consolidates new information into long-term storage, (2) Analysis Consolidation (Smart Reuse) - caches enriched documents (sentiment + credibility) achieving 81% API savings and 35% speedup.",
       icon: Repeat,
       color: "text-indigo-500 bg-indigo-50 border-indigo-100",
       tilt: "-rotate-1",
+      isNovel: true,
     },
     {
       id: "CRD-08",
@@ -90,7 +91,7 @@ export function TechniquesSection() {
         <div className="mb-10 flex flex-wrap items-center justify-center gap-4">
           <div className="flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 backdrop-blur-sm">
             <Sparkles className="h-3 w-3 animate-pulse" />
-            <span>2 Novel Research Contributions</span>
+            <span>3 Novel Research Contributions</span>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 backdrop-blur-sm">
             <Award className="h-3 w-3" />
@@ -145,7 +146,7 @@ export function TechniquesSection() {
 
         <div className="mt-16 space-y-8">
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
             <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200">
               <div className="text-2xl font-bold text-violet-600">98%</div>
               <div className="text-xs text-slate-500 mt-1">Sentiment Accuracy</div>
@@ -161,6 +162,14 @@ export function TechniquesSection() {
             <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200">
               <div className="text-2xl font-bold text-rose-600">7</div>
               <div className="text-xs text-slate-500 mt-1">Core Pipeline Nodes</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 md:col-span-2">
+              <div className="text-2xl font-bold text-purple-600">81%</div>
+              <div className="text-xs text-slate-500 mt-1">API Cost Reduction (Smart Reuse)</div>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 md:col-span-2">
+              <div className="text-2xl font-bold text-cyan-600">35%</div>
+              <div className="text-xs text-slate-500 mt-1">Speed Improvement (Smart Reuse)</div>
             </div>
           </div>
 

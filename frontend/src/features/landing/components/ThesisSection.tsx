@@ -32,7 +32,7 @@ export function ThesisSection() {
             <br />
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            A 7-Node Multi-Agent Graph Framework for Epistemic Truth Discovery in Civic Social Listening
+            AgenticHinaing: A Self-Learning Temporal-Aware Multi-Agent Framework for Truth Discovery in Civic Social Listening
           </p>
         </div>
 
