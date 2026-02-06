@@ -366,13 +366,16 @@ class LLMCredibilityAnalyzer:
 
 Score each item's credibility from 0.0 to 1.0 and detect misinformation patterns:
 
-CREDIBILITY FACTORS:
-- Is the source a legitimate news organization or official source?
-- Is the content specific (names, dates, locations) or vague?
-- Is the language professional or sensational?
+CREDIBILITY FACTORS (prioritize these):
+- **Official sources** (gov.ph, pia.gov.ph, LGU statements): HIGH credibility (0.7-0.9)
+- **Established news** (inquirer.net, philstar.com, gmanetwork.com): MEDIUM-HIGH (0.6-0.8)
+- **Specific details** (names, dates, locations, official quotes): Increases credibility
+- **Professional language** (formal, factual tone): Increases credibility
+
+IMPORTANT: Official government warnings/advisories are HIGH credibility even if they discuss negative topics (scams, disasters, crimes).
 
 MISINFORMATION INDICATORS (flag these):
-- Emotional manipulation (fear, outrage, urgency)
+- Emotional manipulation (fear, outrage, urgency) WITHOUT official source
 - Conspiracy framing ("they don't want you to know")
 - False certainty ("100% proven", "scientists baffled")
 - Unverified claims without sources
@@ -385,7 +388,11 @@ Items:
 Return JSON array only:
 [{{"index": 0, "score": 0.X, "reasoning": "one sentence", "red_flags": ["FLAG_TYPE"], "misinfo_risk": "none|low|medium|high"}}]
 
-Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential misinformation"""
+Score guide: 
+- 0.8-1.0: Official sources, verified news, high credibility
+- 0.6-0.8: Established media, good sourcing
+- 0.4-0.6: Unclear sourcing, moderate credibility
+- 0.0-0.4: Potential misinformation, poor sourcing"""
 
         try:
             response = await self.llm.generate(

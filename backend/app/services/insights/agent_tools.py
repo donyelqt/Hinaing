@@ -246,16 +246,74 @@ async def search_web_documents(
     *,
     limit: int = 25,
     custom_query: str | None = None,
+    skip_semantic_filter: bool = False,
 ) -> list[WebDocument]:
-    """Call LangSearch using the focus-aware query."""
+    """Call LangSearch using the focus-aware query.
+    
+    Args:
+        request: Snapshot request with focus areas and time window
+        limit: Maximum number of documents to return
+        custom_query: Custom query string (from orchestrator)
+        skip_semantic_filter: If True, skip semantic relevance filtering
+                             (useful for orchestrator-generated queries that are already targeted)
+    """
     client = LangSearchClient()
     query = custom_query or build_focus_query(request)
+    
+    # Get search results from LangSearch
     web_docs = await client.search(
         query=query,
         focus_areas=request.focus_areas,
         time_window=request.time_window,
         limit=limit,
     )
+    
+    # CRITICAL FIX: For orchestrator queries, rerank against the ORIGINAL query
+    # The search() method already reranked against enriched query, but we need
+    # to rerank again against the specific topic for accurate relevance scores
+    if custom_query and web_docs:
+        logger.info(f"[search] Re-ranking {len(web_docs)} docs against orchestrator query: {custom_query[:60]}")
+        web_docs = await client.rerank(query=custom_query, documents=web_docs)
+    
+    # Apply semantic filtering based on relevance scores
+    # For orchestrator queries: Filter against the specific topic (high precision)
+    # For baseline queries: Filter against broad focus area (lower precision)
+    if not skip_semantic_filter:
+        # Use different thresholds for orchestrator vs baseline queries
+        # Orchestrator: 0.35 (accommodates multilingual + different terminology)
+        # Baseline: 0.30 (broader search)
+        MIN_SEMANTIC_RELEVANCE = 0.35 if custom_query else 0.30
+        filtered_docs = []
+        low_relevance_samples = []
+        
+        for doc in web_docs:
+            relevance = doc.metadata.get("semantic_relevance_score", 1.0)
+            if relevance >= MIN_SEMANTIC_RELEVANCE:
+                filtered_docs.append(doc)
+            else:
+                if len(low_relevance_samples) < 3:
+                    low_relevance_samples.append({
+                        "title": doc.title[:60] if doc.title else "No title",
+                        "score": relevance,
+                        "url": str(doc.url)[:80] if doc.url else "No URL"
+                    })
+                logger.debug(
+                    f"[search] Filtered low-relevance doc: {doc.title[:50]} "
+                    f"(score: {relevance:.2f})"
+                )
+        
+        if len(filtered_docs) < len(web_docs):
+            logger.info(
+                f"[search] Filtered {len(web_docs) - len(filtered_docs)} low-relevance docs "
+                f"({len(filtered_docs)}/{len(web_docs)} kept, threshold: {MIN_SEMANTIC_RELEVANCE})"
+            )
+            if low_relevance_samples:
+                logger.info(f"[search] Sample filtered docs: {low_relevance_samples}")
+        
+        web_docs = filtered_docs
+    else:
+        logger.info(f"[search] Skipping semantic filter (keeping all {len(web_docs)} docs)")
+    
     web_docs = filter_excluded_sources(web_docs)
     web_docs = filter_by_location(web_docs)
     web_docs = filter_by_time_window(web_docs, request.time_window)
