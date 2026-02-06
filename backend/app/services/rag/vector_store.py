@@ -50,11 +50,15 @@ class VectorStore:
             self.client = QdrantClient(
                 url=qdrant_url,
                 api_key=settings.qdrant_api_key,
+                timeout=30.0,  # 30 second timeout for operations
             )
             self._is_cloud = True
         else:
             logger.info("[VectorStore] Using local Qdrant storage (qdrant_data/)")
-            self.client = QdrantClient(path="qdrant_data")
+            self.client = QdrantClient(
+                path="qdrant_data",
+                timeout=30.0,  # 30 second timeout for operations
+            )
             self._is_cloud = False
         
         self.embedding_service = get_embedding_service()
@@ -85,25 +89,38 @@ class VectorStore:
             raise
     
     def _ensure_payload_indexes(self):
-        """Create payload indexes for filterable fields."""
+        """Create payload indexes for filterable fields.
+        
+        CRITICAL: Qdrant requires explicit keyword indexes for filtering.
+        Without these, focus_area_filter will fail with 400 Bad Request.
+        """
         from qdrant_client.models import PayloadSchemaType
         
         index_fields = ["focus_area", "topic"]
         
         for field in index_fields:
             try:
+                # Check if index already exists
+                collection_info = self.client.get_collection(self.COLLECTION_NAME)
+                existing_indexes = getattr(collection_info.config, 'params', {})
+                
+                # Create index
                 self.client.create_payload_index(
                     collection_name=self.COLLECTION_NAME,
                     field_name=field,
                     field_schema=PayloadSchemaType.KEYWORD,
+                    wait=True,  # Wait for index creation to complete
                 )
-                logger.info(f"[VectorStore] Created index for '{field}'")
+                logger.info(f"[VectorStore] ✓ Created keyword index for '{field}'")
             except Exception as e:
-                # Index might already exist, that's fine
-                if "already exists" in str(e).lower():
-                    logger.debug(f"[VectorStore] Index '{field}' already exists")
+                error_msg = str(e).lower()
+                # Index already exists is OK
+                if "already exists" in error_msg or "exist" in error_msg:
+                    logger.debug(f"[VectorStore] Index '{field}' already exists (OK)")
                 else:
-                    logger.warning(f"[VectorStore] Failed to create index for '{field}': {e}")
+                    # This is a real error - log it prominently
+                    logger.error(f"[VectorStore] ✗ FAILED to create index for '{field}': {e}")
+                    logger.error(f"[VectorStore] Filtering by '{field}' will NOT work until index is created!")
     
     async def add_chunks(self, chunks: list[DocumentChunk]) -> int:
         """Embed and store document chunks.
@@ -212,14 +229,44 @@ class VectorStore:
 
         query_filter = Filter(must=conditions) if conditions else None
 
-        search_response = self.client.query_points(
-            collection_name=self.COLLECTION_NAME,
-            query=query_embedding,
-            limit=k,
-            with_payload=True,
-            query_filter=query_filter,
-        )
-        hits = getattr(search_response, "points", search_response) or []
+        try:
+            search_response = self.client.query_points(
+                collection_name=self.COLLECTION_NAME,
+                query=query_embedding,
+                limit=k,
+                with_payload=True,
+                query_filter=query_filter,
+            )
+            hits = getattr(search_response, "points", search_response) or []
+        except Exception as e:
+            error_msg = str(e)
+            # If filter fails due to missing index, retry without filter
+            if "Index required" in error_msg or "not found" in error_msg:
+                logger.warning(f"[VectorStore] Filter failed (missing index), retrying without filter: {e}")
+                logger.warning(f"[VectorStore] Run vector store initialization to create indexes!")
+                
+                # Retry without filter
+                search_response = self.client.query_points(
+                    collection_name=self.COLLECTION_NAME,
+                    query=query_embedding,
+                    limit=k,
+                    with_payload=True,
+                    query_filter=None,  # No filter
+                )
+                hits = getattr(search_response, "points", search_response) or []
+                
+                # Manually filter results by focus_area in memory
+                if focus_area_filter:
+                    filtered_hits = []
+                    for hit in hits:
+                        payload = hit.payload or {}
+                        if payload.get("focus_area") == focus_area_filter:
+                            filtered_hits.append(hit)
+                    hits = filtered_hits
+                    logger.info(f"[VectorStore] Manual filter: {len(hits)} results match focus_area='{focus_area_filter}'")
+            else:
+                # Re-raise other errors
+                raise
         
         # Build RetrievalResult objects
         results: list[RetrievalResult] = []
@@ -296,6 +343,15 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {"is_cloud": self._is_cloud}
+    
+    def recreate_indexes(self):
+        """Manually recreate payload indexes.
+        
+        Call this if you see "Index required" errors in logs.
+        """
+        logger.info("[VectorStore] Manually recreating payload indexes...")
+        self._ensure_payload_indexes()
+        logger.info("[VectorStore] Index recreation complete")
 
 
 # Global instance
