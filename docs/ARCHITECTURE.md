@@ -150,34 +150,35 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    7-NODE MULTI-AGENT SELF-LEARNING PIPELINE                │
+│           7-NODE MULTI-AGENT SELF-LEARNING CYCLIC RAG WITH SMART REUSE                  │
 │              (18-AGENT FEDERATED MULTI-AGENT SYSTEM)                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
 │  │   NODE 1     │    │   NODE 2     │    │   NODE 3     │                  │
 │  │  Query Plan  │───▶│   Ingestion  │───▶│   Recall     │                  │
-│  │ (Orchestrator)│    │   (Retrieval)│    │ (Context/RAG)│                  │
-│  └──────────────┘    └──────────────┘    └──────────────┘                  │
-│                                                 │                           │
-│                                                 ▼                           │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
-│  │   NODE 7     │    │   NODE 6     │    │   NODE 4     │                  │
-│  │  Executive   │◀───│  Specialist  │◀───│  Enrichment  │                  │
-│  │ (Synthesis)  │    │  (Experts)   │    │  (Analysis)  │                  │
-│  └──────────────┘    └──────────────┘    └──────────────┘                  │
-│                                                 │                           │
-│                                                 ▼                           │
-│                                          ┌──────────────┐                  │
-│                                          │   NODE 5     │                  │
-│                                          │ Consolidation│◀── LEARNING      │
-│                                          │ (Consolidate)│     LOOP         │
-│                                          └──────────────┘                  │
+│  │ (Orchestrator)│    │   (Retrieval)│    │ (Memory/RAG) │◀─┐               │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │               │
+│                                                 │            │               │
+│                                                 ▼            │               │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │               │
+│  │   NODE 7     │    │   NODE 6     │    │   NODE 4     │  │               │
+│  │  Executive   │◀───│  Specialist  │◀───│  Smart Reuse │  │               │
+│  │ (Synthesis)  │    │  (6 Experts) │    │  + Analysis  │  │               │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │               │
+│                                                 │            │               │
+│                                                 ▼            │               │
+│                                          ┌──────────────┐   │               │
+│                                          │   NODE 5     │   │               │
+│                                          │ Consolidate  │   │               │
+│                                          │  (Store +    │   │               │
+│                                          │  Enrich)     │───┘               │
+│                                          └──────────────┘                   │
 │                                                                             │
-│  FEDERATED: 7 Core + 6 Theme + 5 Credibility = 18 Total Agents              │
+│  Self-Learning Loop: Node 5 stores enriched docs → Node 3 recalls them     │
+│  Smart Reuse: 81% API cost reduction | Cache: 0% → 95%+ over time          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
 ### Node Descriptions (Agent & Node Mapping)
 
 | Node | Agent(s) | Function | Key Components | Execution Model |
@@ -247,56 +248,39 @@ flowchart TB
 
             subgraph Node3["Node 3: Context Agent (RAG Retrieval)"]
                 CTX[ContextAugmentationAgent]
-                EM1[BGE-small-en-v1.5<br/>Query Embedding]
-                VS1[Qdrant<br/>Cosine Similarity Search]
-                TopK[Top-K Results]
-                CTX --> EM1 --> VS1 --> TopK
-                IntDocs[Internal Documents<br/>from Memory<br/>with sentiment+credibility]
-                TopK --> IntDocs
+                EM1[BGE Embedding]
+                VS1[Qdrant Search]
+                CTX --> EM1 --> VS1
+                IntDocs[Internal Documents<br/>with enrichment metadata]
+                VS1 --> IntDocs
                 Merge[Deduplicate & Merge]
                 ExtDocs --> Merge
                 IntDocs --> Merge
-                MergedDocs[Merged Documents<br/>External + Internal]
-                Merge --> MergedDocs
             end
 
             subgraph Node4["Node 4: Unified Analysis with Smart Reuse (Concurrent Execution)"]
                 direction TB
-                Cache[Smart Reuse Cache<br/>Check Internal Memory<br/>for Enriched Docs]
-                Split{Separate Docs}
-                Cached[Already Enriched<br/>13 docs cached<br/>81% API savings]
-                Fresh[Needs Analysis<br/>3 new docs]
-                
                 subgraph Concurrent["Concurrent Analysis (asyncio.gather)"]
-                    SA["SentimentAgent<br/>RoBERTa 40% + Gemini 60%<br/>(I/O-bound)"]
-                    subgraph Cred["CredibilityAgent (Hybrid)"]
+                    SA["SentimentAgent<br/>RoBERTa 40% + Gemini 60%"]
+                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
                         direction LR
-                        DT["DomainTrustAgent 25%"]
-                        CR["CrossReferenceAgent 20%"]
-                        FC["FactCheckAgent 15%"]
-                        LL["LLMAnalysisAgent 20%"]
-                        TV["TavilyAgent 20%"]
+                        DT["DomainTrust 25%"]
+                        CR["CrossRef 20%"]
+                        FC["FactCheck 15%"]
+                        LL["LLMAnalysis 20%"]
+                        TV["Tavily 20%"]
                     end
                     TR["ThemeRouterAgent<br/>6 theme buckets"]
                 end
-                
-                Combine[Combine Results<br/>Cached + Fresh]
-                ED[Enriched + Routed Docs<br/>35% faster, 81% cost reduction]
-                
-                Cache --> Split
-                Split -->|Has sentiment+credibility| Cached
-                Split -->|Missing analysis| Fresh
-                Fresh --> SA & Cred
-                SA & Cred & TR --> Combine
-                Cached --> Combine
-                Combine --> ED
+                ED[Enriched + Routed Docs]
+                SA & Cred & TR --> ED
             end
 
             subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
                 CTX2[ContextAugmentationAgent]
-                SC[Semantic Chunker<br/>400 chars]
-                ES[Embedding Service<br/>BGE-small-en-v1.5]
-                VS2[Qdrant VectorStore<br/>Stores Enriched Docs<br/>sentiment+credibility+metadata]
+                SC[Semantic Chunker]
+                ES[Embedding Service]
+                VS2[Qdrant VectorStore<br/>Persistent Storage]
                 CTX2 --> SC --> ES --> VS2
                 VS2 -.->|Self-Learning Loop| VS1
             end
@@ -314,15 +298,15 @@ flowchart TB
 
             subgraph Node7["Node 7: CoordinatorAgent"]
                 GC[CoordinatorAgent<br/>gemini-2.5-flash-lite]
-                SD[Sentiment Distribution<br/>Alignment Check]
-                NR[Narrative Generation<br/>Aligned with percentages]
-                GC --> SD --> NR
+                NR[Narrative Generation]
+                GC --> NR
                 SR[SnapshotResponse]
                 NR --> SR
             end
 
-            Node1 --> Node2 --> Node3
-            MergedDocs --> Cache
+            Node1 --> Node2 --> Node3 --> Node4
+            Node4 --> Node5 --> Node6
+            TI --> GCs --> Cache
             Node3 --> Node4
             Node4 --> Node5 --> Node6
             IntDocs -.->|Feeds Smart Reuse Cache| Cache
