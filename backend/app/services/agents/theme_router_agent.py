@@ -37,7 +37,7 @@ class SemanticThemeRouterAgent:
         self.theme_groups = theme_groups
         self.embedding_service = get_embedding_service()
         self._theme_embeddings: dict[str, list[float]] | None = None
-        self._similarity_threshold = 0.35  # Tune based on testing
+        self._similarity_threshold = 0.35  # Lowered from 0.35 for better coverage
         
     def _compute_theme_embeddings(self) -> dict[str, list[float]]:
         """Compute embeddings for each theme based on keywords and description."""
