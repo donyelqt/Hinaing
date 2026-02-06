@@ -59,49 +59,62 @@ class BaseThemeAgent:
         return "\n".join(doc_lines)
     
     def _build_prompt(self, theme_label: str, focus: str, context: str, doc_count: int) -> str:
-        """Build the Gemini prompt for insight generation."""
-        return f"""You are a civic analyst for Baguio City.
+        """Build the Groq prompt for insight generation."""
+        return f"""You are a civic analyst for Baguio City providing actionable intelligence for government officials.
 
 Theme: {theme_label}
 {focus}
 
-Task: Analyze the documents below and generate EXACTLY 3 DISTINCT insights.
+Task: Analyze the documents below and generate EXACTLY 3 ACTIONABLE RECOMMENDATIONS for government action.
 
 Documents ({doc_count} shown):
 {context}
 
-CRITICAL REQUIREMENTS:
-1. Generate EXACTLY 3 insights (no more, no less)
-2. Each insight must address a DIFFERENT issue or sub-topic
-3. DO NOT merge unrelated problems into one insight
-4. Each insight should be actionable and specific
-5. Prioritize the most important/urgent issues first
+CRITICAL REQUIREMENTS FOR GOOD GOVERNANCE:
+1. Generate EXACTLY 3 actionable recommendations (no more, no less)
+2. Each recommendation must address a DIFFERENT issue or sub-topic
+3. Each recommendation must include SPECIFIC ACTIONS the government can take
+4. Focus on PRACTICAL, IMPLEMENTABLE solutions
+5. Prioritize the most URGENT issues affecting citizens
 
-Examples of DISTINCT insights for Infrastructure:
-✅ GOOD:
-  - Insight 1: "Traffic congestion on Kennon Road"
-  - Insight 2: "Water supply interruptions in District 3"
-  - Insight 3: "Parking shortage in CBD area"
+Format for each recommendation:
+- Title: Clear problem statement
+- Detail: Specific action the government should take (under 240 characters)
+- Evidence: URLs from documents supporting this recommendation
 
-❌ BAD:
-  - Insight 1: "Infrastructure challenges including traffic, water, and parking" (too broad, merged)
+Examples of ACTIONABLE recommendations for Infrastructure:
+✅ GOOD (Actionable):
+  - Title: "Traffic congestion on Session Road during peak hours"
+    Detail: "Deploy 5 additional traffic enforcers at key intersections (7-9 AM, 5-7 PM). Consider implementing odd-even vehicle scheme."
+  
+  - Title: "Water supply interruptions in District 3"
+    Detail: "Conduct emergency pipe inspection and repair. Coordinate with BWWD to establish backup water delivery schedule for affected areas."
+
+❌ BAD (Not actionable):
+  - Title: "Infrastructure challenges"
+    Detail: "There are problems with traffic, water, and parking." (Too vague, no specific action)
+
+⚠️ CRITICAL JSON FORMAT RULES:
+- Output MUST start with {{ and end with }}
+- Return ONLY the JSON object, nothing else
+- Use double quotes for all strings
 
 Return ONLY valid JSON with this exact structure:
 {{
   "insights": [
     {{
-      "title": "First specific issue title",
-      "detail": "Actionable detail under 240 characters",
+      "title": "Specific problem requiring government action",
+      "detail": "Concrete action government should take (under 240 chars)",
       "evidence": ["actual_url_from_documents_above"]
     }},
     {{
-      "title": "Second distinct issue title",
-      "detail": "Actionable detail under 240 characters",
+      "title": "Second distinct problem requiring action",
+      "detail": "Specific government intervention needed (under 240 chars)",
       "evidence": ["actual_url_from_documents_above"]
     }},
     {{
-      "title": "Third different issue title",
-      "detail": "Actionable detail under 240 characters",
+      "title": "Third different problem requiring response",
+      "detail": "Actionable government solution (under 240 chars)",
       "evidence": ["actual_url_from_documents_above"]
     }}
   ]
@@ -110,17 +123,43 @@ Return ONLY valid JSON with this exact structure:
 IMPORTANT:
 - The "evidence" array MUST contain actual URLs from the documents above
 - If documents truly lack {theme_label} content, return: {{"insights": []}}
-- Generate EXACTLY 3 insights if you have sufficient content
-
-JSON:"""
+- Generate EXACTLY 3 actionable recommendations if you have sufficient content
+- Each recommendation must be SPECIFIC and IMPLEMENTABLE by government
+- ONLY JSON output, no extra text"""
     
     def _parse_response(self, output: str, theme_label: str) -> list[dict]:
-        """Parse and sanitize Gemini response."""
-        # Remove markdown code blocks
+        """Parse and sanitize Llama-4-Scout response."""
+        original_output = output
+        
+        # Remove markdown code blocks if present
         if "```json" in output:
             output = output.split("```json")[1].split("```")[0].strip()
         elif "```" in output:
             output = output.split("```")[1].split("```")[0].strip()
+        
+        # If output is empty after stripping, try to extract JSON from original
+        if not output or len(output) < 10:
+            logger.warning(f"[{theme_label}] Output empty after stripping, extracting JSON from original")
+            logger.debug(f"[{theme_label}] Original output: {original_output[:1000]}")
+            # Find JSON object in original output
+            json_start = original_output.find('{"insights"')
+            if json_start == -1:
+                json_start = original_output.find('{ "insights"')
+            if json_start == -1:
+                json_start = original_output.find('{\n  "insights"')
+            
+            if json_start != -1:
+                # Find matching closing brace
+                depth = 0
+                for i in range(json_start, len(original_output)):
+                    if original_output[i] == '{':
+                        depth += 1
+                    elif original_output[i] == '}':
+                        depth -= 1
+                        if depth == 0:
+                            output = original_output[json_start:i+1]
+                            logger.debug(f"[{theme_label}] Extracted JSON: {output[:300]}")
+                            break
         
         try:
             parsed = json.loads(output)
@@ -134,13 +173,20 @@ JSON:"""
                         "detail": sanitize_text(item.get("detail", "Context unavailable")),
                         "evidence": [sanitize_text(str(e)) for e in item.get("evidence", []) if e],
                     })
+            
+            if not sanitized:
+                logger.warning(f"[{theme_label}] Parsed JSON but got 0 insights. Output sample: {output[:500]}")
+            else:
+                logger.info(f"[{theme_label}] Successfully parsed {len(sanitized)} insights")
+            
             return sanitized
-        except json.JSONDecodeError:
-            logger.warning(f"[{theme_label}] JSON parse failed: {output[:100]}")
+        except json.JSONDecodeError as e:
+            logger.error(f"[{theme_label}] JSON parse failed: {e}")
+            logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
             return []
     
     async def run(self, documents: list[dict[str, Any]]) -> list[dict]:
-        """Execute the sub-agent's autonomous reasoning.
+        """Execute the sub-agent's autonomous reasoning using Groq.
         
         Args:
             documents: List of documents to analyze for this theme
@@ -153,38 +199,36 @@ JSON:"""
             return []
         
         settings = get_settings()
-        if not settings.gemini_api_key:
-            raise RuntimeError("GEMINI_API_KEY missing")
+        if not settings.groq_api_key:
+            raise RuntimeError("GROQ_API_KEY missing")
         
-        genai.configure(api_key=settings.gemini_api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        # Use llama-4-scout for theme analysis: 30K TPM (5x more than 8b-instant)
+        # Handles 6 concurrent theme agents without rate limits
+        # Clean JSON output, excellent instruction following
+        from ..llm.groq_provider import get_groq_provider
+        llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
         
         context = self._build_context(documents)
         prompt = self._build_prompt(self.theme_label, self.theme_focus, context, len(documents))
         
-        logger.info(f"[{self.theme_label}] Starting analysis with {len(documents)} documents")
-        
-        # Disable safety filters for civic news analysis
-        from google.generativeai.types import HarmCategory, HarmBlockThreshold
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
+        logger.info(f"[{self.theme_label}] Starting Groq (llama-4-scout) analysis with {len(documents)} documents")
         
         try:
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(temperature=0.1, max_output_tokens=8000),
-                safety_settings=safety_settings,
+            response = await llm.generate(
+                prompt=prompt,
+                system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                temperature=0.1,
+                max_tokens=8000,
             )
             
-            if not response.candidates:
-                return [{"title": f"No Data for {self.theme_label}", "detail": "AI model returned no response.", "evidence": []}]
-            
-            output = sanitize_text(response.text)
+            output = sanitize_text(response)
             insights = self._parse_response(output, self.theme_label)
+            
+            # If parsing failed or got 0 insights, log the full output for debugging
+            if not insights:
+                logger.error(f"[{self.theme_label}] FULL OUTPUT FOR DEBUGGING:")
+                logger.error(f"{output}")
+                logger.error(f"[{self.theme_label}] END OF OUTPUT")
             
             logger.info(f"[{self.theme_label}] Generated {len(insights)} insights")
             return insights
