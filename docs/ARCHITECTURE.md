@@ -503,9 +503,9 @@ flowchart TB
                 
                 Cache --> Split
                 
-                subgraph Concurrent["3 Concurrent Agents (asyncio.gather)"]
+                subgraph Concurrent["3 Concurrent Agents asyncio.gather"]
                     SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
-                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
+                    subgraph Cred["CredibilityAgent - 5 Sub-Agents"]
                         direction LR
                         DT[DomainTrust 25%]
                         CR[CrossReference 20%]
@@ -533,7 +533,7 @@ flowchart TB
                 CTX2 --> SC --> ES --> VS2
             end
 
-            subgraph Node6["Node 6: Theme Agents (Parallel ThreadPool)"]
+            subgraph Node6["Node 6: Theme Agents - Parallel ThreadPool"]
                 TH1[InfrastructureAgent]
                 TH2[HealthAgent]
                 TH3[SafetyAgent]
@@ -573,8 +573,11 @@ flowchart TB
     style Cache fill:#2d2d2d,stroke:#e0e0e0,stroke-width:2px
     style Split fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
     style Concurrent fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
+    style Cred fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
     style VS1 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
     style VS2 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
+    style Cached fill:#1e1e1e,stroke:#4ade80,stroke-width:2px
+    style Fresh fill:#1e1e1e,stroke:#f87171,stroke-width:2px
 ```
 
 ### Implementation Details by Node
