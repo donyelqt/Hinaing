@@ -1,4 +1,4 @@
-"""Gemini-powered LangChain agent for sentiment reasoning."""
+"""Groq-powered LangChain agent for sentiment reasoning."""
 from __future__ import annotations
 
 import logging
@@ -8,11 +8,32 @@ from typing import Any
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools import Tool
 from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
+#from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ...core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# GEMINI SAFETY SETTINGS (For Future Reference)
+# ============================================================================
+# If switching back to Google Gemini, uncomment these imports and settings:
+#
+# import google.generativeai as genai
+# from google.generativeai.types import HarmCategory, HarmBlockThreshold
+#
+# SAFETY_SETTINGS = {
+#     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+#     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+#     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+#     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+# }
+#
+# Note: These settings disable safety filters for civic news analysis.
+# Civic content often discusses sensitive topics (crimes, protests, disasters)
+# that would otherwise be blocked by default safety filters.
+# ============================================================================
 
 
 def sanitize_text(text: str | None) -> str:
@@ -108,28 +129,20 @@ Thought:{agent_scratchpad}"""
     return PromptTemplate.from_template(template)
 
 
-def _build_llm() -> ChatGoogleGenerativeAI:
+def _build_llm() -> ChatGroq:
     settings = get_settings()
-    if not settings.gemini_api_key:
-        raise RuntimeError("GEMINI_API_KEY is missing. Unable to initialize Gemini agent.")
-    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+    if not settings.groq_api_key:
+        raise RuntimeError("GROQ_API_KEY is missing. Unable to initialize Groq agent.")
 
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    }
-
-    return ChatGoogleGenerativeAI(
-        model="gemini-2.5-pro",
+    return ChatGroq(
+        model="llama-3.3-70b-versatile",
         temperature=0.2,
-        google_api_key=settings.gemini_api_key,
-        safety_settings=safety_settings,
+        groq_api_key=settings.groq_api_key,
     )
 
 
 def get_gemini_agent() -> AgentExecutor:
+    """Get Groq-powered agent executor (name kept for backward compatibility)."""
     llm = _build_llm()
     tools = _build_tools()
     prompt = _build_prompt()
