@@ -2,9 +2,9 @@
 
 5-Signal Ensemble for Source Quality Filtering:
 1. Domain Trust (25%) - Source reputation based on known domains (CONCURRENT)
-2. Internal Cross-Reference (20%) - SEMANTIC corroboration using MiniLM embeddings (CONCURRENT)
+2. Internal Cross-Reference (20%) - SEMANTIC corroboration using BGE-small embeddings (CONCURRENT)
 3. Google Fact Check API (15%) - External fact-checker verification (CONCURRENT)
-4. LLM Analysis (20%) - AI content quality assessment (Gemini) (PARALLEL)
+4. LLM Analysis (20%) - AI content quality assessment (Groq llama-3.1-8b) (PARALLEL)
 5. External Cross-Reference (20%) - Real-time web verification via Tavily (CONCURRENT)
 
 Note: This is a source quality filtering mechanism, not a misinformation detector.
@@ -120,7 +120,7 @@ def score_domain(domain: str) -> float:
 # ─────────────────────────────────────────────────────────────────────────────
 # Signal 2: Cross-Reference Checking (20%)
 # Multiple independent sources = higher credibility
-# Uses SEMANTIC SIMILARITY (MiniLM embeddings) for accurate story matching
+# Uses SEMANTIC SIMILARITY (BGE-small embeddings) for accurate story matching
 # ─────────────────────────────────────────────────────────────────────────────
 
 import numpy as np
@@ -146,7 +146,7 @@ def compute_semantic_cross_reference_scores(
 ) -> tuple[list[float], list[int]]:
     """Signal 2: Score based on semantic corroboration across sources.
     
-    Uses MiniLM embeddings for semantic similarity instead of keyword Jaccard.
+    Uses BGE-small embeddings for semantic similarity instead of keyword Jaccard.
     This captures meaning rather than just word overlap.
     
     Args:
@@ -243,6 +243,8 @@ def _get_fact_check_client() -> httpx.AsyncClient:
 
 async def search_fact_checks(query: str, api_key: str) -> list[dict]:
     """Query Google Fact Check API with connection reuse."""
+    global _fact_check_api_warned
+    
     try:
         client = _get_fact_check_client()
         resp = await client.get(FACT_CHECK_API_URL, params={
@@ -253,8 +255,21 @@ async def search_fact_checks(query: str, api_key: str) -> list[dict]:
         })
         if resp.status_code == 200:
             return resp.json().get("claims", [])
-    except Exception:
-        pass
+        elif resp.status_code == 403:
+            if not _fact_check_api_warned:
+                logger.warning(
+                    "[fact_check] Google Fact Check API returned 403 Forbidden. "
+                    "This may indicate API key restrictions or quota exceeded. "
+                    "Fact-check signal will return neutral scores (0.50)."
+                )
+                _fact_check_api_warned = True
+        elif resp.status_code == 429:
+            if not _fact_check_api_warned:
+                logger.warning("[fact_check] Rate limit exceeded (429). Using neutral scores.")
+                _fact_check_api_warned = True
+    except Exception as e:
+        if not _fact_check_api_warned:
+            logger.debug(f"[fact_check] API error: {e}")
     return []
 
 
@@ -287,17 +302,21 @@ def parse_fact_check(claims: list[dict]) -> tuple[float, str | None]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class LLMCredibilityAnalyzer:
-    """Gemini-based content credibility analysis."""
+    """Groq-based content credibility analysis."""
     
     def __init__(self):
         settings = get_settings()
-        genai.configure(api_key=settings.gemini_api_key)
-        # Use Gemini 2.5 Flash-Lite for maximum speed
-        self.model = genai.GenerativeModel(
-            "gemini-2.5-flash-lite",
-            safety_settings=SAFETY_SETTINGS,
-        )
-        self.batch_size = 25  # Optimized for speed (fewer API calls)
+        if not settings.groq_api_key:
+            raise RuntimeError("GROQ_API_KEY missing")
+        
+        # Use llama-4-scout for credibility: Fast classification with higher TPM
+        # TPM: 30K (5x higher than 8b-instant)
+        # 40 docs × 200 tokens = 8K tokens/batch
+        # Full parallel processing - Groq SDK handles retries
+        from ..llm.groq_provider import get_groq_provider
+        self.llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
+        self.batch_size = 40  # Increased from 20 due to higher TPM limit
+        logger.info("[LLMCredibilityAnalyzer] Using Groq llama-4-scout-17b (TPM: 30K, TPD: 500K)")
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
@@ -310,7 +329,7 @@ class LLMCredibilityAnalyzer:
         batches = [docs[i:i + self.batch_size] for i in range(0, len(docs), self.batch_size)]
         
         # Parallel execution using global pool
-        futures = [GLOBAL_EXECUTOR.submit(self._analyze_batch, batch) for batch in batches]
+        futures = [GLOBAL_EXECUTOR.submit(self._analyze_batch_sync, batch) for batch in batches]
         
         results = []
         for future in futures:
@@ -324,8 +343,18 @@ class LLMCredibilityAnalyzer:
             
         return results
     
-    def _analyze_batch(self, batch: list[WebDocument]) -> list[dict]:
-        """Analyze a single batch."""
+    def _analyze_batch_sync(self, batch: list[WebDocument]) -> list[dict]:
+        """Synchronous wrapper for async Groq call."""
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(self._analyze_batch(batch))
+        finally:
+            loop.close()
+    
+    async def _analyze_batch(self, batch: list[WebDocument]) -> list[dict]:
+        """Analyze a single batch using Groq."""
         entries = []
         for i, doc in enumerate(batch):
             domain = _extract_domain(str(doc.url) if doc.url else None)
@@ -359,16 +388,15 @@ Return JSON array only:
 Score guide: 0.8+ high credibility, 0.6-0.8 medium, 0.4-0.6 low, <0.4 potential misinformation"""
 
         try:
-            resp = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=4500,  # Safe buffer for 20 docs with detailed reasoning
-                ),
+            response = await self.llm.generate(
+                prompt=prompt,
+                system_prompt="You are a credibility analysis expert. Return accurate, concise JSON.",
+                temperature=0.1,
+                max_tokens=4500,
             )
-            return self._parse_response(resp.text, len(batch))
+            return self._parse_response(response, len(batch))
         except Exception as e:
-            logger.warning(f"[llm_credibility] Gemini Flash error: {e}")
+            logger.warning(f"[llm_credibility] Groq error: {e}")
             return [{"score": 0.50, "reasoning": "Analysis unavailable", "red_flags": []}] * len(batch)
     
     def _parse_response(self, text: str, count: int) -> list[dict]:
