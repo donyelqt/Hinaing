@@ -64,7 +64,7 @@ def main():
         client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
-                size=384,  # MiniLM embedding dimension
+                size=384,  # BGE-small embedding dimension
                 distance=Distance.COSINE
             )
         )
