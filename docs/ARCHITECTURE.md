@@ -433,147 +433,110 @@ flowchart TB
   'primaryTextColor': '#e0e0e0',
   'secondaryColor': '#2d2d2d',
   'tertiaryColor': '#383838',
-  'primaryFontSize': '16px',
-  'secondaryFontSize': '13px',
-  'tertiaryFontSize': '11px',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
   'lineColor': '#e0e0e0'
- }, 'flowchart': {
-  'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
-  'padding': 25,
-  'nodeSpacing': 40,
-  'rankSpacing': 60
  }}}%%
 flowchart TB
-    subgraph Frontend["Frontend (Next.js 15)"]
-        UI[Sentiment Dashboard]
-        Insights[Actionable Insights Cards]
-        Sources[Source Evidence Links]
+    Request[SnapshotRequest]
+    
+    subgraph Node1["Node 1: Query Orchestrator Agent"]
+        QO[QueryOrchestratorAgent]
+        T1[analyze_focus_areas]
+        T2[generate_query]
+        T3[expand_contextual_queries]
+        T4[evaluate_query]
+        KC[KEYWORD_CLUSTERS]
+        QO --> T1 & T2 & T3 & T4
+        T1 --> KC
+        QP[QueryPlan]
+        T1 & T2 & T3 & T4 --> QP
     end
 
-    subgraph Backend["Backend (FastAPI + LangGraph)"]
-        subgraph Workflow["7-Node Multi-Agent Pipeline with Self-Learning"]
-
-            subgraph Node1["Node 1: Query Orchestrator Agent"]
-                QO[QueryOrchestratorAgent]
-                T1[analyze_focus_areas tool]
-                T2[generate_query tool]
-                T3[expand_contextual_queries tool]
-                T4[evaluate_query tool]
-                KC[KEYWORD_CLUSTERS<br/>Context Engineering]
-                QO --> T1 & T2 & T3 & T4
-                T1 --> KC
-                QP[QueryPlan<br/>6+ diverse queries]
-                T1 & T2 & T3 & T4 --> QP
-            end
-
-            subgraph Node2["Node 2: Retrieval Agent"]
-                RA[RetrievalAgent]
-                LS[LangSearch Web API<br/>+ Built-in Reranking]
-                FB[Facebook Ingestion]
-                RD[Reddit r/baguio<br/>+ Built-in Reranking]
-                RA --> LS & FB & RD
-                RR[Diversity Merge<br/>Round-Robin]
-                LS & FB & RD --> RR
-                ExtDocs[External Documents]
-                RR --> ExtDocs
-            end
-
-            subgraph Node3["Node 3: Context Agent - Recall Phase"]
-                CTX[ContextAugmentationAgent]
-                EM1[BGE-small-en-v1.5<br/>Query Embedding]
-                VS1[Qdrant Cloud<br/>Cosine Similarity Search<br/>PERSISTENT STORAGE]
-                TopK[Top-K Results<br/>with Enrichment Metadata]
-                CTX --> EM1 --> VS1 --> TopK
-                IntDocs[Internal Documents<br/>Already Enriched from Memory]
-                TopK --> IntDocs
-                MergedDocs[Deduplicate & Merge]
-                ExtDocs --> MergedDocs
-                IntDocs --> MergedDocs
-            end
-
-            subgraph Node4["Node 4: Unified Analysis with Smart Reuse"]
-                direction TB
-                Cache[Smart Reuse Cache Check<br/>Has sentiment + credibility?]
-                MergedDocs --> Cache
-                
-                subgraph Split["Document Separation"]
-                    Cached[Already Enriched<br/>Reuse Directly]
-                    Fresh[Needs Analysis<br/>New Documents]
-                end
-                
-                Cache --> Split
-                
-                subgraph Concurrent["3 Concurrent Agents asyncio.gather"]
-                    SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
-                    subgraph Cred["CredibilityAgent - 5 Sub-Agents"]
-                        direction LR
-                        DT[DomainTrust 25%]
-                        CR[CrossReference 20%]
-                        FC[FactCheck 15%]
-                        LL[LLMAnalysis 20%]
-                        TV[Tavily 20%]
-                    end
-                    TR[ThemeRouterAgent<br/>6 Theme Buckets]
-                end
-                
-                Fresh --> Concurrent
-                
-                Combine[Combine Results<br/>Cached + Newly Analyzed]
-                Cached --> Combine
-                Concurrent --> Combine
-                ED[Enriched + Routed Documents]
-                Combine --> ED
-            end
-
-            subgraph Node5["Node 5: Context Agent - Consolidation Phase"]
-                CTX2[ContextAugmentationAgent]
-                SC[SemanticChunker<br/>400 chars]
-                ES[Embedding Service<br/>BGE-small-en-v1.5]
-                VS2[Qdrant Cloud<br/>Store with Metadata<br/>sentiment + credibility + analyzed_at]
-                CTX2 --> SC --> ES --> VS2
-            end
-
-            subgraph Node6["Node 6: Theme Agents - Parallel ThreadPool"]
-                TH1[InfrastructureAgent]
-                TH2[HealthAgent]
-                TH3[SafetyAgent]
-                TH4[TourismAgent]
-                TH5[EconomyAgent]
-                TH6[EnvironmentAgent]
-                TI[Theme Insights<br/>3 insights per theme]
-                TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
-            end
-
-            subgraph Node7["Node 7: CoordinatorAgent"]
-                COORD[CoordinatorAgent<br/>gemini-2.5-flash-lite]
-                SD[Sentiment Distribution<br/>Alignment Check]
-                NR[Narrative Generation<br/>Aligned with percentages]
-                COORD --> SD --> NR
-                SR[SnapshotResponse]
-                NR --> SR
-            end
-
-            Node1 --> Node2
-            Node2 --> Node3
-            Node3 --> Node4
-            Node4 --> Node5
-            Node5 --> Node6
-            ED -.->|Sentiment Distribution| SD
-            TI --> COORD
-            
-            %% Self-Learning Loop (Simplified)
-            VS2 -.->|Self-Learning Loop<br/>Enriched Docs Persist| VS1
-        end
+    subgraph Node2["Node 2: Retrieval Agent"]
+        RA[RetrievalAgent]
+        LS[LangSearch + Rerank]
+        FB[Facebook]
+        RD[Reddit + Rerank]
+        RA --> LS & FB & RD
+        RR[Round-Robin Merge]
+        LS & FB & RD --> RR
+        ExtDocs[External Docs]
+        RR --> ExtDocs
     end
 
-    Request[SnapshotRequest] --> Node1
-    SR --> Response[SnapshotResponse JSON]
-    Response --> Frontend
+    subgraph Node3["Node 3: Context Agent - Recall"]
+        CTX[ContextAugmentationAgent]
+        EM1[BGE Embedding]
+        VS1[Qdrant Cloud<br/>PERSISTENT]
+        TopK[Top-K + Metadata]
+        CTX --> EM1 --> VS1 --> TopK
+        IntDocs[Internal Docs<br/>Enriched]
+        TopK --> IntDocs
+        MergedDocs[Merge + Dedup]
+        IntDocs --> MergedDocs
+    end
+
+    subgraph Node4["Node 4: Smart Reuse + Analysis"]
+        Cache[Cache Check<br/>sentiment + credibility?]
+        Cached[Cached<br/>Reuse]
+        Fresh[Fresh<br/>Analyze]
+        Cache --> Cached & Fresh
+        SA[SentimentAgent<br/>RoBERTa + Gemini]
+        CA[CredibilityAgent<br/>5 Sub-Agents]
+        TR[ThemeRouter<br/>6 Buckets]
+        Fresh --> SA & CA & TR
+        Combine[Combine]
+        Cached & SA & CA & TR --> Combine
+        ED[Enriched Docs]
+        Combine --> ED
+    end
+
+    subgraph Node5["Node 5: Context Agent - Consolidate"]
+        CTX2[ContextAugmentationAgent]
+        SC[SemanticChunker]
+        ES[BGE Embedding]
+        VS2[Qdrant Cloud<br/>Store Metadata]
+        CTX2 --> SC --> ES --> VS2
+    end
+
+    subgraph Node6["Node 6: Theme Agents Parallel"]
+        TH1[Infrastructure]
+        TH2[Health]
+        TH3[Safety]
+        TH4[Tourism]
+        TH5[Economy]
+        TH6[Environment]
+        TI[Theme Insights]
+        TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
+    end
+
+    subgraph Node7["Node 7: Coordinator"]
+        COORD[CoordinatorAgent]
+        SD[Sentiment Alignment]
+        NR[Narrative Gen]
+        COORD --> SD --> NR
+        SR[SnapshotResponse]
+        NR --> SR
+    end
+
+    Response[Response JSON]
+    UI[Frontend]
+
+    Request --> QO
+    QP --> RA
+    ExtDocs --> MergedDocs
+    MergedDocs --> Cache
+    ED --> CTX2
+    ED -.->|Distribution| SD
+    VS2 --> TH1 & TH2 & TH3 & TH4 & TH5 & TH6
+    TI --> COORD
+    SR --> Response
+    Response --> UI
+    
+    VS2 -.->|Self-Learning Loop| VS1
 
     style Cache fill:#2d2d2d,stroke:#e0e0e0,stroke-width:2px
-    style Split fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
-    style Concurrent fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
-    style Cred fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
     style VS1 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
     style VS2 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
     style Cached fill:#1e1e1e,stroke:#4ade80,stroke-width:2px
