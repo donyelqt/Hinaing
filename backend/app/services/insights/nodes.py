@@ -173,7 +173,7 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
 
 
 # --------------------------------------------------------------------------
-# NODE 4: Unified Analysis
+# NODE 4: Unified Analysis (with Smart Reuse)
 # --------------------------------------------------------------------------
 async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     """Parallel execution of Sentiment, Credibility, and Theme Routing.
@@ -182,8 +182,10 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     1. Relevance-Aware Sorting: Ensures 'Deep-Clean' logic hits the best docs.
     2. Parallel Batching: Fully utilizes unlocked semaphores.
     3. Conditional Execution: Skips sentiment or credibility based on mode flags.
+    4. SMART REUSE: Reuses already-enriched documents from internal memory (API cost savings).
     """
     raw_docs = state.get("documents", [])
+    internal_docs = state.get("internal_documents", [])
     request = state["request"]
     start_time = time.perf_counter()
     metrics = get_metrics_collector()
@@ -202,11 +204,56 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         state["theme_documents"] = {key: [] for key in THEME_GROUPS}
         logger.info("[snapshot] label_sentiment_and_analyze skipped (no docs)")
         return state
+    
+    # SMART REUSE: Build cache of already-enriched documents from internal memory
+    enriched_cache = {}
+    for doc in internal_docs:
+        # Check if document has both sentiment and credibility analysis
+        has_sentiment = doc.sentiment is not None and doc.sentiment != ""
+        has_credibility = (doc.metadata or {}).get("credibility_score") is not None
+        
+        if has_sentiment and has_credibility:
+            # This document is fully analyzed - can be reused!
+            url_key = str(doc.url) if doc.url else doc.title
+            enriched_cache[url_key] = doc
+    
+    # Separate documents: already-enriched vs needs-analysis
+    docs_to_analyze = []
+    already_enriched = []
+    
+    for doc in raw_docs:
+        url_key = str(doc.url) if doc.url else doc.title
+        if url_key in enriched_cache:
+            # REUSE: This document was already analyzed in a previous run
+            cached_doc = enriched_cache[url_key]
+            already_enriched.append(cached_doc)
+            logger.debug(f"[COST SAVE] Reusing analysis for: {doc.title[:50] if doc.title else 'Untitled'}")
+        else:
+            # NEW: This document needs fresh analysis
+            docs_to_analyze.append(doc)
+    
+    api_calls_saved = len(already_enriched) * 2  # Sentiment + Credibility per doc
+    
+    if already_enriched:
+        logger.info(
+            f"[COST OPTIMIZATION] Reusing {len(already_enriched)} enriched docs "
+            f"(~{api_calls_saved} API calls saved), analyzing {len(docs_to_analyze)} fresh docs"
+        )
+    
+    if not docs_to_analyze:
+        # All documents were already enriched - no analysis needed!
+        logger.info("[COST OPTIMIZATION] All documents already enriched - skipping analysis entirely!")
+        state["enriched"] = already_enriched
+        state["credibility_notes"] = {}
+        state["theme_documents"] = theme_router_agent.run(already_enriched, request)
+        state["api_calls_saved"] = api_calls_saved
+        return state
 
     # 100x CTO OPTIMIZATION: Sort by relevance score so Top-20 Deep-Clean is accurate
     # Documents from Internal Memory have '_score'. External docs from Reranker are already ordered.
+    # ONLY sort documents that need analysis (already-enriched docs maintain their order)
     docs = sorted(
-        raw_docs, 
+        docs_to_analyze, 
         key=lambda d: (d.metadata or {}).get("_score", 0.0), 
         reverse=True
     )
@@ -240,53 +287,53 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         return result
 
     async def run_theme_router():
-        # Theme router ALWAYS runs regardless of mode
-        metrics.start_timer("theme_routing")
-        result = await asyncio.to_thread(theme_router_agent.run, docs, request)
-        metrics.stop_timer("theme_routing")
-        return result
+        # Theme router runs on ALL docs (already-enriched + newly-analyzed)
+        # We'll run it after merging
+        pass
 
     NODE4_TIMEOUT = 240
     
     try:
         async with node4_semaphore:
-            logger.info(f"[snapshot] Starting High-Throughput Analysis on {len(docs)} docs")
+            logger.info(f"[snapshot] Starting High-Throughput Analysis on {len(docs)} NEW docs")
             
             # Build task list based on mode flags
-            tasks = [run_theme_router()]  # Theme router always runs
+            tasks = []
             
             if include_sentiment:
                 tasks.append(run_sentiment())
             if include_credibility:
                 tasks.append(run_credibility())
             
-            results = await asyncio.wait_for(
-                asyncio.gather(*tasks),
-                timeout=NODE4_TIMEOUT
-            )
-            
-            # Reconstruct results based on which tasks ran
-            theme_docs = results[0]
-            sentiment_docs = None
-            credibility_docs = None
-            
-            idx = 1
-            if include_sentiment:
-                sentiment_docs = results[idx]
-                idx += 1
-            if include_credibility:
-                credibility_docs = results[idx]
+            if tasks:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks),
+                    timeout=NODE4_TIMEOUT
+                )
+                
+                # Reconstruct results based on which tasks ran
+                sentiment_docs = None
+                credibility_docs = None
+                
+                idx = 0
+                if include_sentiment:
+                    sentiment_docs = results[idx]
+                    idx += 1
+                if include_credibility:
+                    credibility_docs = results[idx]
+            else:
+                sentiment_docs = None
+                credibility_docs = None
                 
     except asyncio.TimeoutError:
         logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using partial fallback")
         sentiment_docs = [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs] if include_sentiment else None
         credibility_docs = docs if include_credibility else None
-        theme_docs = theme_router_agent.run(docs, request)
 
     gc.collect()
     
-    # Merge logic: handle None cases gracefully
-    enriched_docs = []
+    # Merge logic: handle None cases gracefully for NEWLY ANALYZED docs
+    newly_enriched_docs = []
     credibility_notes = {}
     
     for i in range(len(docs)):
@@ -305,7 +352,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             "sentiment": final_sentiment,
             "metadata": merged_metadata
         })
-        enriched_docs.append(enriched)
+        newly_enriched_docs.append(enriched)
         
         # Update credibility notes
         if include_credibility:
@@ -314,11 +361,30 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             if score is not None:
                 credibility_notes[domain] = score
     
-    state["enriched"] = enriched_docs
+    # Also extract credibility notes from already-enriched docs
+    for doc in already_enriched:
+        domain = (doc.metadata or {}).get("source_domain", "unknown")
+        score = (doc.metadata or {}).get("credibility_score", 0.5)
+        if score is not None:
+            credibility_notes[domain] = score
+    
+    # COMBINE: already-enriched + newly-analyzed
+    all_enriched_docs = already_enriched + newly_enriched_docs
+    
+    # Run theme router on ALL documents (combined)
+    metrics.start_timer("theme_routing")
+    theme_docs = await asyncio.to_thread(theme_router_agent.run, all_enriched_docs, request)
+    metrics.stop_timer("theme_routing")
+    
+    state["enriched"] = all_enriched_docs
     state["credibility_notes"] = credibility_notes
     state["theme_documents"] = theme_docs
+    state["api_calls_saved"] = api_calls_saved
     
-    logger.info(f"[snapshot] Node 4 Complete. Latency: {time.perf_counter() - start_time:.1f}s")
+    logger.info(
+        f"[snapshot] Node 4 Complete. Latency: {time.perf_counter() - start_time:.1f}s "
+        f"(API calls saved: {api_calls_saved})"
+    )
     return state
 
 
