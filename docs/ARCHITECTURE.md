@@ -421,7 +421,244 @@ flowchart TB
 
 **Result**: System gets smarter over time as memory grows (0% cache → 95%+ cache over weeks/months)
 
+---
 
+## Detailed 7-Node Architecture with Internal Components
+
+> **Implementation-Level Diagram**: This diagram shows the complete internal structure of each node including tools, sub-agents, and data flows, with a simplified self-learning loop.
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '16px',
+  'secondaryFontSize': '13px',
+  'tertiaryFontSize': '11px',
+  'lineColor': '#e0e0e0'
+ }, 'flowchart': {
+  'subGraphTitleMargin': { 'top': 15, 'bottom': 15 },
+  'padding': 25,
+  'nodeSpacing': 40,
+  'rankSpacing': 60
+ }}}%%
+flowchart TB
+    subgraph Frontend["Frontend (Next.js 15)"]
+        UI[Sentiment Dashboard]
+        Insights[Actionable Insights Cards]
+        Sources[Source Evidence Links]
+    end
+
+    subgraph Backend["Backend (FastAPI + LangGraph)"]
+        subgraph Workflow["7-Node Multi-Agent Pipeline with Self-Learning"]
+
+            subgraph Node1["Node 1: Query Orchestrator Agent"]
+                QO[QueryOrchestratorAgent]
+                T1[analyze_focus_areas tool]
+                T2[generate_query tool]
+                T3[expand_contextual_queries tool]
+                T4[evaluate_query tool]
+                KC[KEYWORD_CLUSTERS<br/>Context Engineering]
+                QO --> T1 & T2 & T3 & T4
+                T1 --> KC
+                QP[QueryPlan<br/>6+ diverse queries]
+                T1 & T2 & T3 & T4 --> QP
+            end
+
+            subgraph Node2["Node 2: Retrieval Agent"]
+                RA[RetrievalAgent]
+                LS[LangSearch Web API<br/>+ Built-in Reranking]
+                FB[Facebook Ingestion]
+                RD[Reddit r/baguio<br/>+ Built-in Reranking]
+                RA --> LS & FB & RD
+                RR[Diversity Merge<br/>Round-Robin]
+                LS & FB & RD --> RR
+                ExtDocs[External Documents]
+                RR --> ExtDocs
+            end
+
+            subgraph Node3["Node 3: Context Agent - Recall Phase"]
+                CTX[ContextAugmentationAgent]
+                EM1[BGE-small-en-v1.5<br/>Query Embedding]
+                VS1[Qdrant Cloud<br/>Cosine Similarity Search<br/>PERSISTENT STORAGE]
+                TopK[Top-K Results<br/>with Enrichment Metadata]
+                CTX --> EM1 --> VS1 --> TopK
+                IntDocs[Internal Documents<br/>Already Enriched from Memory]
+                TopK --> IntDocs
+                MergedDocs[Deduplicate & Merge]
+                ExtDocs --> MergedDocs
+                IntDocs --> MergedDocs
+            end
+
+            subgraph Node4["Node 4: Unified Analysis with Smart Reuse"]
+                direction TB
+                Cache[Smart Reuse Cache Check<br/>Has sentiment + credibility?]
+                MergedDocs --> Cache
+                
+                subgraph Split["Document Separation"]
+                    Cached[Already Enriched<br/>Reuse Directly]
+                    Fresh[Needs Analysis<br/>New Documents]
+                end
+                
+                Cache --> Split
+                
+                subgraph Concurrent["3 Concurrent Agents (asyncio.gather)"]
+                    SA[SentimentAgent<br/>RoBERTa 40% + Gemini 60%]
+                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
+                        direction LR
+                        DT[DomainTrust 25%]
+                        CR[CrossReference 20%]
+                        FC[FactCheck 15%]
+                        LL[LLMAnalysis 20%]
+                        TV[Tavily 20%]
+                    end
+                    TR[ThemeRouterAgent<br/>6 Theme Buckets]
+                end
+                
+                Fresh --> Concurrent
+                
+                Combine[Combine Results<br/>Cached + Newly Analyzed]
+                Cached --> Combine
+                Concurrent --> Combine
+                ED[Enriched + Routed Documents]
+                Combine --> ED
+            end
+
+            subgraph Node5["Node 5: Context Agent - Consolidation Phase"]
+                CTX2[ContextAugmentationAgent]
+                SC[SemanticChunker<br/>400 chars]
+                ES[Embedding Service<br/>BGE-small-en-v1.5]
+                VS2[Qdrant Cloud<br/>Store with Metadata<br/>sentiment + credibility + analyzed_at]
+                CTX2 --> SC --> ES --> VS2
+            end
+
+            subgraph Node6["Node 6: Theme Agents (Parallel ThreadPool)"]
+                TH1[InfrastructureAgent]
+                TH2[HealthAgent]
+                TH3[SafetyAgent]
+                TH4[TourismAgent]
+                TH5[EconomyAgent]
+                TH6[EnvironmentAgent]
+                TI[Theme Insights<br/>3 insights per theme]
+                TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
+            end
+
+            subgraph Node7["Node 7: CoordinatorAgent"]
+                COORD[CoordinatorAgent<br/>gemini-2.5-flash-lite]
+                SD[Sentiment Distribution<br/>Alignment Check]
+                NR[Narrative Generation<br/>Aligned with percentages]
+                COORD --> SD --> NR
+                SR[SnapshotResponse]
+                NR --> SR
+            end
+
+            Node1 --> Node2
+            Node2 --> Node3
+            Node3 --> Node4
+            Node4 --> Node5
+            Node5 --> Node6
+            ED -.->|Sentiment Distribution| SD
+            TI --> COORD
+            
+            %% Self-Learning Loop (Simplified)
+            VS2 -.->|Self-Learning Loop<br/>Enriched Docs Persist| VS1
+        end
+    end
+
+    Request[SnapshotRequest] --> Node1
+    SR --> Response[SnapshotResponse JSON]
+    Response --> Frontend
+
+    style Cache fill:#2d2d2d,stroke:#e0e0e0,stroke-width:2px
+    style Split fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
+    style Concurrent fill:#1e1e1e,stroke:#e0e0e0,stroke-width:1px
+    style VS1 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
+    style VS2 fill:#2d2d2d,stroke:#4a9eff,stroke-width:2px
+```
+
+### Implementation Details by Node
+
+**Node 1: Query Orchestrator**
+- **Tools**: 4 specialized ReAct tools (analyze, generate, expand, evaluate)
+- **Context Engineering**: KEYWORD_CLUSTERS provide domain-specific query templates
+- **Output**: 6+ diverse queries covering multiple civic themes
+
+**Node 2: External Retrieval**
+- **Sources**: LangSearch (web), Facebook (Apify), Reddit (PRAW)
+- **Reranking**: Built-in at source level for web and Reddit
+- **Merge Strategy**: Round-robin interleaving for diversity
+
+**Node 3: Internal Recall (Read Phase)**
+- **Storage**: Qdrant Cloud with persistent vector store
+- **Embeddings**: BGE-small-en-v1.5 (384 dimensions)
+- **Retrieval**: Cosine similarity search with focus_area filtering
+- **Key Feature**: Returns documents with existing enrichment metadata
+
+**Node 4: Unified Analysis + Smart Reuse**
+- **Cache Check**: Inspects internal documents for sentiment + credibility
+- **Document Separation**: 
+  - Already enriched → Reuse directly (81% cache hit)
+  - Needs analysis → Run full pipeline
+- **3 Concurrent Agents**:
+  - SentimentAgent: RoBERTa (40%) + Gemini (60%)
+  - CredibilityAgent: 5 parallel sub-agents (DomainTrust, CrossRef, FactCheck, LLM, Tavily)
+  - ThemeRouterAgent: BGE-based classification into 6 buckets
+- **Result Combination**: Merge cached + newly analyzed documents
+
+**Node 5: Memory Consolidation (Write Phase)**
+- **Chunking**: SemanticChunker (400 char chunks)
+- **Embedding**: BGE-small-en-v1.5
+- **Storage**: Qdrant Cloud with enriched metadata:
+  - `sentiment`: positive/neutral/negative
+  - `credibility_score`: 0.0-1.0
+  - `analyzed_at`: timestamp
+  - `focus_area`, `topic`: classification metadata
+
+**Node 6: Theme Agents**
+- **Execution**: Parallel ThreadPoolExecutor (CPU-bound)
+- **Agents**: 6 domain experts (Infrastructure, Health, Safety, Tourism, Economy, Environment)
+- **Conditional**: Only spawned if theme bucket has documents AND matches focus_areas
+- **Output**: 3 insights per active theme
+
+**Node 7: Coordinator**
+- **Sentiment Alignment**: Receives sentiment distribution from Node 4
+- **Narrative Generation**: Gemini 2.5 Flash-Lite synthesizes final summary
+- **Quality Check**: Ensures summary matches sentiment percentages
+
+### Self-Learning Loop Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  SELF-LEARNING CYCLIC RAG WITH SMART REUSE                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Node 5 (Write) ──────────────────────────────────────────┐ │
+│       │                                                    │ │
+│       │ Store enriched docs with metadata                 │ │
+│       │ (sentiment + credibility + analyzed_at)           │ │
+│       ▼                                                    │ │
+│  ┌─────────────────────────────────────────┐              │ │
+│  │  Qdrant Cloud (Persistent Storage)      │              │ │
+│  │  • Survives restarts, sessions, weeks   │              │ │
+│  │  • Documents with enrichment metadata   │              │ │
+│  └─────────────────────────────────────────┘              │ │
+│       │                                                    │ │
+│       │ Retrieve enriched docs from previous runs         │ │
+│       ▼                                                    │ │
+│  Node 3 (Read) ────────────────────────────────────────────┘ │
+│       │                                                      │
+│       │ Pass to Node 4 for Smart Reuse check                │
+│       ▼                                                      │
+│  Node 4 (Smart Reuse)                                        │
+│       ├─ Already enriched? → Reuse (81% cache hit)           │
+│       └─ New/stale? → Analyze (19% of docs)                  │
+│                                                             │
+│  Result: 81% API cost reduction, 35% speed improvement      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Detailed Agent Flow (Sequence Diagram)
 
