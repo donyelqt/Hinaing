@@ -28,6 +28,9 @@ class SnapshotRequest(BaseModel):
     time_window: str = Field(default="24h", description="Relative time window filter")
     focus_areas: list[str] = Field(default_factory=list, description="User-selected themes")
     include_alerts: bool = True
+    mode: str = Field(default="full", description="Analysis mode: full, sentiment, or credibility")
+    include_sentiment: bool = Field(default=True, description="Include sentiment analysis")
+    include_credibility: bool = Field(default=True, description="Include credibility scoring")
 
 
 class WebDocument(BaseModel):
