@@ -55,10 +55,30 @@ async def lifespan(app: FastAPI):
     
     yield
     
+    # Graceful shutdown: cleanup resources
+    logger.info("[shutdown] Cleaning up resources...")
+    
+    # Close httpx clients in Groq providers
+    try:
+        from .services.llm.groq_provider import cleanup_groq_clients
+        await cleanup_groq_clients()
+        logger.info("[shutdown] Groq clients closed")
+    except Exception as e:
+        logger.debug(f"[shutdown] Groq cleanup: {e}")
+    
+    # Shutdown thread pool
     executor.shutdown(wait=False)
+    
+    # Shutdown global executor
+    try:
+        GLOBAL_EXECUTOR.shutdown(wait=False)
+        logger.info("[shutdown] Global executor closed")
+    except Exception as e:
+        logger.debug(f"[shutdown] Executor cleanup: {e}")
+    
     # Force garbage collection on shutdown
     gc.collect()
-    logger.info("[shutdown] Application shutting down")
+    logger.info("[shutdown] Application shutdown complete")
 
 
 async def memory_cleanup_middleware(request: Request, call_next):
@@ -109,6 +129,51 @@ def create_app() -> FastAPI:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
+    
+    # Suppress harmless asyncio event loop cleanup errors
+    # These occur during Ctrl+C shutdown when async tasks are cancelled
+    import asyncio
+    import warnings
+    import sys
+    
+    # Suppress CancelledError traceback spam during shutdown
+    def custom_excepthook(exc_type, exc_value, exc_traceback):
+        """Suppress CancelledError during shutdown."""
+        if exc_type == asyncio.CancelledError:
+            return  # Silently ignore
+        if exc_type == KeyboardInterrupt:
+            logger.info("[shutdown] Server stopped by user (Ctrl+C)")
+            return
+        # Log all other exceptions normally
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    
+    sys.excepthook = custom_excepthook
+    
+    def asyncio_exception_handler(loop, context):
+        """Suppress harmless shutdown errors."""
+        exception = context.get('exception')
+        message = context.get('message', '')
+        
+        # Suppress CancelledError during shutdown
+        if isinstance(exception, asyncio.CancelledError):
+            return  # Silently ignore
+        
+        # Suppress 'Event loop is closed' errors from httpx cleanup
+        if isinstance(exception, RuntimeError) and 'Event loop is closed' in str(exception):
+            if 'httpx' in message or 'httpcore' in message or 'AsyncClient.aclose' in message:
+                return  # Silently ignore
+        
+        # Log all other asyncio errors normally
+        loop.default_exception_handler(context)
+    
+    # Set the custom exception handler for all event loops
+    try:
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(asyncio_exception_handler)
+    except RuntimeError:
+        # No event loop yet, will be set when one is created
+        pass
+    
     settings = get_settings()
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
