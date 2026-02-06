@@ -284,10 +284,10 @@ async def search_web_documents(
     # For baseline queries: Filter against broad focus area (lower precision)
     if not skip_semantic_filter:
         # Use different thresholds for orchestrator vs baseline queries
-        # Orchestrator: 0.22 (accommodates multilingual content - Japanese articles score 0.23)
+        # Orchestrator: 0.25 (accommodates multilingual content - Filipino articles score 0.36)
         # Baseline: 0.20 (broader search, more permissive)
-        # Note: Mallification docs in Japanese score as low as 0.23, Filipino content scores 0.36
-        MIN_SEMANTIC_RELEVANCE = 0.22 if custom_query else 0.20
+        # Note: Filipino mallification content scores 0.36, Japanese content scores 0.23 (borderline)
+        MIN_SEMANTIC_RELEVANCE = 0.25 if custom_query else 0.20
         filtered_docs = []
         low_relevance_samples = []
         
