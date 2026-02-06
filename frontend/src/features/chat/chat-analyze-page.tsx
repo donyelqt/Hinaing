@@ -75,6 +75,8 @@ interface ChatAnalyzePageProps {
     onNavigate?: (page: ActivePage) => void;
 }
 
+type AnalysisMode = 'auto' | 'full' | 'sentiment' | 'credibility';
+
 // --- Components ---
 
 function HLogo({ className }: { className?: string }) {
@@ -448,7 +450,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </p>
 
             {/* Analysis Suggestions */}
-            <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">📊 Run Sentiment Analysis</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">📊 Run Epistemic Truth Discovery & Civic Social Listening</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full mb-3 sm:mb-4">
                 {analysisSuggestions.map((prompt: string, i: number) => (
                     <button
@@ -627,6 +629,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
+  const [mode, setMode] = React.useState<AnalysisMode>('auto');
 
     const bottomRef = React.useRef<HTMLDivElement>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -710,7 +713,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     session_id: sessionId,
                     history: history,
                     platforms: ["web"],
-                    time_window: "24h"
+                    time_window: "24h",
+                    mode: mode
                 })
             });
 
@@ -763,6 +767,10 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
                     if (updated[lastIdx]?.isStreaming) {
+                        // Debug logging
+                        console.log('[chat] Immediate result data:', result.data);
+                        console.log('[chat] Sources count:', result.data?.sources?.length || 0);
+                        
                         updated[lastIdx] = {
                             role: "model",
                             content: result.message,
@@ -953,49 +961,72 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
 
                             {/* Input Area - Safe area padding for mobile */}
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
-                                <div className="max-w-3xl mx-auto relative group">
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-300 via-violet-300 to-blue-300 rounded-xl sm:rounded-2xl opacity-20 group-hover:opacity-40 transition blur duration-500"></div>
-                                    <form
-                                        onSubmit={handleSubmit}
-                                        className="relative flex items-center bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-100 p-1.5 sm:p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
-                                    >
-                                        <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-400">
-                                            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-                                        </div>
-                                        <input
-                                            value={input}
-                                            onChange={(e) => setInput(e.target.value)}
-                                            placeholder="Ask about Baguio..."
-                                            className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
-                                            disabled={isLoading}
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={!input.trim() || isLoading || !backendStatus || !!backendError}
-                                            className={clsx(
-                                                "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
-                                                input.trim() && !isLoading && backendStatus && !backendError
-                                                    ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
-                                                    : "bg-slate-100 text-slate-600 cursor-not-allowed"
-                                            )}
+                                <div className="max-w-3xl mx-auto space-y-2">
+                                    {/* Mode Selector */}
+                                    <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                        <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Mode:</span>
+                                        {[
+                                            { value: 'auto', label: 'Auto', desc: 'Smart routing' },
+                                            { value: 'full', label: 'Full', desc: 'Complete analysis' },
+                                            { value: 'sentiment', label: 'Sentiment', desc: 'Sentiment only' },
+                                            { value: 'credibility', label: 'Credibility', desc: 'Fact-checking & verification' }
+                                        ].map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => setMode(option.value as AnalysisMode)}
+                                                className={clsx(
+                                                    "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
+                                                    mode === option.value
+                                                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                                )}
+                                                title={option.desc}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="relative group">
+                                        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-300 via-violet-300 to-blue-300 rounded-xl sm:rounded-2xl opacity-20 group-hover:opacity-40 transition blur duration-500"></div>
+                                        <form
+                                            onSubmit={handleSubmit}
+                                            className="relative flex items-center bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-100 p-1.5 sm:p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                                         >
-                                            {isLoading ? (
-                                                <>
+                                            <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-400">
+                                                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+                                            </div>
+                                            <input
+                                                value={input}
+                                                onChange={(e) => setInput(e.target.value)}
+                                                placeholder="Ask about Baguio..."
+                                                className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
+                                                disabled={isLoading}
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!input.trim() || isLoading || !backendStatus || !!backendError}
+                                                className={clsx(
+                                                    "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
+                                                    input.trim() && !isLoading && backendStatus && !backendError
+                                                        ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+                                                        : "bg-slate-100 text-slate-600 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {isLoading ? (
                                                     <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                                </>
-                                            ) : !backendStatus || backendError ? (
-                                                <>
-                                                    <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                                    Initializing...
-                                                </>
-                                            ) : (
-                                                <>
+                                                ) : !backendStatus || backendError ? (
+                                                    <>
+                                                        <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                                                        Initializing...
+                                                    </>
+                                                ) : (
                                                     <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-                                                 
-                                                </>
-                                            )}
-                                        </button>
-                                    </form>
+                                                )}
+                                            </button>
+                                        </form>
+                                    </div>
                                     <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
                                         Smart routing: Civic social listening and epistemic truth discovery → 18 autonomous agents | Q&A → Fast search
                                     </p>
