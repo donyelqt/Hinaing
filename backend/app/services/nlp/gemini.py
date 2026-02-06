@@ -1,5 +1,8 @@
-"""Gemini helper utilities for narrative generation."""
+"""LLM-based narrative generation for civic sentiment analysis.
 
+This module provides the LLMNarrativeClient class which synthesizes comprehensive 
+narratives from theme insights and documents using Groq LLMs.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -8,10 +11,11 @@ import logging
 import re
 from typing import Any, Callable
 
-import google.generativeai as genai
+# Legacy imports (kept for fallback agent path - rarely used)
+# import google.generativeai as genai
+# from ..agents.gemini import run_gemini_agent
 
 from ...core.config import get_settings
-from ..agents.gemini import run_gemini_agent
 
 logger = logging.getLogger(__name__)
 
@@ -28,24 +32,33 @@ def sanitize_text(text: str | None) -> str:
     return cleaned.strip()
 
 
-class GeminiClient:
-    """Thin wrapper around the Gemini GenerativeModel."""
+class LLMNarrativeClient:
+    """Generates comprehensive narratives from theme insights and documents.
+    
+    Uses Groq llama-4-scout for fast narrative synthesis:
+    - 30K TPM (5x more than 8b-instant)
+    - 500K TPD
+    - Clean JSON output
+    - Handles large narratives without rate limits
+    """
 
-    def __init__(self, *, model_name: str = "gemini-2.5-flash-lite") -> None:
-        """Initialize Gemini client.
+    def __init__(self, *, model_name: str = "meta-llama/llama-4-scout-17b-16e-instruct") -> None:
+        """Initialize narrative generator with Groq.
         
-        Uses Gemini 2.5 Flash for narrative generation. Since theme_insights
-        are already summarized by Theme Agents (using Pro), Flash is sufficient
-        for final synthesis and much faster (~10s vs ~40s).
+        Args:
+            model_name: Groq model to use for narrative generation
         """
         settings = get_settings()
-        self._api_key = settings.gemini_api_key
+        self._api_key = settings.groq_api_key
         self._model_name = model_name
         self._model = None
 
         if self._api_key:
-            genai.configure(api_key=self._api_key)
-            self._model = genai.GenerativeModel(self._model_name)
+            from ..llm.groq_provider import get_groq_provider
+            self._model = get_groq_provider(model_name)
+            logger.info(f"[LLMNarrativeClient] Initialized with Groq: {model_name} (30K TPM)")
+        else:
+            logger.warning("[LLMNarrativeClient] Groq API key not configured")
 
     @property
     def is_available(self) -> bool:
@@ -64,7 +77,7 @@ class GeminiClient:
         # This reduces latency from ~40s to ~10s
         if theme_insights and len(theme_insights) > 0:
             logger.info(
-                "[GeminiClient] Using theme_insights for narrative (skipping agent path)",
+                "[LLMNarrativeClient] Using theme_insights for narrative (skipping agent path)",
                 extra={"theme_count": len(theme_insights), "doc_count": len(documents)}
             )
             return await self._run_direct_generation(
@@ -75,9 +88,13 @@ class GeminiClient:
             )
         
         # Fallback: Use agent path only when no theme_insights available
+        # NOTE: This path is rarely used since theme_insights are always generated
+        # Keeping for backward compatibility but may be removed in future
         agent_instruction = self._build_agent_instruction(window=window, focus_areas=focus_areas)
 
         try:
+            # Legacy agent path - requires run_gemini_agent import
+            from ..agents.gemini import run_gemini_agent
             agent_output = await asyncio.to_thread(
                 lambda: run_gemini_agent(agent_instruction, documents=documents)
             )
@@ -87,7 +104,7 @@ class GeminiClient:
                 insights = self._sanitize_insights(parsed.get("insights") or [])
                 return summary, insights
         except Exception:
-            logger.exception("Gemini agent execution failed")
+            logger.exception("Narrative generation agent execution failed")
 
         # Fallback to direct model invocation if the agent path fails or returns invalid JSON.
         if not self._model:
@@ -135,36 +152,22 @@ class GeminiClient:
             theme_insights=theme_insights,
         )
 
-        from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
-        def _invoke(prompt_builder: Callable[[], str]) -> str:
-            response = self._model.generate_content(
-                prompt_builder(),
-                safety_settings=safety_settings,
-            )
-            return response.text or ""
-
         try:
             import time
             start = time.perf_counter()
-            raw_text = await asyncio.wait_for(
-                asyncio.to_thread(lambda: _invoke(lambda: analysis_prompt)),
-                timeout=60.0  # 60s max for narrative generation
+            raw_text = await self._model.generate(
+                prompt=analysis_prompt,
+                system_prompt="You are a senior analyst for Baguio City command center. Return VALID JSON only (no markdown, no code blocks).",
+                temperature=0.2,
+                max_tokens=8000,
             )
             elapsed = time.perf_counter() - start
-            logger.info(f"[GeminiClient] Narrative generated in {elapsed:.1f}s")
+            logger.info(f"[LLMNarrativeClient] Narrative generated in {elapsed:.1f}s")
         except asyncio.TimeoutError:
-            logger.error("[GeminiClient] Narrative generation timed out after 60s")
+            logger.error("[LLMNarrativeClient] Narrative generation timed out after 60s")
             return None, []
         except Exception:  # pragma: no cover - network/SDK failures
-            logger.exception("Gemini analysis failed")
+            logger.exception("Groq analysis failed")
             return None, []
 
         parsed = self._try_parse_json(raw_text)
@@ -187,10 +190,12 @@ class GeminiClient:
         
         # Build theme insights section if available
         insights_block = ""
+        theme_categories = set()
         if theme_insights:
             insight_lines = []
             for item in theme_insights:
                 cat = sanitize_text(item.get('category', 'General'))
+                theme_categories.add(cat)
                 title = sanitize_text(item.get('title'))
                 detail = sanitize_text(item.get('detail'))
                 insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
@@ -200,33 +205,57 @@ class GeminiClient:
         doc_lines = []
         for idx, doc in enumerate(documents, start=1):
             title = sanitize_text(doc.get('title', ''))
-            snippet = sanitize_text(doc.get('snippet', ''))[:300]  # Truncate long snippets
+            snippet = sanitize_text(doc.get('snippet', ''))[:200]  # Shorter snippets for token efficiency
             sentiment = doc.get('sentiment', 'neutral')
             credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
             doc_lines.append(f"{idx}. [{sentiment.upper()} | Cred:{credibility:.2f}] {title}: {snippet}")
         docs_block = "\n".join(doc_lines) or "No documents available."
+
+        # CRITICAL: Constrain narrative to ONLY the selected focus areas and generated themes
+        theme_constraint = ""
+        if theme_insights and theme_categories:
+            theme_list = ", ".join(sorted(theme_categories))
+            theme_constraint = (
+                f"\n\n⚠️ CRITICAL CONSTRAINT ⚠️\n"
+                f"You MUST ONLY discuss these themes: {theme_list}\n"
+                f"DO NOT create new themes or discuss topics outside of: {focus}\n"
+                f"DO NOT mention health, infrastructure, tourism, or other areas unless they are in the theme insights above.\n"
+                f"Your narrative must STRICTLY follow the {len(theme_insights)} theme insights provided.\n"
+            )
 
         return (
             "You are a senior analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
             f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
             f"{docs_block}\n"
-            f"{insights_block}\n\n"
+            f"{insights_block}"
+            f"{theme_constraint}\n\n"
             "TASK:\n"
             "1. Analyze ALL supporting conversations above.\n"
             "2. Reference the theme insights for structured context.\n"
             "3. Generate a comprehensive, engaging narrative summary.\n\n"
             "FORMATTING REQUIREMENTS:\n"
-            "- Structure the summary into 4-5 well-developed paragraphs (3-4 sentences each)\n"
+            "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
             "- Each paragraph should focus on ONE major theme/topic with depth and context\n"
             "- Start each paragraph with a BOLD topic indicator like: **Public Safety:** or **Infrastructure:**\n"
             "- Use vivid, descriptive language that brings the situation to life\n"
             "- Highlight key tensions, risks, and positive developments with specific details\n"
             "- Include contextual information about what this means for Baguio City\n"
-            "- Add a concluding paragraph that synthesizes the overall sentiment and key takeaways\n\n"
+            "- Add a concluding paragraph that synthesizes the overall sentiment and key takeaways\n"
+            "- COMPLETE ALL PARAGRAPHS - do not stop mid-sentence or mid-paragraph\n\n"
+            "CRITICAL JSON FORMAT REQUIREMENTS:\n"
+            "- Return VALID JSON only (no markdown, no code blocks, no backticks)\n"
+            "- Use DOUBLE QUOTES for all string values (not backticks `, not single quotes ')\n"
+            "- Escape special characters: use \\n for newlines, \\\" for quotes inside strings\n"
+            "- The summary field MUST be a single JSON string with \\n\\n for paragraph breaks\n"
+            "- DO NOT use template literals or backticks - they are invalid JSON\n\n"
             "Return a JSON object with keys:\n"
-            "- summary: string narrative (structured paragraphs as described above, separated by double newlines)\n"
-            "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n"
+            '- summary: "string narrative with \\n\\n between paragraphs" (use double quotes!)\n'
+            "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n\n"
+            "Example CORRECT format:\n"
+            '{"summary": "**Theme 1:** First paragraph.\\n\\n**Theme 2:** Second paragraph.", "insights": []}\n\n'
+            "Example WRONG format (DO NOT USE):\n"
+            "{'summary': `text with backticks`, 'insights': []}  ← INVALID!\n"
         )
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
@@ -260,7 +289,7 @@ class GeminiClient:
 
     @staticmethod
     def _try_parse_json(raw_text: str) -> dict[str, Any] | None:
-        """Extract and parse JSON from Gemini's response with robust recovery."""
+        """Extract and parse JSON from LLM response with robust recovery."""
         if not raw_text:
             return None
             
@@ -270,7 +299,7 @@ class GeminiClient:
         json_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', text)
         if json_match:
             candidate = json_match.group(1).strip()
-            result = GeminiClient._safe_json_parse(candidate)
+            result = LLMNarrativeClient._safe_json_parse(candidate)
             if result:
                 return result
             text = candidate
@@ -282,13 +311,13 @@ class GeminiClient:
             text = text[start_idx : end_idx + 1]
 
         # Strategy 3: Direct parse with cleaning
-        result = GeminiClient._safe_json_parse(text)
+        result = LLMNarrativeClient._safe_json_parse(text)
         if result:
             return result
         
         # Strategy 4: Extract summary and insights separately using regex
         # This handles cases where JSON is malformed but content is extractable
-        logger.info("[GeminiClient] Attempting regex extraction fallback...")
+        logger.info("[LLMNarrativeClient] Attempting regex extraction fallback...")
         
         summary_match = re.search(r'"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text, re.DOTALL)
         summary = summary_match.group(1) if summary_match else None
@@ -296,31 +325,41 @@ class GeminiClient:
         if summary:
             # Unescape the summary
             summary = summary.replace('\\"', '"').replace('\\n', '\n')
-            logger.info(f"[GeminiClient] Extracted summary via regex ({len(summary)} chars)")
+            logger.info(f"[LLMNarrativeClient] Extracted summary via regex ({len(summary)} chars)")
             return {"summary": summary, "insights": []}
         
-        logger.warning(f"[GeminiClient] JSON parse failed. Text: {text[:200]}...")
+        logger.warning(f"[LLMNarrativeClient] JSON parse failed. Text: {text[:200]}...")
         return None
     
     @staticmethod
     def _safe_json_parse(text: str) -> dict[str, Any] | None:
         """Try multiple JSON parsing strategies."""
-        # Attempt 1: Direct parse
+        # Attempt 1: Fix backticks (common LLM error - using template literals instead of JSON strings)
+        if '`' in text:
+            logger.debug("[LLMNarrativeClient] Detected backticks, converting to JSON strings...")
+            # Replace backtick strings with proper JSON strings
+            # Pattern: "key": `value` or 'key': `value`
+            text = re.sub(r'(["\']summary["\']\s*:\s*)`([^`]*)`', r'\1"\2"', text, flags=re.DOTALL)
+            text = re.sub(r'(["\']insights["\']\s*:\s*)`([^`]*)`', r'\1"\2"', text, flags=re.DOTALL)
+            # Also handle any remaining backticks
+            text = text.replace('`', '"')
+        
+        # Attempt 2: Direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
         
-        # Attempt 2: Remove trailing commas
+        # Attempt 3: Remove trailing commas
         try:
             cleaned = re.sub(r',\s*([}\]])', r'\1', text)
             return json.loads(cleaned)
         except json.JSONDecodeError:
             pass
         
-        # Attempt 3: Fix common issues
+        # Attempt 4: Fix common issues
         try:
-            # Replace single quotes with double quotes (common Gemini issue)
+            # Replace single quotes with double quotes (common LLM issue)
             fixed = text.replace("'", '"')
             # Remove any control characters
             fixed = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', fixed)
@@ -330,7 +369,7 @@ class GeminiClient:
         except json.JSONDecodeError:
             pass
         
-        # Attempt 4: Truncate at last valid closing brace
+        # Attempt 5: Truncate at last valid closing brace
         try:
             # Find balanced braces
             depth = 0
@@ -353,4 +392,8 @@ class GeminiClient:
         return None
 
 
-gemini_client = GeminiClient()
+# Global singleton instance
+llm_narrative_client = LLMNarrativeClient()
+
+# Backward compatibility alias (deprecated - use llm_narrative_client instead)
+gemini_client = llm_narrative_client
