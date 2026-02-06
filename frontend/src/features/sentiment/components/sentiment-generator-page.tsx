@@ -684,7 +684,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             <strong className="block text-base sm:text-lg font-semibold text-slate-700">{credibilityBreakdown.avgScore}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              {credibilityBreakdown.hasData ? '6-signal analysis' : 'No data yet'}
+                              {credibilityBreakdown.hasData ? '5-signal analysis' : 'No data yet'}
                             </p>
                           </div>
                           <div className={clsx(
