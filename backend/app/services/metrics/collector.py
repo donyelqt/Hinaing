@@ -126,7 +126,15 @@ class MetricsCollector:
         
         logger.info("[metrics] MetricsCollector initialized")
     
-    def start_run(self, run_id: str, focus_areas: list[str], time_window: str) -> None:
+    def start_run(
+        self,
+        run_id: str,
+        focus_areas: list[str],
+        time_window: str,
+        mode: str = "full",
+        sentiment_skipped: bool = False,
+        credibility_skipped: bool = False,
+    ) -> None:
         """Start collecting metrics for a new pipeline run."""
         self._current_run = PipelineMetrics(
             run_id=run_id,
@@ -135,7 +143,16 @@ class MetricsCollector:
             time_window=time_window,
         )
         self._timers = {"total": time.perf_counter()}
-        logger.debug(f"[metrics] Started run {run_id}")
+        
+        # Record mode info in ablation config
+        if self._current_run:
+            self._current_run.ablation_config.update({
+                "mode": mode,
+                "sentiment_skipped": sentiment_skipped,
+                "credibility_skipped": credibility_skipped,
+            })
+        
+        logger.debug(f"[metrics] Started run {run_id} (mode={mode})")
     
     def start_timer(self, name: str) -> None:
         """Start a named timer."""
