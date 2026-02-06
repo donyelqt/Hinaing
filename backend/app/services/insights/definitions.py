@@ -37,6 +37,9 @@ node4_semaphore = asyncio.Semaphore(_node4_max_concurrency)
 _node4_ml_max_concurrency = max(1, int(os.getenv("NODE4_ML_MAX_CONCURRENCY", "4")))
 node4_ml_semaphore = asyncio.Semaphore(_node4_ml_max_concurrency)
 
+# Note: Theme agent semaphore removed - no longer needed with llama-4-scout
+# (30 RPM limit is high enough for 6 concurrent agents = 6 RPM)
+
 # Theme Definitions
 THEME_GROUPS = {
     "infrastructure": {
@@ -78,6 +81,8 @@ THEME_GROUPS = {
             "market", "vendor", "livelihood", "economy", "business", "investment", "price",
             "mallification", "sm prime", "public market", "redevelopment", "displacement",
             "walkout", "protest", "students protest", "youth protest", "schools walkout",
+            "job", "employment", "work", "income", "poverty", "aid", "subsidy", "budget",
+            "financial", "cash", "assistance", "dole", "government program",
         },
     },
     "environment": {
@@ -85,7 +90,9 @@ THEME_GROUPS = {
         "focus_values": {"environment"},
         "keywords": {
             "garbage", "pollution", "environment", "rain", "waste", "tree", "green",
-            "air quality", "flooding", "climate",
+            "air quality", "flooding", "climate", "trash", "waste management", "dumpsite",
+            "ecology", "conservation", "park", "forest", "logging", "mining", "urban planning",
+            "sustainable", "recycling", "compost", "clean-up", "cleaning",
         },
     },
 }
