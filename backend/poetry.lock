@@ -608,6 +608,18 @@ files = [
 packaging = "*"
 
 [[package]]
+name = "distro"
+version = "1.9.0"
+description = "Distro - an OS platform information API"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"},
+    {file = "distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed"},
+]
+
+[[package]]
 name = "fastapi"
 version = "0.115.14"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -1081,6 +1093,26 @@ files = [
 [package.extras]
 docs = ["Sphinx", "furo"]
 test = ["objgraph", "psutil", "setuptools"]
+
+[[package]]
+name = "groq"
+version = "0.4.2"
+description = "The official Python library for the groq API"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "groq-0.4.2-py3-none-any.whl", hash = "sha256:5b2b472c64d9f35210e0487db465415d47162da3a114031ecbfc8843d26302a5"},
+    {file = "groq-0.4.2.tar.gz", hash = "sha256:42e8b0abd0f2b2da024b9a747d28960d62951a5364f078e1537c9fceeca8259d"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.7,<5"
 
 [[package]]
 name = "grpcio"
@@ -1637,6 +1669,22 @@ langchain-core = ">=0.2.33,<0.3"
 
 [package.extras]
 images = ["pillow (>=10.1.0,<11.0.0)"]
+
+[[package]]
+name = "langchain-groq"
+version = "0.1.10"
+description = "An integration package connecting Groq and LangChain"
+optional = false
+python-versions = "<4.0,>=3.8.1"
+groups = ["main"]
+files = [
+    {file = "langchain_groq-0.1.10-py3-none-any.whl", hash = "sha256:ef18331ba31b13ea44b7ac5467ad31b7efdf5bfe7c219cdf585311811b06f6b8"},
+    {file = "langchain_groq-0.1.10.tar.gz", hash = "sha256:a5e69190fd89420ab759845956f64230473c8229446c8e7022b1cbc269a51078"},
+]
+
+[package.dependencies]
+groq = ">=0.4.1,<1"
+langchain-core = ">=0.2.39,<0.3.0"
 
 [[package]]
 name = "langchain-text-splitters"
@@ -4698,4 +4746,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "6e03286109ccac59f09fe8513aabb99f62ae438ea3069420fead36cc12ee209c"
+content-hash = "5a6c1acb086b2595a06f224ad69fd073fd18d505134e53647edc73cd7a2e90f8"
