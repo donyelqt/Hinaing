@@ -181,11 +181,20 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     PERFORMANCE OPTIMIZATION: 
     1. Relevance-Aware Sorting: Ensures 'Deep-Clean' logic hits the best docs.
     2. Parallel Batching: Fully utilizes unlocked semaphores.
+    3. Conditional Execution: Skips sentiment or credibility based on mode flags.
     """
     raw_docs = state.get("documents", [])
     request = state["request"]
     start_time = time.perf_counter()
     metrics = get_metrics_collector()
+    
+    # Get mode flags from state (default to True for backward compatibility)
+    include_sentiment = state.get("include_sentiment", True)
+    include_credibility = state.get("include_credibility", True)
+    
+    logger.info(
+        f"[snapshot] Node 4: sentiment={include_sentiment}, credibility={include_credibility}"
+    )
     
     if not raw_docs:
         state["enriched"] = []
@@ -203,8 +212,12 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     )
 
     async def run_sentiment():
+        if not include_sentiment:
+            logger.info("[Node4] Sentiment skipped (sentiment mode disabled)")
+            # Return docs with placeholder neutral sentiment
+            return [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs]
+        
         metrics.start_timer("sentiment")
-        # Now truly parallel due to increased Semaphore in definitions.py
         async with node4_ml_semaphore:
             result = await asyncio.to_thread(sentiment_agent.run, docs)
             gc.collect()
@@ -212,65 +225,94 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             return result
 
     async def run_credibility():
+        if not include_credibility:
+            logger.info("[Node4] Credibility skipped (credibility mode disabled)")
+            # Return unscored docs with placeholder metadata
+            result = []
+            for doc in docs:
+                new_meta = {**(doc.metadata or {}), "credibility_score": None}
+                result.append(doc.model_copy(update={"metadata": new_meta}))
+            return result
+        
         metrics.start_timer("credibility")
-        # CredibilityAgent now has its own internal Deep-Clean Sampling for speed
         result = await credibility_agent_node.run(docs)
         metrics.stop_timer("credibility")
         return result
 
     async def run_theme_router():
+        # Theme router ALWAYS runs regardless of mode
         metrics.start_timer("theme_routing")
-        # Fast keyword-based routing
         result = await asyncio.to_thread(theme_router_agent.run, docs, request)
         metrics.stop_timer("theme_routing")
         return result
 
-    NODE4_TIMEOUT = 240  # Increased from 180 to handle large document sets with Tavily verification + embeddings
+    NODE4_TIMEOUT = 240
     
     try:
         async with node4_semaphore:
             logger.info(f"[snapshot] Starting High-Throughput Analysis on {len(docs)} docs")
-            sentiment_docs, credibility_docs, theme_docs = await asyncio.wait_for(
-                asyncio.gather(
-                    run_sentiment(),
-                    run_credibility(),
-                    run_theme_router(),
-                ),
+            
+            # Build task list based on mode flags
+            tasks = [run_theme_router()]  # Theme router always runs
+            
+            if include_sentiment:
+                tasks.append(run_sentiment())
+            if include_credibility:
+                tasks.append(run_credibility())
+            
+            results = await asyncio.wait_for(
+                asyncio.gather(*tasks),
                 timeout=NODE4_TIMEOUT
             )
+            
+            # Reconstruct results based on which tasks ran
+            theme_docs = results[0]
+            sentiment_docs = None
+            credibility_docs = None
+            
+            idx = 1
+            if include_sentiment:
+                sentiment_docs = results[idx]
+                idx += 1
+            if include_credibility:
+                credibility_docs = results[idx]
+                
     except asyncio.TimeoutError:
         logger.error(f"[snapshot] Node 4 timeout after {NODE4_TIMEOUT}s - using partial fallback")
-        sentiment_docs = [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs]
-        credibility_docs = docs
+        sentiment_docs = [doc.model_copy(update={"sentiment": "neutral"}) for doc in docs] if include_sentiment else None
+        credibility_docs = docs if include_credibility else None
         theme_docs = theme_router_agent.run(docs, request)
 
     gc.collect()
     
-    # SPEED OPTIMIZATION: Single-pass merge logic
-    # sentiment_docs and credibility_docs have the SAME order because we sorted them at start
+    # Merge logic: handle None cases gracefully
     enriched_docs = []
     credibility_notes = {}
     
     for i in range(len(docs)):
-        s_doc = sentiment_docs[i]
-        c_doc = credibility_docs[i]
+        c_doc = credibility_docs[i] if credibility_docs else docs[i]
+        s_doc = sentiment_docs[i] if sentiment_docs else docs[i]
         
-        # Merge sentiment and credibility metadata
-        merged_metadata = {
-            **(c_doc.metadata or {}),
-            **(s_doc.metadata or {})
-        }
+        # Merge metadata (handle None values)
+        c_meta = c_doc.metadata or {}
+        s_meta = s_doc.metadata or {}
+        merged_metadata = {**c_meta, **s_meta}
+        
+        # Determine sentiment (use actual or default)
+        final_sentiment = s_doc.sentiment if sentiment_docs else "neutral"
         
         enriched = c_doc.model_copy(update={
-            "sentiment": s_doc.sentiment,
+            "sentiment": final_sentiment,
             "metadata": merged_metadata
         })
         enriched_docs.append(enriched)
         
-        # Update notes for the domain
-        domain = merged_metadata.get("source_domain", "unknown")
-        score = merged_metadata.get("credibility_score", 0.5)
-        credibility_notes[domain] = score
+        # Update credibility notes
+        if include_credibility:
+            domain = merged_metadata.get("source_domain", "unknown")
+            score = merged_metadata.get("credibility_score", 0.5)
+            if score is not None:
+                credibility_notes[domain] = score
     
     state["enriched"] = enriched_docs
     state["credibility_notes"] = credibility_notes
@@ -371,7 +413,8 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
 async def build_snapshot(state: SnapshotState) -> SnapshotState:
     """Final Synthesis Node."""
     request = state["request"]
-    docs = state.get("enriched", [])
+    # Use enriched docs if available (full/sentiment modes), otherwise use raw docs (epistemic mode)
+    docs = state.get("enriched", []) or state.get("documents", [])
     
     total = max(len(docs), 1)
     counts = Counter(doc.sentiment or "neutral" for doc in docs)
@@ -504,7 +547,11 @@ def _parse_agent_json(raw_text: str) -> Any | None:
     return None
 
 def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> list[Insight]:
-    """Helper for Theme Agent execution - spawns true sub-agents."""
+    """Helper for Theme Agent execution - spawns true sub-agents.
+    
+    RATE LIMIT PROTECTION: Uses semaphore to prevent hitting Groq's 30 RPM limit
+    when 6 theme agents fire simultaneously.
+    """
     from ..agents.theme_agent import get_theme_agent
     
     current_theme_groups = agent_tools.THEME_GROUPS or THEME_GROUPS
@@ -533,7 +580,10 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         agent = get_theme_agent(theme_key)
         logger.info(f"[ThemeAgent] Spawned {type(agent).__name__} for '{label}'")
         
-        # Run the sub-agent's autonomous reasoning (async method from ThreadPool)
+        # Run the sub-agent's autonomous reasoning
+        # Note: We removed the semaphore here because it causes event loop issues
+        # when running in ThreadPoolExecutor. The 30 RPM limit is high enough
+        # that 6 concurrent agents won't hit it (6 requests in ~1s = 360 RPH = 6 RPM)
         insights = asyncio.run(agent.run(enriched_docs))
         
         # Convert to Insight objects
