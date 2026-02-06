@@ -42,6 +42,7 @@ class CoordinatorAgent:
         focus_areas: list[str] | None,
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
+        sentiment_distribution: dict[str, float] | None = None,
     ) -> tuple[str | None, list[dict[str, str]]]:
         """Generate narrative summary and insights.
         
@@ -50,6 +51,7 @@ class CoordinatorAgent:
             focus_areas: List of focus areas being analyzed
             documents: List of enriched documents with sentiment/credibility
             theme_insights: Optional pre-generated theme insights
+            sentiment_distribution: Sentiment breakdown (e.g., {"positive": 0.17, "neutral": 0.83, "negative": 0.0})
             
         Returns:
             Tuple of (narrative_summary, insights_list)
@@ -61,6 +63,7 @@ class CoordinatorAgent:
                 "focus_areas": focus_areas,
                 "doc_count": len(documents),
                 "theme_insights_count": len(theme_insights) if theme_insights else 0,
+                "sentiment_dist": sentiment_distribution,
             }
         )
         
@@ -74,6 +77,7 @@ class CoordinatorAgent:
                 focus_areas=focus_areas,
                 documents=documents,
                 theme_insights=theme_insights, # Pass summarized insights
+                sentiment_distribution=sentiment_distribution,
             )
             logger.info("[CoordinatorAgent] Narrative generation complete")
             return summary, insights
