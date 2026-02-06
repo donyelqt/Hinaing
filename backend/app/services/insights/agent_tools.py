@@ -274,15 +274,20 @@ async def search_web_documents(
     if custom_query and web_docs:
         logger.info(f"[search] Re-ranking {len(web_docs)} docs against orchestrator query: {custom_query[:60]}")
         web_docs = await client.rerank(query=custom_query, documents=web_docs)
+        # Log sample scores after reranking
+        if web_docs:
+            sample_scores = [doc.metadata.get("semantic_relevance_score", 0.0) for doc in web_docs[:5]]
+            logger.info(f"[search] Sample relevance scores after rerank: {sample_scores}")
     
     # Apply semantic filtering based on relevance scores
     # For orchestrator queries: Filter against the specific topic (high precision)
     # For baseline queries: Filter against broad focus area (lower precision)
     if not skip_semantic_filter:
         # Use different thresholds for orchestrator vs baseline queries
-        # Orchestrator: 0.35 (accommodates multilingual + different terminology)
-        # Baseline: 0.30 (broader search)
-        MIN_SEMANTIC_RELEVANCE = 0.35 if custom_query else 0.30
+        # Orchestrator: 0.22 (accommodates multilingual content - Japanese articles score 0.23)
+        # Baseline: 0.20 (broader search, more permissive)
+        # Note: Mallification docs in Japanese score as low as 0.23, Filipino content scores 0.36
+        MIN_SEMANTIC_RELEVANCE = 0.22 if custom_query else 0.20
         filtered_docs = []
         low_relevance_samples = []
         
