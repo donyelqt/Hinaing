@@ -287,7 +287,7 @@ async def search_web_documents(
         # Orchestrator: 0.25 (accommodates multilingual content - Filipino articles score 0.36)
         # Baseline: 0.20 (broader search, more permissive)
         # Note: Filipino mallification content scores 0.36, Japanese content scores 0.23 (borderline)
-        MIN_SEMANTIC_RELEVANCE = 0.25 if custom_query else 0.20
+        MIN_SEMANTIC_RELEVANCE = 0.30 if custom_query else 0.25
         filtered_docs = []
         low_relevance_samples = []
         

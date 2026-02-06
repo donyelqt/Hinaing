@@ -71,6 +71,7 @@ class LLMNarrativeClient:
         focus_areas: list[str],
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
+        sentiment_distribution: dict[str, float] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         # OPTIMIZATION: If theme_insights exist, skip the slow agent path
         # Theme insights are already summarized by Theme Agents (Node 6)
@@ -85,6 +86,7 @@ class LLMNarrativeClient:
                 focus_areas=focus_areas,
                 documents=documents,  # Still passed for fallback context
                 theme_insights=theme_insights,
+                sentiment_distribution=sentiment_distribution,
             )
         
         # Fallback: Use agent path only when no theme_insights available
@@ -143,6 +145,7 @@ class LLMNarrativeClient:
         focus_areas: list[str],
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
+        sentiment_distribution: dict[str, float] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         # Single-shot analysis without separate planning step for speed
         analysis_prompt = self._build_prompt(
@@ -150,6 +153,7 @@ class LLMNarrativeClient:
             focus_areas=focus_areas,
             documents=documents,
             theme_insights=theme_insights,
+            sentiment_distribution=sentiment_distribution,
         )
 
         try:
@@ -185,6 +189,7 @@ class LLMNarrativeClient:
         focus_areas: list[str],
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
+        sentiment_distribution: dict[str, float] | None = None,
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
         
@@ -223,13 +228,29 @@ class LLMNarrativeClient:
                 f"Your narrative must STRICTLY follow the {len(theme_insights)} theme insights provided.\n"
             )
 
+        # Build sentiment distribution context
+        sentiment_context = ""
+        if sentiment_distribution:
+            neg_pct = int(sentiment_distribution.get("negative", 0) * 100)
+            neu_pct = int(sentiment_distribution.get("neutral", 0) * 100)
+            pos_pct = int(sentiment_distribution.get("positive", 0) * 100)
+            sentiment_context = (
+                f"\n\n=== SENTIMENT DISTRIBUTION ===\n"
+                f"Negative: {neg_pct}% | Neutral: {neu_pct}% | Positive: {pos_pct}%\n"
+                f"IMPORTANT: Your concluding paragraph MUST align with this distribution.\n"
+                f"- If negative is 0%, DO NOT say 'negative developments' - say 'concerns' or 'challenges' instead\n"
+                f"- If neutral is high (>70%), emphasize 'mixed' or 'balanced' sentiment\n"
+                f"- Match the tone to the actual sentiment breakdown above\n"
+            )
+
         return (
             "You are a senior analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
             f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
             f"{docs_block}\n"
             f"{insights_block}"
-            f"{theme_constraint}\n\n"
+            f"{theme_constraint}"
+            f"{sentiment_context}\n\n"
             "TASK:\n"
             "1. Analyze ALL supporting conversations above.\n"
             "2. Reference the theme insights for structured context.\n"
@@ -241,7 +262,7 @@ class LLMNarrativeClient:
             "- Use vivid, descriptive language that brings the situation to life\n"
             "- Highlight key tensions, risks, and positive developments with specific details\n"
             "- Include contextual information about what this means for Baguio City\n"
-            "- Add a concluding paragraph that synthesizes the overall sentiment and key takeaways\n"
+            "- Add a concluding paragraph that ACCURATELY reflects the sentiment distribution above\n"
             "- COMPLETE ALL PARAGRAPHS - do not stop mid-sentence or mid-paragraph\n\n"
             "CRITICAL JSON FORMAT REQUIREMENTS:\n"
             "- Return VALID JSON only (no markdown, no code blocks, no backticks)\n"

@@ -435,6 +435,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 focus_areas=request.focus_areas,
                 documents=[doc.model_dump() for doc in docs],
                 theme_insights=[i.model_dump() for i in state.get("theme_insights", [])],
+                sentiment_distribution=scores,  # Pass sentiment breakdown to coordinator
             )
         except Exception as exc:
             logger.exception("[snapshot] CoordinatorAgent failed: %s", exc)
