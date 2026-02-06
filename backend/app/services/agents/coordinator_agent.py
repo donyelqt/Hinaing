@@ -2,7 +2,7 @@
 
 This agent is responsible for Node 7 of the 7-Node Self-Learning Pipeline:
 - Receives theme insights from the 6 Theme Agents
-- Generates a comprehensive narrative summary using Gemini 2.5 Pro
+- Generates a comprehensive narrative summary using Groq LLMs
 - Assembles the final SnapshotResponse
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..nlp.gemini import GeminiClient, gemini_client
+from ..nlp.gemini import LLMNarrativeClient, llm_narrative_client
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +18,17 @@ logger = logging.getLogger(__name__)
 class CoordinatorAgent:
     """Agent that coordinates final response generation.
     
-    Wraps GeminiClient to provide a consistent agent interface for Node 7.
-    Uses Gemini 2.5 Pro for comprehensive narrative generation.
+    Wraps LLMNarrativeClient to provide a consistent agent interface for Node 7.
+    Uses Groq's llama-4-scout-17b for comprehensive narrative generation.
     """
     
-    def __init__(self, client: GeminiClient | None = None):
+    def __init__(self, client: LLMNarrativeClient | None = None):
         """Initialize the coordinator agent.
         
         Args:
-            client: Optional GeminiClient instance. Uses global singleton if not provided.
+            client: Optional LLMNarrativeClient instance. Uses global singleton if not provided.
         """
-        self._client = client or gemini_client
+        self._client = client or llm_narrative_client
         logger.info("CoordinatorAgent initialized")
     
     @property
