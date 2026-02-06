@@ -52,6 +52,7 @@ class ChatAnalyzeRequest(BaseModel):
     history: list[ChatMessage] = Field(default_factory=list, description="Conversation history")
     platforms: list[str] = Field(default=["web"], description="Platforms to search")
     time_window: str = Field(default="24h", description="Time window for search")
+    mode: str = Field(default="auto", description="Analysis mode: auto, full, sentiment, or epistemic")
 
 
 class ChatProgress(BaseModel):
@@ -407,6 +408,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         focus_areas=focus_areas,
         platforms=request.platforms,
         time_window=time_window,
+        mode=request.mode,
     )
     
     # Queue for progress updates from the pipeline
@@ -572,6 +574,7 @@ async def chat_analyze_sync(request: ChatAnalyzeRequest):
         focus_areas=focus_areas,
         platforms=request.platforms,
         time_window=time_window,
+        mode=request.mode,
     )
     
     try:
@@ -786,6 +789,7 @@ async def start_analysis(request: ChatAnalyzeRequest):
         focus_areas=focus_areas,
         platforms=request.platforms,
         time_window=time_window,
+        mode=request.mode,
     )
     
     # Progress callback that updates task manager
