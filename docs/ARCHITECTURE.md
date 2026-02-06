@@ -221,102 +221,48 @@ flowchart TB
     subgraph Backend["Backend (FastAPI + LangGraph)"]
         subgraph Workflow["7-Node Multi-Agent Pipeline"]
 
-            subgraph Node1["Node 1: Query Orchestrator Agent"]
-                QO[QueryOrchestratorAgent]
-                T1[analyze_focus_areas tool]
-                T2[generate_query tool]
-                T3[expand_contextual_queries tool]
-                T4[evaluate_query tool]
-                KC[KEYWORD_CLUSTERS<br/>Context Engineering]
-                QO --> T1 & T2 & T3 & T4
-                T1 --> KC
-                QP[QueryPlan<br/>6+ diverse queries]
-                T1 & T2 & T3 & T4 --> QP
+            subgraph Node1["Node 1: Query Orchestrator"]
+                QO[QueryOrchestratorAgent<br/>ReAct + Context Engineering]
             end
 
-            subgraph Node2["Node 2: Retrieval Agent"]
-                RA[RetrievalAgent]
-                LS[LangSearch Web API<br/>+ Built-in Reranking]
-                FB[Facebook Ingestion]
-                RD[Reddit r/baguio<br/>+ Built-in Reranking]
-                RA --> LS & FB & RD
-                RR[Diversity Merge]
-                LS & FB & RD --> RR
-                ExtDocs[External Documents]
-                RR --> ExtDocs
+            subgraph Node2["Node 2: External Retrieval"]
+                RA[RetrievalAgent<br/>Web + Facebook + Reddit]
             end
 
-            subgraph Node3["Node 3: Context Agent (RAG Retrieval)"]
-                CTX[ContextAugmentationAgent]
-                EM1[BGE Embedding]
-                VS1[Qdrant Search]
-                CTX --> EM1 --> VS1
-                IntDocs[Internal Documents<br/>with enrichment metadata]
-                VS1 --> IntDocs
-                Merge[Deduplicate & Merge]
-                ExtDocs --> Merge
-                IntDocs --> Merge
+            subgraph Node3["Node 3: Internal Recall"]
+                CTX[ContextAugmentationAgent<br/>Qdrant Vector Search]
             end
 
-            subgraph Node4["Node 4: Unified Analysis with Smart Reuse (Concurrent Execution)"]
-                direction TB
-                subgraph Concurrent["Concurrent Analysis (asyncio.gather)"]
-                    SA["SentimentAgent<br/>RoBERTa 40% + Gemini 60%"]
-                    subgraph Cred["CredibilityAgent (5 Sub-Agents)"]
-                        direction LR
-                        DT["DomainTrust 25%"]
-                        CR["CrossRef 20%"]
-                        FC["FactCheck 15%"]
-                        LL["LLMAnalysis 20%"]
-                        TV["Tavily 20%"]
-                    end
-                    TR["ThemeRouterAgent<br/>6 theme buckets"]
-                end
-                ED[Enriched + Routed Docs]
-                SA & Cred & TR --> ED
+            subgraph Node4["Node 4: Unified Analysis"]
+                SA[SentimentAgent<br/>RoBERTa + Gemini]
+                CA[CredibilityAgent<br/>5-Signal Verification]
+                TR[ThemeRouterAgent<br/>6 Theme Buckets]
             end
 
-            subgraph Node5["Node 5: Context Agent (Memory Consolidation)"]
-                CTX2[ContextAugmentationAgent]
-                SC[Semantic Chunker]
-                ES[Embedding Service]
-                VS2[Qdrant VectorStore<br/>Persistent Storage]
-                CTX2 --> SC --> ES --> VS2
-                VS2 -.->|Self-Learning Loop| VS1
+            subgraph Node5["Node 5: Memory Consolidation"]
+                CTX2[ContextAugmentationAgent<br/>Store Enriched Docs]
             end
 
             subgraph Node6["Node 6: Theme Agents"]
-                TH1[InfrastructureAgent]
-                TH2[HealthAgent]
-                TH3[SafetyAgent]
-                TH4[TourismAgent]
-                TH5[EconomyAgent]
-                TH6[EnvironmentAgent]
-                TI[Theme Insights]
-                TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
+                TA[6 Domain Experts<br/>Infrastructure, Health, Safety<br/>Tourism, Economy, Environment]
             end
 
-            subgraph Node7["Node 7: CoordinatorAgent"]
-                GC[CoordinatorAgent<br/>gemini-2.5-flash-lite]
-                NR[Narrative Generation]
-                GC --> NR
-                SR[SnapshotResponse]
-                NR --> SR
+            subgraph Node7["Node 7: Coordinator"]
+                COORD[CoordinatorAgent<br/>Narrative Synthesis]
             end
 
-            Node1 --> Node2 --> Node3 --> Node4
-            Node4 --> Node5 --> Node6
-            TI --> GCs --> Cache
+            Node1 --> Node2
+            Node2 --> Node3
             Node3 --> Node4
-            Node4 --> Node5 --> Node6
-            IntDocs -.->|Feeds Smart Reuse Cache| Cache
-            ED -.->|Sentiment Distribution| SD
-            TI --> GC
+            Node4 --> Node5
+            Node5 --> Node6
+            Node6 --> Node7
+            Node5 -.->|Self-Learning Loop| Node3
         end
     end
 
     Request[SnapshotRequest] --> Node1
-    SR --> Response[SnapshotResponse JSON]
+    Node7 --> Response[SnapshotResponse]
     Response --> Frontend
 ```
 
