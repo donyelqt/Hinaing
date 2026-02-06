@@ -2,6 +2,8 @@ import clsx from "clsx";
 import { X } from "lucide-react";
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS } from '../constants';
 
+type AnalysisMode = 'full' | 'sentiment' | 'credibility';
+
 type MobileFiltersProps = {
   showMobileFilters: boolean;
   setShowMobileFilters: (value: boolean) => void;
@@ -9,6 +11,8 @@ type MobileFiltersProps = {
   timeWindow: string;
   focusAreas: string[];
   includeAlerts: boolean;
+  mode: AnalysisMode;
+  setMode: (value: AnalysisMode) => void;
   onToggleSelection: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   setPlatforms: (updater: (prev: string[]) => string[]) => void;
   setTimeWindow: (value: string) => void;
@@ -23,6 +27,8 @@ export function MobileFilters({
   timeWindow,
   focusAreas,
   includeAlerts,
+  mode,
+  setMode,
   onToggleSelection,
   setPlatforms,
   setTimeWindow,
@@ -122,7 +128,34 @@ export function MobileFilters({
               })}
             </div>
           </div>
-          
+
+          {/* Analysis Mode */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">Analysis Mode</h3>
+            <div className="space-y-2">
+              {[
+                { value: 'full', label: 'Full Analysis', description: 'Complete analysis' },
+                { value: 'sentiment', label: 'Sentiment Only', description: 'Sentiment analysis only' },
+                { value: 'credibility', label: 'Credibility Only', description: 'Fact-checking & verification' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                  <input
+                    type="radio"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-violet-500"
+                    checked={mode === option.value}
+                    onChange={() => setMode(option.value as AnalysisMode)}
+                    value={option.value}
+                    name="mobile-analysis-mode"
+                  />
+                  <div>
+                    <span className="font-medium text-slate-800">{option.label}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Alerts */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900">Alert Preferences</h3>
