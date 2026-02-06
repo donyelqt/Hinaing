@@ -34,6 +34,8 @@ type SentimentGeneratorPageProps = {
   onNavigate?: (page: ActivePage) => void;
 };
 
+type AnalysisMode = 'full' | 'sentiment' | 'credibility';
+
 type SnapshotResponse = {
   overall_sentiment: {
     label: string;
@@ -264,6 +266,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [isTypingSummary, setIsTypingSummary] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [hoveredCardIndex, setHoveredCardIndex] = React.useState<number | null>(null);
+  const [mode, setMode] = React.useState<AnalysisMode>('full');
 
   // Removed auto-hover effect as requested
   // React.useEffect(() => {
@@ -411,6 +414,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
       time_window: state.timeWindow,
       focus_areas: state.focusAreas,
       include_alerts: state.includeAlerts,
+      mode: mode,
     };
 
     try {
@@ -516,10 +520,40 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       error={validation.errors.focusAreas}
                     />
 
+                    {/* Analysis Mode Selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 4 · Analysis mode</span>
+                        <span className="text-[11px] text-slate-400">Choose analysis depth</span>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                            { value: 'full', label: 'Full Analysis Mode', description: 'Complete analysis with sentiment, credibility, and thematic insights' },
+                            { value: 'sentiment', label: 'Sentiment Only', description: 'Focused sentiment analysis only' },
+                            { value: 'credibility', label: 'Credibility Only', description: 'Focused fact-checking and verification' }
+                        ].map((option) => (
+                          <label key={option.value} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-hinaing-blue-500 focus:ring-offset-2"
+                              checked={mode === option.value}
+                              onChange={() => setMode(option.value as AnalysisMode)}
+                              value={option.value}
+                              name="analysis-mode"
+                            />
+                            <div>
+                              <span className="font-medium text-slate-800">{option.label}</span>
+                              <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Alert Preferences */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 4 · Alert preferences</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 5 · Alert preferences</span>
                         <span className="text-[11px] text-slate-400">Ensure urgent notices reach you</span>
                       </div>
                       <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm cursor-pointer">
@@ -915,6 +949,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
         timeWindow={state.timeWindow}
         focusAreas={state.focusAreas}
         includeAlerts={state.includeAlerts}
+        mode={mode}
+        setMode={setMode}
         onToggleSelection={actions.toggleSelection}
         setPlatforms={actions.setPlatforms}
         setTimeWindow={actions.setTimeWindow}
