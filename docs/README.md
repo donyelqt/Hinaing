@@ -96,7 +96,7 @@ await asyncio.gather(
 
 ## Novel Contributions
 
-1. **Neuro-Symbolic Cognitive Architecture (Context-Engineered Multi-Agent System)** – Combines rigid expert rules (Symbolic Safety) with flexible LLM reasoning (Neural Nuance). The **7-node pipeline itself is Context Engineering**: each node, agent specialization, keyword cluster, and theme definition injects domain knowledge into the system (Structural Inductive Bias).
+1. **Neuro-Symbolic Cognitive Architecture (Temporal-Aware Context-Engineered Multi-Agent System)** – Combines rigid expert rules (Symbolic Safety) with flexible LLM reasoning (Neural Nuance). The **7-node pipeline itself is Context Engineering**: each node, agent specialization, keyword cluster, and theme definition injects domain knowledge into the system (Structural Inductive Bias).
 2. **Self-Learning Cyclic RAG (Non-Parametric Systemic Learning)** – Node 3 recalls memory → Node 5 writes back. System "learns" via state accumulation without weight updates.
 3. **Conditional Sub-Agent Spawning** – 11 sub-agents dynamically spawned: 5 Credibility + 6 Theme (dynamic 7-18 agent count based on routing results).
 4. **5-Signal Epistemic Credibility Framework (with True Sub-Agents)** – DomainTrustAgent + CrossReferenceAgent + FactCheckAgent + LLMAnalysisAgent + TavilyAgent for rigorous truth quantification. Each signal is an independent class with `score()` method running in parallel.
