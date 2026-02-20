@@ -6,7 +6,7 @@
 >
 > **Thesis Title (Option 3):** Hinaing: A Context-Engineered Self-Learning Multi-Agent Agentic AI System with Ensemble Sentiment and 5-Signal Credibility for Public Opinion Analysis in Baguio City
 >
-> **Thesis Title (Unified):** AgenticHinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening OR AgenticHinaing: Temporal-Aware Self-Learning Multi-Agent Graph Framework for Truth Discovery in Social Listening
+> **Thesis Title (Unified):** AgenticHinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening OR AgenticHinaing: Temporal-Aware Self-Learning Multi-Agent Graph Framework for Truth Discovery in Civic Social Listening
 >
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 >
