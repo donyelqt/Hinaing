@@ -1,5 +1,7 @@
 # Hinaing Docs
 
+> **Thesis Title (Final):** AgenticHinaing: A Self-Learning Temporal-Aware Multi-Agent Framework for Truth Discovery in Civic Social Listening
+>
 > **Thesis Title (Option 1):** 7-Node Agentic Graphs: Multi-Signal Fusion for Verified Context-Aware Public Opinion Synthesis
 >
 > **Thesis Title (Option 2):** Hinaing: A Neuro-Symbolic Multi-Agent Framework for Epistemic Truth Discovery in Civic Social Listening
