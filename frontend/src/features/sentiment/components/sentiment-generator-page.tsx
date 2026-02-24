@@ -606,9 +606,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <Card className="mx-auto w-full max-w-md space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 sm:mx-0 sm:max-w-none md:max-w-md md:border md:rounded-xl md:shadow-md md:p-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
-                  <p className="text-sm text-slate-500">
-                    Based on {state.timeWindow} of public chatter across {computed.platformSummary.length} platform
-                    {computed.platformSummary.length === 1 ? "" : "s"}: {computed.platformSummary.map((item) => item.label).join(" • ")}
+                  <p className="text-xs text-slate-400">
+                    {state.timeWindow} • {computed.platformSummary.length} platform{computed.platformSummary.length === 1 ? '' : 's'}
                   </p>
                   {snapshotError ? (
                     <p className="text-xs text-rose-600">{snapshotError}</p>
@@ -886,15 +885,14 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Actionable Insights</h3>
                             <span className="text-[11px] text-slate-400">
-                              {state.isGenerating ? 'Drafting insights…' : 'Ready after generation'}
+                              {state.isGenerating ? 'Processing...' : 'Pending'}
                             </span>
                           </div>
                           <p className="mt-3 text-xs text-slate-500">
                             {state.isGenerating ? (
                               <>Matching community chatter to <span className="font-semibold">{computed.focusSummaryLabel}</span> priorities…</>
                             ) : (
-                              <>Once generated, the most urgent recommendations for
-                                <span className="font-semibold"> {computed.focusSummaryLabel}</span> will surface here with links to supporting evidence.</>
+                              <>Insights will appear after generation</>
                             )}
                           </p>
                           <div className="mt-4 grid gap-3 text-[13px] text-slate-500 sm:grid-cols-2">
@@ -909,8 +907,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                 <p className="text-xs font-semibold text-slate-400">{label}</p>
                                 <p className="mt-1 text-[12px]">
                                   {state.isGenerating
-                                    ? 'Analyzing fresh posts for early warnings…'
-                                    : 'Generate a snapshot to surface the latest risk and opportunity signals.'}
+                                    ? 'Scanning...'
+                                    : 'Tap Generate'}
                                 </p>
                               </div>
                             ))}
