@@ -4,7 +4,7 @@ import { GraduationCap, BookOpen, Award, Target, Network, ArrowDown, ArrowRight,
 export function ThesisSection() {
   const contributions = [
     { label: "Context Engineering", desc: "KEYWORD_CLUSTERS & variable trust tiers", icon: Layers },
-    { label: "Self-Learning Cyclic RAG", desc: "Read-Write memory with consolidation", icon: Database },
+    { label: "Self-Learning Cyclic RAG", desc: "Memory persistence + Smart Reuse for 81% API savings", icon: Database },
     { label: "18-Agent Architecture", desc: "Hierarchical & conditional spawning", icon: Network },
     { label: "Agentic AI with ReAct", desc: "Autonomous reasoning & tool use", icon: Brain },
     { label: "Ensemble Sentiment", desc: "RoBERTa + Gemini fusion tracking", icon: Cpu },
