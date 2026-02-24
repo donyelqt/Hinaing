@@ -14,7 +14,7 @@ export function TechniquesSection() {
     },
     {
       id: "AGT-02",
-      title: "Agentic Search",
+      title: "Agentic & Intelligent Search",
       description: "Combines ReAct-based query planning with neural semantic reranking to autonomously formulate strategies and prioritize high-relevance results.",
       icon: Search,
       color: "text-fuchsia-500 bg-fuchsia-50 border-fuchsia-100",
@@ -56,7 +56,7 @@ export function TechniquesSection() {
     {
       id: "CYC-07",
       title: "Self-Learning Cyclic RAG",
-      description: "Two interconnected learning loops: (1) Memory Persistence - consolidates new information into long-term storage, (2) Analysis Consolidation (Smart Reuse) - caches enriched documents (sentiment + credibility) achieving 81% API savings and 35% speedup.",
+      description: "Cyclic memory with two learning loops: Memory Persistence consolidates insights to long-term storage, Smart Reuse caches enriched analysis for 81% API savings and 35% speedup.",
       icon: Repeat,
       color: "text-indigo-500 bg-indigo-50 border-indigo-100",
       tilt: "-rotate-1",
@@ -64,7 +64,7 @@ export function TechniquesSection() {
     },
     {
       id: "CRD-08",
-      title: "Hierarchical Sub-Agent Spawning",
+      title: "Hierarchical Sub-Agent Spawning for Verification",
       description: "Parent agent spawns 5 independent sub-agents for source quality filtering: domain trust, cross-reference, fact-check, LLM analysis, and web verification.",
       icon: Zap,
       color: "text-rose-500 bg-rose-50 border-rose-100",
