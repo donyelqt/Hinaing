@@ -75,7 +75,7 @@ async def orchestrate_queries(state: SnapshotState) -> SnapshotState:
     """Break down the request into executable queries."""
     request = state["request"]
     try:
-        plan = query_orchestrator.run(request)
+        plan = await query_orchestrator.run(request)
     except Exception as exc:
         logger.warning("[snapshot] Query orchestrator failed, falling back: %s", exc)
         plan = None
