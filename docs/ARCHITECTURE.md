@@ -477,7 +477,7 @@ flowchart TB
         IntDocs --> MergedDocs
     end
 
-    subgraph Node4["Node 4: Smart Reuse + Analysis"]
+    subgraph Node4["Node 4: Unified Analysis"]
         Cache[Cache Check<br/>sentiment + credibility?]
         Cached[Cached<br/>Reuse]
         Fresh[Fresh<br/>Analyze]
