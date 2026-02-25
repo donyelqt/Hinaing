@@ -16,7 +16,7 @@
 
 Multi-Agentic AI system with real-time intelligent search and self learning RAG for context-aware public opinion analysis in Baguio City. It utilizes a **Neuro-Symbolic Graph-of-Thought** control flow and features a **7-Node Self-Learning Architecture** that combines external retrieval with internal memory recall and consolidation (Non-Parametric Systemic Learning).
 
-> **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (18 agents), keyword clusters (KEYWORD_CLUSTERS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
+> **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (18 agents), emerging concerns (EMERGING_CONCERNS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
 ## Agent Count Summary (Federated Multi-Agent System)
 
@@ -53,7 +53,7 @@ The system implements what we term **"Self-Learning Cyclic RAG with Smart Reuse"
 **Execution Model:** Hybrid Concurrent/Parallel Architecture (Optimized for Python GIL).
 **Cost Optimization:** Multi-Signal Analysis Consolidation (reuses enriched documents across query cycles).
 
-> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (Sub-30 seconds end-to-end) while enabling continuous systemic learning.
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (emerging concerns)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (Sub-30 seconds end-to-end) while enabling continuous systemic learning.
 
 > **Novel Contribution:** Unlike existing RAG systems that cache raw documents or embeddings for retrieval, Hinaing implements **Analysis Consolidation** — caching multi-signal enriched documents (sentiment + credibility + metadata) and reusing them across query cycles when temporally relevant. This is the first system to consolidate and reuse **multi-signal analysis** rather than just retrieval results, reducing API costs by 40-60% while maintaining analysis quality.
 
@@ -183,7 +183,7 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 
 | Node | Agent(s) | Function | Key Components | Execution Model |
 |------|----------|----------|----------------|------------------|
-| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (KEYWORD_CLUSTERS), 4 Specialized Tools, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
+| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (EMERGING_CONCERNS), 4 Specialized Tools, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
 | 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving | **Concurrent** (asyncio.gather, I/O-bound) |
 | 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity | Sequential (CPU-bound) |
 | 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Data Enrichment & Verification with Smart Reuse | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing, **Enriched Document Cache** | **Concurrent** (asyncio.gather, I/O-bound) + **Smart Reuse** (40-60% API cost savings) |
@@ -328,7 +328,7 @@ flowchart TB
     subgraph Pipeline["7-Node Self-Learning Cyclic RAG Pipeline"]
         
         subgraph Node1["Node 1: Query Orchestrator"]
-            QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning<br/>KEYWORD_CLUSTERS<br/>Contextual Expansion]
+            QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning<br/>EMERGING_CONCERNS<br/>Contextual Expansion]
         end
 
         subgraph Node2["Node 2: External Retrieval"]
@@ -389,7 +389,7 @@ flowchart TB
 
 | Node | Primary Agent | Key Operations | Execution Pattern | Performance Notes |
 |------|---------------|----------------|-------------------|-------------------|
-| **1** | QueryOrchestratorAgent | ReAct reasoning, KEYWORD_CLUSTERS lookup, contextual query expansion, diversity validation | Sequential (CPU-bound) | Generates 6+ diverse queries |
+| **1** | QueryOrchestratorAgent | ReAct reasoning, EMERGING_CONCERNS lookup, contextual query expansion, diversity validation | Sequential (CPU-bound) | Generates 6+ diverse queries |
 | **2** | RetrievalAgent | Multi-platform ingestion (Web/Facebook/Reddit), source-level reranking, round-robin merge | Concurrent (I/O-bound) | Batches of 2 parallel requests |
 | **3** | ContextAugmentationAgent | Vector search in Qdrant, BGE embeddings, cosine similarity, top-K retrieval | Sequential (CPU-bound) | Retrieves enriched historical docs |
 | **4** | SentimentAgent + CredibilityAgent + ThemeRouterAgent | **Smart Reuse check** → Parallel analysis (sentiment + credibility + routing) | Concurrent (I/O-bound) | **81% API cost savings** via cache |
@@ -446,7 +446,7 @@ flowchart TB
         T2[generate_query]
         T3[expand_contextual_queries]
         T4[evaluate_query]
-        KC[KEYWORD_CLUSTERS]
+        KC[EMERGING_CONCERNS]
         QO --> T1 & T2 & T3 & T4
         T1 --> KC
         QP[QueryPlan]
@@ -547,7 +547,7 @@ flowchart TB
 
 **Node 1: Query Orchestrator**
 - **Tools**: 4 specialized ReAct tools (analyze, generate, expand, evaluate)
-- **Context Engineering**: KEYWORD_CLUSTERS provide domain-specific query templates
+- **Context Engineering**: EMERGING_CONCERNS provide domain-specific query templates (dynamically generated by LLM, not hardcoded)
 - **Output**: 6+ diverse queries covering multiple civic themes
 
 **Node 2: External Retrieval**
@@ -652,7 +652,7 @@ sequenceDiagram
     API->>QO: SnapshotRequest
     
     Note over QO: ReAct Loop + Context Engineering (Gemini 2.5 Flash)
-    QO->>QO: analyze_focus_areas → KEYWORD_CLUSTERS (context engineering)
+    QO->>QO: analyze_focus_areas → EMERGING_CONCERNS (context engineering)
     QO->>QO: generate_query → static cluster queries
     QO->>QO: expand_contextual_queries → seasonal/time-aware queries
     QO->>QO: evaluate_query → diversity check
@@ -827,7 +827,7 @@ classDiagram
         <<dataclass>>
         +llm: ChatGoogleGenerativeAI
         +tools: List[Tool]
-        +KEYWORD_CLUSTERS
+        +EMERGING_CONCERNS
         +run(request: SnapshotRequest) QueryPlan
         "Autonomous query planning"
     }
@@ -1002,7 +1002,7 @@ sequenceDiagram
 
     C->>QO: execute(SnapshotRequest)
     QO->>T1: analyze_focus_areas(focus_areas)
-    T1-->>QO: KEYWORD_CLUSTERS
+    T1-->>QO: EMERGING_CONCERNS
     QO->>T2: generate_query(clusters)
     T2-->>QO: static_queries
     QO->>T3: expand_contextual_queries(date)
@@ -1227,14 +1227,14 @@ Documents filtered by `published_at` timestamp after retrieval.
 
 ## Multi-Query Diversity Strategy (Context Engineering)
 
-The QueryOrchestratorAgent uses **context engineering** via KEYWORD_CLUSTERS and contextual expansion to generate diverse, Baguio-specific queries:
+The QueryOrchestratorAgent uses **context engineering** via EMERGING_CONCERNS and contextual expansion to generate diverse, Baguio-specific queries:
 
-### KEYWORD_CLUSTERS (Static Context Engineering)
+### EMERGING_CONCERNS (Dynamic Context Engineering)
 
 Pre-defined domain knowledge organized by civic theme:
 
 ```python
-KEYWORD_CLUSTERS = {
+EMERGING_CONCERNS = {
     "infrastructure": [
         ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
         ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
@@ -1246,6 +1246,8 @@ KEYWORD_CLUSTERS = {
     ...
 }
 ```
+
+> **Note**: In production, EMERGING_CONCERNS are dynamically generated by LLM (see `generate_emerging_concerns()` in query_orchestrator.py). The default values above serve as fallback.
 
 ### Contextual Expansion (Dynamic Context Engineering)
 
@@ -1259,7 +1261,7 @@ The `expand_contextual_queries` tool generates time-aware queries based on curre
 
 | Tool | Purpose | Output |
 |------|---------|--------|
-| `analyze_focus_areas` | Retrieves KEYWORD_CLUSTERS for selected focus areas | Keyword clusters organized by topic |
+| `analyze_focus_areas` | Retrieves EMERGING_CONCERNS for selected focus areas | emerging concerns organized by topic |
 | `generate_query` | Builds diverse queries from clusters (1 per cluster) | Static cluster queries |
 | `expand_contextual_queries` | Adds seasonal/time-aware queries | Contextual queries |
 | `evaluate_query` | Validates topic diversity coverage | Coverage assessment |
@@ -1336,7 +1338,7 @@ index_fields = ["focus_area", "topic"]  # keyword type for exact matching
 
 ```
 SnapshotRequest
-    → Node 1: QueryOrchestratorAgent (ReAct + KEYWORD_CLUSTERS + Contextual Expansion)
+    → Node 1: QueryOrchestratorAgent (ReAct + EMERGING_CONCERNS + Contextual Expansion)
     → Node 2: RetrievalAgent (LangSearch + Facebook + Reddit, parallel batching)
     → Node 3: ContextAugmentationAgent.retrieve_knowledge() (Qdrant filtered + semantic fallback)
     → Node 4: SMART REUSE + PARALLEL [SentimentAgent + CredibilityAgent (5 sub-agents) + ThemeRouterAgent]
@@ -1368,7 +1370,7 @@ SPEED OPTIMIZATION: 60% faster execution (6-7s vs 15-20s) when cache hits occur
 | Social | Reddit (PRAW), Facebook (Apify) |
 | Fact-Check | Google Fact Check API, Tavily |
 | Database | Supabase |
-| Observability | LangSmith |
+| Observability | LangSmith, Custom Telemetry and Scripts |
 
 ## Hybrid Architectures (Control vs Novel)
 
@@ -1403,3 +1405,4 @@ SPEED OPTIMIZATION: 60% faster execution (6-7s vs 15-20s) when cache hits occur
 | LangSearch Client | `backend/app/services/langsearch.py` |
 | Reddit Ingestion | `backend/app/services/ingestion/reddit.py` |
 | Facebook Ingestion | `backend/app/services/ingestion/facebook.py` |
+

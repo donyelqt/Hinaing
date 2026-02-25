@@ -8,11 +8,11 @@
 >
 > **Thesis Title (Unified):** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
 
-> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, emerging concerns, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
 
 > **Thesis Title:** Hinaing: A 7-node Agentic Graphs Framework for Epistemic Truth Discovery in Civic Social Listening
 
-> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, emerging concerns, theme definitions, and credibility signals to inject domain-specific knowledge into the system.
 
 ## Overview
 
@@ -113,7 +113,7 @@ flowchart TB
         subgraph Pipeline["7-Node Multi-Agent Pipeline (13 Agents)"]
             subgraph Node1["Node 1: QueryOrchestratorAgent (10%) - Context Engineering"]
                 QO[QueryOrchestratorAgent]
-                QO --> |KEYWORD_CLUSTERS + expand_contextual_queries| QP[QueryPlan<br/>6 diverse queries]
+                QO --> |EMERGING_CONCERNS + expand_contextual_queries| QP[QueryPlan<br/>6 diverse queries]
             end
 
             subgraph Node2["Node 2: RetrievalAgent (25%)"]
@@ -230,8 +230,8 @@ sequenceDiagram
         
         Note over QO: Node 1: QueryOrchestratorAgent (Context Engineering)
         API->>QO: parse_user_intent(message)
-        QO->>QO: ReAct: analyze_focus_areas tool (static context engineering)
-        QO->>QO: ReAct: generate_query tool (KEYWORD_CLUSTERS)
+        QO->>QO: ReAct: analyze_focus_areas tool (Dynamic Context Engineering)
+        QO->>QO: ReAct: generate_query tool (EMERGING_CONCERNS)
         QO->>QO: ReAct: expand_contextual_queries tool (dynamic context engineering)
         QO->>QO: ReAct: evaluate_query tool
         API-->>Client: SSE: {stage: "query_orchestrator", progress: 0.1}
@@ -548,3 +548,4 @@ Chat Analyzer maintains in-memory session cache:
 - Stores analysis results by `session_id`
 - Enables follow-up questions without re-running 13-agent pipeline
 - Uses Gemini RAG on cached `SnapshotResponse`
+
