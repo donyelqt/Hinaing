@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Menu, X, Command } from "lucide-react";
 import { useState } from "react";
+import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 export function LandingHeader() {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,21 +47,15 @@ export function LandingHeader() {
           <a href="#faq" className="transition hover:text-slate-900">
             FAQ
           </a>
-          <Link
+          <KeyboardButton
+            variant="primary"
+            size="sm"
+            icon={<Command className="h-3 w-3" />}
+            badge="⌘K"
             href="/app"
-            className="group relative inline-flex items-center select-none"
           >
-            {/* Softer shadow - original color base */}
-            <span className="absolute inset-0 rounded-md bg-violet-400/50 translate-y-[2px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
-            
-            {/* Softer keycap - original colors */}
-            <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-400 via-blue-500 to-cyan-500 px-3 py-1.5 text-xs font-bold text-white border-[1.5px] border-violet-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-100 group-hover:translate-y-[0.5px] group-active:translate-y-[1px]">
-              {/* Subtle gloss */}
-              <span className="absolute inset-x-0 top-0 h-[35%] rounded-t-[2px] bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-              <Command className="relative h-3 w-3 text-white/90" />
-              <span className="relative font-bold tracking-tight text-white drop-shadow-sm">Open Console</span>
-            </span>
-          </Link>
+            Open
+          </KeyboardButton>
         </nav>
 
         <button
@@ -112,22 +107,18 @@ export function LandingHeader() {
             >
               FAQ
             </a>
-            <Link
+            <KeyboardButton
+              variant="primary"
+              size="md"
+              icon={<Command className="h-4 w-4" />}
+              badge="⌘K"
               href="/app"
-              className="group relative mt-2 inline-flex items-center justify-center select-none"
+              fullWidth
+              className="mt-3"
               onClick={closeMenu}
             >
-              {/* Softer shadow - original color base */}
-              <span className="absolute inset-0 rounded-md bg-violet-400/50 translate-y-[2px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
-              
-              {/* Softer keycap - original colors */}
-              <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-400 via-blue-500 to-cyan-500 px-4 py-2 text-xs font-bold text-white border-[1.5px] border-violet-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-100 group-hover:translate-y-[0.5px] group-active:translate-y-[1px]">
-                {/* Subtle gloss */}
-                <span className="absolute inset-x-0 top-0 h-[35%] rounded-t-[3px] bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-                <Command className="relative h-3 w-3 text-white/90" />
-                <span className="relative font-bold tracking-tight text-white drop-shadow-sm">Open Console</span>
-              </span>
-            </Link>
+              Open Console
+            </KeyboardButton>
           </nav>
         </div>
       )}
