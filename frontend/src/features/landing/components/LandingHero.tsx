@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles, Command, Eye } from "lucide-react";
+import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 function BaguioTeamsPill() {
   const [isAutoPulse, setIsAutoPulse] = useState(false);
@@ -158,40 +159,25 @@ export function LandingHero() {
           </div>
 
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <Link
+            <KeyboardButton
+              variant="primary"
+              size="md"
+              icon={<Command className="h-4 w-4" />}
+              badge="⌘K"
               href="/app"
-              className="group relative inline-flex items-center justify-center gap-2 select-none"
+             
             >
-              {/* Softer shadow - original color base */}
-              <span className="absolute inset-0 rounded-lg bg-violet-400/60 translate-y-[3px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[2px] group-active:translate-y-[1px]" />
-              
-              {/* Softer anime keycap - original colors preserved */}
-              <span className="relative inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-violet-400 via-blue-500 to-cyan-500 px-5 py-2.5 text-sm font-bold text-white border-[2px] border-violet-500/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-100 group-hover:translate-y-[1px] group-active:translate-y-[2px]">
-                {/* Subtle gloss */}
-                <span className="absolute inset-x-0 top-0 h-[40%] rounded-t-md bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-                
-                <Command className="relative h-4 w-4 text-white/90" />
-                <span className="relative font-bold tracking-tight text-white drop-shadow-sm">Open Console</span>
-                <span className="relative ml-1 text-[10px] font-bold text-white/80 border border-white/30 rounded px-1.5 py-0.5 bg-white/10">⌘K</span>
-              </span>
-            </Link>
-            <Link
+              Open Console
+            </KeyboardButton>
+            <KeyboardButton
+              variant="secondary"
+              size="md"
+              icon={<Eye className="h-4 w-4" />}
+              badge="Demo"
               href="#live-preview"
-              className="group relative inline-flex items-center justify-center gap-2 select-none"
             >
-              {/* Softer shadow for grid complement */}
-              <span className="absolute inset-0 rounded-lg bg-slate-300 translate-y-[3px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[2px] group-active:translate-y-[1px]" />
-              
-              {/* Softer secondary keycap */}
-              <span className="relative inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-bold text-slate-600 border-[2px] border-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(0,0,0,0.02)] transition-all duration-100 group-hover:translate-y-[1px] group-active:translate-y-[2px]">
-                {/* Subtle gloss */}
-                <span className="absolute inset-x-0 top-0 h-[40%] rounded-t-md bg-gradient-to-b from-white/80 to-transparent pointer-events-none" />
-                
-                <Eye className="relative h-4 w-4 text-slate-400" />
-                <span className="relative font-bold tracking-tight text-slate-600">View Sample Briefing</span>
-                <span className="relative ml-1 text-[10px] font-bold text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 bg-slate-50">Demo</span>
-              </span>
-            </Link>
+              View Sample Briefing
+            </KeyboardButton>
           </div>
         </div>
 
