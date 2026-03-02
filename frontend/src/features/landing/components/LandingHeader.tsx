@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Command } from "lucide-react";
 import { useState } from "react";
 
 export function LandingHeader() {
@@ -48,9 +48,16 @@ export function LandingHeader() {
           </a>
           <Link
             href="/app"
-            className="inline-flex items-center rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-subtle transition hover:brightness-110"
+            className="group relative inline-flex items-center select-none"
           >
-            Open console
+            {/* 3D Keyboard Key Base/Shadow */}
+            <span className="absolute inset-0 rounded-md bg-gradient-to-b from-violet-700 via-blue-700 to-cyan-700 translate-y-[2px] transition-transform duration-75 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
+            
+            {/* Keyboard Key Top Surface */}
+            <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-400 px-3 py-1.5 text-xs font-bold text-white border-t border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[1.5px]">
+              <Command className="h-3 w-3 text-white/90" />
+              <span className="font-mono tracking-tight drop-shadow-sm">Open console</span>
+            </span>
           </Link>
         </nav>
 
@@ -105,10 +112,17 @@ export function LandingHeader() {
             </a>
             <Link
               href="/app"
-              className="mt-2 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-4 py-2 text-xs font-semibold text-white shadow-subtle transition hover:brightness-110"
+              className="group relative mt-2 inline-flex items-center justify-center select-none"
               onClick={closeMenu}
             >
-              Open console
+              {/* 3D Keyboard Key Base/Shadow */}
+              <span className="absolute inset-0 rounded-md bg-gradient-to-b from-violet-700 via-blue-700 to-cyan-700 translate-y-[2px] transition-transform duration-75 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
+              
+              {/* Keyboard Key Top Surface */}
+              <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-400 px-4 py-2 text-xs font-bold text-white border-t border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[1.5px]">
+                <Command className="h-3 w-3 text-white/90" />
+                <span className="font-mono tracking-tight drop-shadow-sm">Open console</span>
+              </span>
             </Link>
           </nav>
         </div>
