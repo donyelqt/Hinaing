@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles } from "lucide-react";
+import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles, Command, Eye } from "lucide-react";
 
 function BaguioTeamsPill() {
   const [isAutoPulse, setIsAutoPulse] = useState(false);
@@ -160,16 +160,31 @@ export function LandingHero() {
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <Link
               href="/app"
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 px-7 py-3 text-sm font-semibold text-white shadow-xl shadow-violet-500/25 transition-all hover:shadow-violet-500/40 hover:brightness-110 hover:scale-105 active:scale-95"
+              className="group relative inline-flex items-center justify-center gap-2 select-none"
             >
-              Open Console
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              {/* 3D Keyboard Key Base/Shadow */}
+              <span className="absolute inset-0 rounded-lg bg-gradient-to-b from-violet-700 via-blue-700 to-cyan-700 translate-y-[3px] transition-transform duration-75 group-hover:translate-y-[2px] group-active:translate-y-[1px]" />
+              
+              {/* Keyboard Key Top Surface */}
+              <span className="relative inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-400 px-5 py-2.5 text-sm font-bold text-white border-t border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[2px]">
+                <Command className="h-4 w-4 text-white/90" />
+                <span className="font-mono tracking-tight drop-shadow-sm">Open Console</span>
+                <span className="ml-1 text-[10px] font-mono text-white/70 border border-white/30 rounded px-1 py-0.5 bg-white/10">⌘K</span>
+              </span>
             </Link>
             <Link
               href="#live-preview"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-7 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900"
+              className="group relative inline-flex items-center justify-center gap-2 select-none"
             >
-              View Sample Briefing
+              {/* 3D Keyboard Key Base/Shadow */}
+              <span className="absolute inset-0 rounded-lg bg-slate-300 translate-y-[3px] transition-transform duration-75 group-hover:translate-y-[2px] group-active:translate-y-[1px]" />
+              
+              {/* Keyboard Key Top Surface */}
+              <span className="relative inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 border-b-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(0,0,0,0.02)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[2px]">
+                <Eye className="h-4 w-4 text-slate-500" />
+                <span className="font-mono tracking-tight">View Sample Briefing</span>
+                <span className="ml-1 text-[10px] font-mono text-slate-400 border border-slate-200 rounded px-1 py-0.5 bg-slate-50">Demo</span>
+              </span>
             </Link>
           </div>
         </div>
