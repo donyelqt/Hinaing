@@ -50,13 +50,15 @@ export function LandingHeader() {
             href="/app"
             className="group relative inline-flex items-center select-none"
           >
-            {/* 3D Keyboard Key Base/Shadow */}
-            <span className="absolute inset-0 rounded-md bg-gradient-to-b from-violet-700 via-blue-700 to-cyan-700 translate-y-[2px] transition-transform duration-75 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
+            {/* Softer shadow - original color base */}
+            <span className="absolute inset-0 rounded-md bg-violet-400/50 translate-y-[2px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
             
-            {/* Keyboard Key Top Surface */}
-            <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-400 px-3 py-1.5 text-xs font-bold text-white border-t border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[1.5px]">
-              <Command className="h-3 w-3 text-white/90" />
-              <span className="font-mono tracking-tight drop-shadow-sm">Open console</span>
+            {/* Softer keycap - original colors */}
+            <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-400 via-blue-500 to-cyan-500 px-3 py-1.5 text-xs font-bold text-white border-[1.5px] border-violet-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-100 group-hover:translate-y-[0.5px] group-active:translate-y-[1px]">
+              {/* Subtle gloss */}
+              <span className="absolute inset-x-0 top-0 h-[35%] rounded-t-[2px] bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+              <Command className="relative h-3 w-3 text-white/90" />
+              <span className="relative font-bold tracking-tight text-white drop-shadow-sm">Open Console</span>
             </span>
           </Link>
         </nav>
@@ -115,13 +117,15 @@ export function LandingHeader() {
               className="group relative mt-2 inline-flex items-center justify-center select-none"
               onClick={closeMenu}
             >
-              {/* 3D Keyboard Key Base/Shadow */}
-              <span className="absolute inset-0 rounded-md bg-gradient-to-b from-violet-700 via-blue-700 to-cyan-700 translate-y-[2px] transition-transform duration-75 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
+              {/* Softer shadow - original color base */}
+              <span className="absolute inset-0 rounded-md bg-violet-400/50 translate-y-[2px] translate-x-[1px] transition-transform duration-100 group-hover:translate-y-[1px] group-active:translate-y-[0.5px]" />
               
-              {/* Keyboard Key Top Surface */}
-              <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-400 px-4 py-2 text-xs font-bold text-white border-t border-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-75 group-hover:translate-y-[1px] group-active:translate-y-[1.5px]">
-                <Command className="h-3 w-3 text-white/90" />
-                <span className="font-mono tracking-tight drop-shadow-sm">Open console</span>
+              {/* Softer keycap - original colors */}
+              <span className="relative inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-violet-400 via-blue-500 to-cyan-500 px-4 py-2 text-xs font-bold text-white border-[1.5px] border-violet-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),inset_0_-1px_0_rgba(0,0,0,0.1)] transition-all duration-100 group-hover:translate-y-[0.5px] group-active:translate-y-[1px]">
+                {/* Subtle gloss */}
+                <span className="absolute inset-x-0 top-0 h-[35%] rounded-t-[3px] bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+                <Command className="relative h-3 w-3 text-white/90" />
+                <span className="relative font-bold tracking-tight text-white drop-shadow-sm">Open Console</span>
               </span>
             </Link>
           </nav>
