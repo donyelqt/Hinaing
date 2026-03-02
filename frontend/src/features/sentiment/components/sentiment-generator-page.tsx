@@ -14,6 +14,7 @@ import {
   Menu,
   X
 } from "lucide-react";
+import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 import { Card } from "@/components/ui/card";
 import { apiGet, apiPost } from "@/lib/api";
@@ -581,22 +582,23 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         Please complete all required steps before generating
                       </p>
                     )}
-                    <button
-                      type="button"
+                    <KeyboardButton
+                      variant="primary"
+                      size="md"
+                      icon={
+                        state.isGenerating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        ) : !backendStatus || backendError ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                        )
+                      }
                       onClick={handleGenerate}
                       disabled={state.isGenerating || !backendStatus || !!backendError}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-hinaing-blue-600/30 transition duration-150 ease-out hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
-                      aria-label="Generate new sentiment report with current settings"
                     >
-                      {state.isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      ) : !backendStatus || backendError ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
-                      )}
                       {state.isGenerating ? 'Generating Report...' : !backendStatus || backendError ? 'Initializing...' : 'Generate Sentiment Report'}
-                    </button>
+                    </KeyboardButton>
                   </div>
                 </div>
               </Card>
