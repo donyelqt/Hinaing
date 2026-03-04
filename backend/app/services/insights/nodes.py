@@ -135,10 +135,29 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
     logger.info("[snapshot] Internal retrieval recall in %.1f ms with %d docs", duration_ms, len(internal_docs))
     
     state["internal_documents"] = internal_docs
-    state["rag_relevance_scores"] = [
+    rag_scores = [
         (d.metadata or {}).get("_score", 0.0) 
         for d in internal_docs
     ]
+    state["rag_relevance_scores"] = rag_scores
+    
+    # ── Context Agent Accuracy Metrics ──
+    if rag_scores:
+        avg_score = sum(rag_scores) / len(rag_scores)
+        high_relevance = sum(1 for s in rag_scores if s >= 0.7)
+        mid_relevance = sum(1 for s in rag_scores if 0.4 <= s < 0.7)
+        low_relevance = sum(1 for s in rag_scores if s < 0.4)
+        top_score = max(rag_scores)
+        hit_rate = high_relevance / len(rag_scores) * 100
+        
+        logger.info(
+            "[Context Agent] RAG Accuracy: avg=%.3f, top=%.3f, hit_rate=%.1f%% "
+            "(%d high≥0.7, %d mid, %d low<0.4) from %d recalled docs",
+            avg_score, top_score, hit_rate,
+            high_relevance, mid_relevance, low_relevance, len(rag_scores)
+        )
+    else:
+        logger.info("[Context Agent] RAG Accuracy: No documents recalled from memory (0 hits)")
     
     raw_combined = state.get("external_documents", []) + internal_docs
     
@@ -613,6 +632,159 @@ def _parse_agent_json(raw_text: str) -> Any | None:
         pass
     return None
 
+
+def _build_theme_context(documents: list[dict]) -> str:
+    """Build context string from documents for theme agents."""
+    import re
+    
+    def sanitize(text):
+        if not text:
+            return ""
+        text_str = str(text)
+        # Remove invalid Unicode
+        cleaned = re.sub(r'[\ud800-\udfff]', '', text_str)
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', cleaned)
+        cleaned = re.sub(r'[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]', '', cleaned)
+        return cleaned.strip()
+    
+    doc_lines = []
+    for doc in documents[:10]:
+        title = sanitize(doc.get('title', 'Untitled'))
+        snippet = sanitize(doc.get('snippet', ''))[:200]
+        url = sanitize(doc.get('url', ''))
+        if url:
+            doc_lines.append(f"- [{title}]({url}): {snippet}")
+        else:
+            doc_lines.append(f"- {title}: {snippet}")
+    return "\n".join(doc_lines)
+
+
+def _build_theme_prompt(theme_label: str, focus: str, context: str, doc_count: int) -> str:
+    """Build the prompt for theme agent insight generation."""
+    return f"""You are a civic analyst for Baguio City providing actionable intelligence for government officials.
+
+Theme: {theme_label}
+{focus}
+
+Task: Analyze the documents below and generate EXACTLY 3 ACTIONABLE RECOMMENDATIONS for government action.
+
+Documents ({doc_count} shown):
+{context}
+
+CRITICAL REQUIREMENTS FOR GOOD GOVERNANCE:
+1. Generate EXACTLY 3 actionable recommendations (no more, no less)
+2. Each recommendation must address a DIFFERENT issue or sub-topic
+3. Each recommendation must include SPECIFIC ACTIONS the government can take
+4. Focus on PRACTICAL, IMPLEMENTABLE solutions
+5. Prioritize the most URGENT issues affecting citizens
+
+Format for each recommendation:
+- Title: Clear problem statement
+- Detail: Specific action the government should take (under 240 characters)
+- Evidence: URLs from documents supporting this recommendation
+
+Examples of ACTIONABLE recommendations for Infrastructure:
+✅ GOOD (Actionable):
+  - Title: "Traffic congestion on Session Road during peak hours"
+    Detail: "Deploy 5 additional traffic enforcers at key intersections (7-9 AM, 5-7 PM). Consider implementing odd-even vehicle scheme."
+  
+  - Title: "Water supply interruptions in District 3"
+    Detail: "Conduct emergency pipe inspection and repair. Coordinate with BWWD to establish backup water delivery schedule for affected areas."
+
+❌ BAD (Not actionable):
+  - Title: "Infrastructure challenges"
+    Detail: "There are problems with traffic, water, and parking." (Too vague, no specific action)
+
+⚠️ CRITICAL JSON FORMAT RULES:
+- Output MUST start with {{ and end with }}
+- Return ONLY the JSON object, nothing else
+- Use double quotes for all strings
+
+Return ONLY valid JSON with this exact structure:
+{{
+  "insights": [
+    {{
+      "title": "Specific problem requiring government action",
+      "detail": "Concrete action government should take (under 240 chars)",
+      "evidence": ["actual_url_from_documents_above"]
+    }},
+    {{
+      "title": "Second distinct problem requiring action",
+      "detail": "Specific government intervention needed (under 240 chars)",
+      "evidence": ["actual_url_from_documents_above"]
+    }},
+    {{
+      "title": "Third different problem requiring response",
+      "detail": "Actionable government solution (under 240 chars)",
+      "evidence": ["actual_url_from_documents_above"]
+    }}
+  ]
+}}
+
+IMPORTANT:
+- The "evidence" array MUST contain actual URLs from the documents above
+- If documents truly lack {theme_label} content, return: {{"insights": []}}
+- Generate EXACTLY 3 actionable recommendations if you have sufficient content
+- Each recommendation must be SPECIFIC and IMPLEMENTABLE by government
+- ONLY JSON output, no extra text"""
+
+
+def _parse_theme_insights(output: str, theme_label: str) -> list[dict]:
+    """Parse theme agent JSON output into insight dicts."""
+    import re
+    
+    original_output = output
+    
+    # Remove markdown code blocks if present
+    if "```json" in output:
+        output = output.split("```json")[1].split("```")[0].strip()
+    elif "```" in output:
+        output = output.split("```")[1].split("```")[0].strip()
+    
+    # If output is empty after stripping, try to extract JSON from original
+    if not output or len(output) < 10:
+        logger.warning(f"[{theme_label}] Output empty after stripping, extracting JSON from original")
+        json_start = original_output.find('{"insights"')
+        if json_start == -1:
+            json_start = original_output.find('{ "insights"')
+        if json_start == -1:
+            json_start = original_output.find('{\n  "insights"')
+        
+        if json_start != -1:
+            depth = 0
+            for i in range(json_start, len(original_output)):
+                if original_output[i] == '{':
+                    depth += 1
+                elif original_output[i] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        output = original_output[json_start:i+1]
+                        break
+    
+    try:
+        parsed = json.loads(output)
+        insights = parsed.get("insights", [])
+        
+        sanitized = []
+        for item in insights:
+            if isinstance(item, dict):
+                sanitized.append({
+                    "title": item.get("title", f"Update in {theme_label}"),
+                    "detail": item.get("detail", "Context unavailable"),
+                    "evidence": [str(e) for e in item.get("evidence", []) if e],
+                })
+        
+        if not sanitized:
+            logger.warning(f"[{theme_label}] Parsed JSON but got 0 insights. Output sample: {output[:500]}")
+        else:
+            logger.info(f"[{theme_label}] Successfully parsed {len(sanitized)} insights")
+        
+        return sanitized
+    except json.JSONDecodeError as e:
+        logger.error(f"[{theme_label}] JSON parse failed: {e}")
+        logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
+        return []
+
 def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> list[Insight]:
     """Helper for Theme Agent execution - spawns true sub-agents.
     
@@ -647,11 +819,37 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         agent = get_theme_agent(theme_key)
         logger.info(f"[ThemeAgent] Spawned {type(agent).__name__} for '{label}'")
         
-        # Run the sub-agent's autonomous reasoning
-        # Note: We removed the semaphore here because it causes event loop issues
-        # when running in ThreadPoolExecutor. The 30 RPM limit is high enough
-        # that 6 concurrent agents won't hit it (6 requests in ~1s = 360 RPH = 6 RPM)
-        insights = asyncio.run(agent.run(enriched_docs))
+        # FIXED: Don't use asyncio.run() inside ThreadPoolExecutor!
+        # Instead, run the agent synchronously using sync_groq_generate
+        # This prevents "Event loop is closed" error when Groq retries
+        from ..llm.groq_provider import get_groq_provider
+        
+        # Build context and prompt (same as agent.run() does)
+        context = _build_theme_context(enriched_docs)
+        prompt = _build_theme_prompt(label, agent.theme_focus if hasattr(agent, 'theme_focus') else f"Focus on {label}", context, len(enriched_docs))
+        
+        # Use Groq synchronously to avoid event loop issues
+        llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
+        logger.info(f"[ThemeAgent] Running synchronous Groq for '{label}' with {len(enriched_docs)} docs")
+        
+        try:
+            # Use synchronous generate method
+            response = llm.generate_sync(
+                prompt=prompt,
+                system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                temperature=0.1,
+                max_tokens=8000,
+            )
+            
+            from ..agents.theme_agent import sanitize_text
+            output = sanitize_text(response)
+            
+            # Parse the response
+            insights = _parse_theme_insights(output, label)
+            
+        except Exception as groq_err:
+            logger.warning(f"[ThemeAgent] Groq sync failed for {label}: {groq_err}, using fallback")
+            raise ValueError("Groq failed, using fallback")
         
         # Convert to Insight objects
         evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
