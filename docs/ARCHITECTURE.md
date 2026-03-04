@@ -185,7 +185,7 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 |------|----------|----------|----------------|------------------|
 | 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Synthesis | Domain Context (FOCUS_CONCERNS + Memory), Temporal Context (Calendar Facts), Diversity Validator, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
 | 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving | **Concurrent** (asyncio.gather, I/O-bound) |
-| 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity | Sequential (CPU-bound) |
+| 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-large-en-v1.5 Embeddings (1024-dim), Top-K Cosine Similarity | Sequential (CPU-bound) |
 | 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Data Enrichment & Verification with Smart Reuse | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing, **Enriched Document Cache** | **Concurrent** (asyncio.gather, I/O-bound) + **Smart Reuse** (40-60% API cost savings) |
 | 5 | **ContextAugmentationAgent** | Temporal Memory Consolidation (Self-Learning Loop) | Recursive Agentic Indexing, SemanticChunker, Metadata-Enriched Vectors | **Parallel** (ThreadPoolExecutor, CPU-bound) |
 | 6 | **Domain Theme Agents** (×6 Parallel Experts) | Domain-Specific Autonomous Reasoning & Insight Synthesis | True Class-Based Sub-Agents with `run()` methods, `get_theme_agent()` factory for conditional spawning | **Parallel** (ThreadPoolExecutor, CPU-bound) |
@@ -456,14 +456,14 @@ flowchart TB
         Thought --> Synthesis[AI Query Synthesis]
         Synthesis --> QP[QueryPlan JSON]
         
-        QP -.-> SelfLearn[Store Queries as Concerns<br/>(System Learning)]
+        QP -.-> SelfLearn["Store Queries as Concerns<br/>(System Learning)"]
     end
 
     subgraph Node2["Node 2: Retrieval Agent"]
         RA[RetrievalAgent]
-        LS[LangSearch + Rerank]
+        LS["LangSearch + Rerank"]
         FB[Facebook]
-        RD[Reddit + Rerank]
+        RD["Reddit + Rerank"]
         RA --> LS & FB & RD
         RR[Round-Robin Merge]
         LS & FB & RD --> RR
@@ -474,23 +474,23 @@ flowchart TB
     subgraph Node3["Node 3: Context Agent - Recall"]
         CTX[ContextAugmentationAgent]
         EM1[BGE Embedding]
-        VS1[Qdrant Cloud<br/>PERSISTENT]
-        TopK[Top-K + Metadata]
+        VS1["Qdrant Cloud<br/>PERSISTENT"]
+        TopK["Top-K + Metadata"]
         CTX --> EM1 --> VS1 --> TopK
-        IntDocs[Internal Docs<br/>Enriched]
+        IntDocs["Internal Docs<br/>Enriched"]
         TopK --> IntDocs
         MergedDocs[Merge + Dedup]
         IntDocs --> MergedDocs
     end
 
     subgraph Node4["Node 4: Unified Analysis"]
-        Cache[Cache Check<br/>sentiment + credibility?]
-        Cached[Cached<br/>Reuse]
-        Fresh[Fresh<br/>Analyze]
+        Cache["Cache Check<br/>sentiment + credibility?"]
+        Cached["Cached<br/>Reuse"]
+        Fresh["Fresh<br/>Analyze"]
         Cache --> Cached & Fresh
-        SA[SentimentAgent<br/>RoBERTa + Gemini]
-        CA[CredibilityAgent<br/>5 Sub-Agents]
-        TR[ThemeRouter<br/>6 Buckets]
+        SA["SentimentAgent<br/>RoBERTa + Gemini"]
+        CA["CredibilityAgent<br/>5 Sub-Agents"]
+        TR["ThemeRouter<br/>6 Buckets"]
         Fresh --> SA & CA & TR
         Combine[Combine]
         Cached & SA & CA & TR --> Combine
@@ -502,7 +502,7 @@ flowchart TB
         CTX2[ContextAugmentationAgent]
         SC[SemanticChunker]
         ES[BGE Embedding]
-        VS2[Qdrant Cloud<br/>Store Metadata]
+        VS2["Qdrant Cloud<br/>Store Metadata"]
         CTX2 --> SC --> ES --> VS2
     end
 
@@ -519,8 +519,8 @@ flowchart TB
 
     subgraph Node7["Node 7: Coordinator"]
         COORD[CoordinatorAgent]
-        SD[Sentiment Alignment]
-        NR[Narrative Gen]
+        SD["Sentiment Alignment"]
+        NR["Narrative Gen"]
         COORD --> SD --> NR
         SR[SnapshotResponse]
         NR --> SR
@@ -529,7 +529,7 @@ flowchart TB
     Response[Response JSON]
     UI[Frontend]
 
-    Request --> QO
+    Request --> Thought
     QP --> RA
     ExtDocs --> MergedDocs
     MergedDocs --> Cache
@@ -582,7 +582,7 @@ flowchart TB
 
 **Node 5: Memory Consolidation (Write Phase)**
 - **Chunking**: SemanticChunker (400 char chunks)
-- **Embedding**: BGE-small-en-v1.5
+- **Embedding**: BGE-large-en-v1.5 (1024 dimensions)
 - **Storage**: Qdrant Cloud with enriched metadata:
   - `sentiment`: positive/neutral/negative
   - `credibility_score`: 0.0-1.0
