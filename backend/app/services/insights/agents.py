@@ -184,29 +184,39 @@ class RetrievalAgent:
                 # Speed is maintained through parallel batching
                 queries_to_run = query_plan.queries
                 
-                logger.info(
-                    "[retrieval_agent] executing %d diverse web queries with CONCURRENT batching",
-                    len(queries_to_run),
-                )
+                # DYNAMIC BATCH SIZING: Reduce batch size for rate limit protection
+                # All 6 themes = higher chance of 429, so use smaller batches
+                num_themes = len(set(
+                    _get_focus_area_for_topic(q.topic) for q in queries_to_run
+                ))
                 
-                # REBALANCED STRATEGY: Batch + Moderate Timeout
-                # We cannot fire 6 queries at once or we get 429'd and drop topics.
-                # We cannot use 10s timeout or we drop retrying queries.
-                # Solution: Batches of 3 (Safe for API) + 20s Timeout (Safe for Retries)
+                # If all themes selected, use batch_size=1 to prevent 429
+                # Otherwise use batch_size=2 for speed
+                if num_themes >= 5:
+                    batch_size = 1
+                    logger.info("[retrieval_agent] All themes detected, using conservative batch_size=1")
+                else:
+                    batch_size = 2
+                    
+                logger.info(
+                    "[retrieval_agent] executing %d diverse web queries with CONCURRENT batching (batch_size=%d)",
+                    len(queries_to_run),
+                    batch_size,
+                )
                 
                 async def fetch_query(task, idx):
                     topic = task.topic or f"topic_{idx}"
                     # Determine parent focus area from topic
                     focus_area = _get_focus_area_for_topic(topic)
                     try:
-                        # Increased to 20s to allow for at least 3 retry cycles
+                        # Increased to 25s to allow for at least 3 retry cycles with rate limits
                         docs = await asyncio.wait_for(
                             search_web_documents(
                                 request,
                                 custom_query=task.query,
                                 limit=10,
                             ),
-                            timeout=20.0
+                            timeout=25.0
                         )
                         for doc in docs:
                             doc.metadata = {
@@ -217,34 +227,32 @@ class RetrievalAgent:
                         logger.info("[retrieval_agent] query '%s' returned %d docs", topic, len(docs))
                         return topic, docs
                     except asyncio.TimeoutError:
-                        logger.warning("[retrieval_agent] query '%s' timed out (20s)", topic)
+                        logger.warning("[retrieval_agent] query '%s' timed out (25s)", topic)
                         return topic, []
                     except Exception as exc:
                         logger.warning("[retrieval_agent] query '%s' failed: %s", topic, exc)
                         return topic, []
                 
-                # OPTIMIZED: Smaller batches with staggered starts
-                # Batch of 2 is safer for rate limits (reduced from 3)
-                batch_size = 2
+                # Execute queries in batches with staggered starts and longer delays between batches
                 for batch_start in range(0, len(queries_to_run), batch_size):
                     current_batch = queries_to_run[batch_start:batch_start + batch_size]
                     
                     logger.info("[retrieval_agent] executing batch %d-%d of %d", 
                                batch_start+1, batch_start+len(current_batch), len(queries_to_run))
                     
-                    # Longer delay between batches for rate limit recovery (increased from 1.0s)
+                    # Longer delay between batches for rate limit recovery (2.0s for all themes)
                     if batch_start > 0:
-                        await asyncio.sleep(1.5)
+                        await asyncio.sleep(2.0)
 
-                    # Staggered start: 400ms apart within batch (increased from 250ms)
-                    # Total batch overhead: ~400ms, queries still run in parallel
+                    # Staggered start: 500ms apart within batch
+                    # Total batch overhead: ~500ms, queries still run in parallel
                     async def staggered_fetch(task, idx, stagger_delay):
                         if stagger_delay > 0:
                             await asyncio.sleep(stagger_delay)
                         return await fetch_query(task, batch_start + idx)
                     
                     batch_results = await asyncio.gather(
-                        *[staggered_fetch(task, i, i * 0.4) for i, task in enumerate(current_batch)],
+                        *[staggered_fetch(task, i, i * 0.5) for i, task in enumerate(current_batch)],
                         return_exceptions=True
                     )
                     
