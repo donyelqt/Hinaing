@@ -46,8 +46,11 @@ class EmbeddingService:
     - Normalized embeddings for cosine similarity
     """
     
-    # Using BGE-small: SOTA efficiency for CPU
-    DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
+    # Using BGE-large: SOTA accuracy for production research
+    # - 1024 dimensions (higher accuracy than BGE-small)
+    # - MTEB 64.1 (top 3 open source)
+    # - ~3GB RAM (manageable on 16GB)
+    DEFAULT_MODEL = "BAAI/bge-large-en-v1.5"
     
     def __init__(self, model_name: str | None = None):
         """Initialize embedding model.
