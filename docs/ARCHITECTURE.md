@@ -42,7 +42,7 @@ Multi-Agentic AI system with real-time intelligent search and self learning RAG 
 | **ThemeAgent (×6)** | `gemini-2.5-flash-lite` | Theme-specific insight generation |
 | **ChatAgent** | `gemini-2.5-flash` | Fast Q&A responses |
 | **RoBERTa** | `twitter-roberta-base-sentiment-latest` | Local model, 40% ensemble weight |
-| **Embeddings** | `BAAI/bge-small-en-v1.5` | Local 384-dim vectors for RAG (upgraded from MiniLM) |
+| **Embeddings** | `BAAI/bge-large-en-v1.5` | Local 1024-dim vectors for RAG (upgraded from BGE-small for higher accuracy)
 
 ## 7-Node Self-Learning Pipeline (Control Flow)
 
@@ -183,7 +183,7 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 
 | Node | Agent(s) | Function | Key Components | Execution Model |
 |------|----------|----------|----------------|------------------|
-| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Planning | Linearized Knowledge Graph (EMERGING_CONCERNS), 4 Specialized Tools, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
+| 1 | **QueryOrchestratorAgent** | ReAct Reasoning & Autonomous Query Synthesis | Domain Context (FOCUS_CONCERNS + Memory), Temporal Context (Calendar Facts), Diversity Validator, Gemini 2.5 Flash-Lite | Sequential (CPU-bound) |
 | 2 | **RetrievalAgent** | Autonomous Multi-Platform Data Ingestion | LangSearch (Web), PRAW (Reddit), Apify (Facebook), Round-Robin Interleaving | **Concurrent** (asyncio.gather, I/O-bound) |
 | 3 | **ContextAugmentationAgent** | Epistemic Recall: Semantic Memory Retrieval | Qdrant Persistent Store, BGE-small-en-v1.5 Embeddings, Top-K Cosine Similarity | Sequential (CPU-bound) |
 | 4 | **Ensemble Sentiment Agent** + **5-Signal Credibility Verifier** + **ThemeRouterAgent** | High-Throughput Data Enrichment & Verification with Smart Reuse | Neuro-Symbolic Model Fusion (RoBERTa + Gemini), Multi-Signal Logic, Contextual Routing, **Enriched Document Cache** | **Concurrent** (asyncio.gather, I/O-bound) + **Smart Reuse** (40-60% API cost savings) |
@@ -222,7 +222,7 @@ flowchart TB
         subgraph Workflow["7-Node Multi-Agent Pipeline"]
 
             subgraph Node1["Node 1: Query Orchestrator"]
-                QO[QueryOrchestratorAgent<br/>ReAct + Context Engineering]
+                QO[QueryOrchestratorAgent<br/>Autonomous ReAct Synthesis]
             end
 
             subgraph Node2["Node 2: External Retrieval"]
@@ -328,7 +328,7 @@ flowchart TB
     subgraph Pipeline["7-Node Self-Learning Cyclic RAG Pipeline"]
         
         subgraph Node1["Node 1: Query Orchestrator"]
-            QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning<br/>EMERGING_CONCERNS<br/>Contextual Expansion]
+            QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning Loop<br/>Autonomous AI Synthesis<br/>Self-Learning Feedback]
         end
 
         subgraph Node2["Node 2: External Retrieval"]
@@ -389,7 +389,7 @@ flowchart TB
 
 | Node | Primary Agent | Key Operations | Execution Pattern | Performance Notes |
 |------|---------------|----------------|-------------------|-------------------|
-| **1** | QueryOrchestratorAgent | ReAct reasoning, EMERGING_CONCERNS lookup, contextual query expansion, diversity validation | Sequential (CPU-bound) | Generates 6+ diverse queries |
+| **1** | QueryOrchestratorAgent | ReAct reasoning, domain context retrieval (FOCUS_CONCERNS + memory), temporal context analysis (calendar facts), autonomous query synthesis, diversity validation | Sequential (CPU-bound) | Generates 8-12 diverse, targeted queries |
 | **2** | RetrievalAgent | Multi-platform ingestion (Web/Facebook/Reddit), source-level reranking, round-robin merge | Concurrent (I/O-bound) | Batches of 2 parallel requests |
 | **3** | ContextAugmentationAgent | Vector search in Qdrant, BGE embeddings, cosine similarity, top-K retrieval | Sequential (CPU-bound) | Retrieves enriched historical docs |
 | **4** | SentimentAgent + CredibilityAgent + ThemeRouterAgent | **Smart Reuse check** → Parallel analysis (sentiment + credibility + routing) | Concurrent (I/O-bound) | **81% API cost savings** via cache |
@@ -440,17 +440,23 @@ flowchart TB
 flowchart TB
     Request[SnapshotRequest]
     
-    subgraph Node1["Node 1: Query Orchestrator Agent"]
-        QO[QueryOrchestratorAgent]
-        T1[analyze_focus_areas]
-        T2[generate_query]
-        T3[expand_contextual_queries]
-        T4[evaluate_query]
-        KC[EMERGING_CONCERNS]
-        QO --> T1 & T2 & T3 & T4
-        T1 --> KC
-        QP[QueryPlan]
-        T1 & T2 & T3 & T4 --> QP
+    subgraph Node1["Node 1: Query Orchestrator Agent (Autonomous Synthesis)"]
+        direction TB
+        subgraph ReActLoop["ReAct Reasoning Loop"]
+            Thought[Agent Thought] --> Action[Call Information Tool]
+            Action --> Observation[Context/Observation]
+            Observation --> Thought
+        end
+        
+        Tools["Specialized Information Tools<br/>━━━━━━━━━━━━━━━━━━━━<br/>• get_domain_context<br/>• get_temporal_context<br/>• validate_query_diversity"]
+        
+        Action -.-> Tools
+        Tools -.-> Observation
+        
+        Thought --> Synthesis[AI Query Synthesis]
+        Synthesis --> QP[QueryPlan JSON]
+        
+        QP -.-> SelfLearn[Store Queries as Concerns<br/>(System Learning)]
     end
 
     subgraph Node2["Node 2: Retrieval Agent"]
@@ -546,9 +552,10 @@ flowchart TB
 ### Implementation Details by Node
 
 **Node 1: Query Orchestrator**
-- **Tools**: 4 specialized ReAct tools (analyze, generate, expand, evaluate)
-- **Context Engineering**: EMERGING_CONCERNS provide domain-specific query templates (dynamically generated by LLM, not hardcoded)
-- **Output**: 6+ diverse queries covering multiple civic themes
+- **Tools**: 3 specialized ReAct tools (domain context, temporal context, diversity validation)
+- **Agentic Synthesis**: Agent reasons over domain knowledge and current calendar facts to *generate* novel queries (not just copy keywords)
+- **Output**: 8-12 diverse, targeted queries covering multiple civic angles
+- **Self-Learning**: AI-generated queries are stored back into concerns memory for future context enrichment
 
 **Node 2: External Retrieval**
 - **Sources**: LangSearch (web), Facebook (Apify), Reddit (PRAW)
@@ -557,9 +564,10 @@ flowchart TB
 
 **Node 3: Internal Recall (Read Phase)**
 - **Storage**: Qdrant Cloud with persistent vector store
-- **Embeddings**: BGE-small-en-v1.5 (384 dimensions)
+- **Embeddings**: BGE-large-en-v1.5 (1024 dimensions)
 - **Retrieval**: Cosine similarity search with focus_area filtering
-- **Key Feature**: Returns documents with existing enrichment metadata
+- **Accuracy Metrics**: Real-time logging of average relevance scores, hit rates (relevance ≥ 0.7), and score distribution
+- **Key Feature**: Returns documents with existing enrichment metadata + performance transparency
 
 **Node 4: Unified Analysis + Smart Reuse**
 - **Cache Check**: Inspects internal documents for sentiment + credibility
@@ -1330,8 +1338,8 @@ index_fields = ["focus_area", "topic"]  # keyword type for exact matching
 ```
 
 ### Embedding Model
-- **Model**: `BAAI/bge-small-en-v1.5` (upgraded from MiniLM for better accuracy)
-- **Dimensions**: 384
+- **Model**: `BAAI/bge-large-en-v1.5` (upgraded from BGE-small for higher accuracy)
+- **Dimensions**: 1024
 - **Min Score Threshold**: 0.50 (higher precision)
 
 ## Data Flow Summary (18 Agents)
