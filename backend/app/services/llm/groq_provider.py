@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any, AsyncIterator
 
-from groq import AsyncGroq
+from groq import AsyncGroq, Groq
 from groq.types.chat import ChatCompletion
 
 from ...core.config import get_settings
@@ -74,9 +74,17 @@ class GroqProvider(BaseLLMProvider):
                 max_retries=max_retries,
                 http_client=http_client,  # Use custom HTTP client with pooling
             )
+            
+            # Also create synchronous client for use in ThreadPoolExecutor
+            self._sync_client = Groq(
+                api_key=self._api_key,
+                timeout=timeout,
+                max_retries=max_retries,
+            )
             logger.info(f"[Groq] Initialized with model: {model} (connection pool: 100 max, 20 keepalive)")
         else:
             self._client = None
+            self._sync_client = None
             logger.warning("[Groq] API key not configured")
     
     @property
@@ -242,6 +250,54 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
         )
         
         return self._parse_json(raw)
+    
+    def generate_sync(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4096,
+        **kwargs
+    ) -> str:
+        """Synchronous text generation with Groq.
+        
+        Use this method when running in ThreadPoolExecutor to avoid
+        "Event loop is closed" errors with asyncio.run().
+        
+        Args:
+            prompt: User prompt
+            system_prompt: System instruction
+            temperature: Sampling temperature
+            max_tokens: Max tokens to generate
+            
+        Returns:
+            Generated text string
+        """
+        if not self._sync_client:
+            raise RuntimeError("[Groq] Sync client not initialized (missing API key)")
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        try:
+            completion: ChatCompletion = self._sync_client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs
+            )
+            
+            content = completion.choices[0].message.content
+            logger.debug(f"[Groq] Sync generate completed with {self._model}")
+            return content or ""
+            
+        except Exception as e:
+            logger.error(f"[Groq] Sync generation failed: {e}")
+            raise
     
     def _parse_json(self, raw: str) -> dict[str, Any]:
         """Parse JSON from model response with robust error handling."""

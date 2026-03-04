@@ -17,7 +17,7 @@ from ..schemas.snapshot import WebDocument
 logger = logging.getLogger(__name__)
 _RERANK_MODEL = "langsearch-reranker-v1"
 _MAX_RETRIES = 5
-_RETRY_DELAY = 0.3  # Faster initial retry; backoff: 0.3s, 0.6s, 1.2s, 2.4s, 4.8s
+_RETRY_DELAY = 0.5  # More aggressive initial delay; backoff: 0.5s, 1s, 2s, 4s, 8s (total ~15.5s)
 
 
 class LangSearchClient:
@@ -58,14 +58,21 @@ class LangSearchClient:
         }
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
+            # Circuit breaker: skip search if it failed recently (global counter)
+            if hasattr(self, '_search_failures') and self._search_failures >= 3:
+                logger.warning("[langsearch] Circuit breaker: skipping search (3+ recent failures)")
+                return []
+            
             # Retry with exponential backoff for rate limits (429)
             data = None
+            search_failed = False
             for attempt in range(1, _MAX_RETRIES + 1):
                 response = await client.post(self._base_url, json=payload, headers=headers)
                 
                 if response.status_code == 429:
+                    search_failed = True
                     if attempt < _MAX_RETRIES:
-                        delay = _RETRY_DELAY * (2 ** (attempt - 1))  # Exponential: 1.5s, 3s, 6s
+                        delay = _RETRY_DELAY * (2 ** (attempt - 1))  # Exponential: 0.5s, 1s, 2s, 4s, 8s
                         logger.warning(
                             "LangSearch rate limited (429), retrying in %.1fs (attempt %d/%d)",
                             delay, attempt, _MAX_RETRIES
@@ -79,6 +86,16 @@ class LangSearchClient:
                 response.raise_for_status()
                 data = response.json()
                 break
+            
+            # Track failures for circuit breaker
+            if search_failed:
+                if not hasattr(self, '_search_failures'):
+                    self._search_failures = 0
+                self._search_failures += 1
+            else:
+                # Reset on success
+                if hasattr(self, '_search_failures'):
+                    self._search_failures = 0
             
             if data is None:
                 return []
@@ -183,7 +200,13 @@ class LangSearchClient:
     ) -> list[WebDocument]:
         if not self._rerank_url or not documents:
             return documents
-
+        
+        # Circuit breaker: skip rerank if it failed recently (global counter)
+        # This prevents cascading failures when API is overloaded
+        if hasattr(self, '_rerank_failures') and self._rerank_failures >= 3:
+            logger.warning("[langsearch] Circuit breaker: skipping rerank (3+ recent failures)")
+            return documents
+        
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -201,10 +224,12 @@ class LangSearchClient:
 
         # Retry with exponential backoff for rate limits (429)
         data = None
+        rerank_failed = False
         for attempt in range(1, _MAX_RETRIES + 1):
             response = await client.post(self._rerank_url, json=payload, headers=headers)
             
             if response.status_code == 429:
+                rerank_failed = True
                 if attempt < _MAX_RETRIES:
                     delay = _RETRY_DELAY * (2 ** (attempt - 1))
                     logger.warning(
@@ -215,11 +240,21 @@ class LangSearchClient:
                     continue
                 else:
                     logger.warning("Rerank rate limited, max retries exceeded, skipping rerank")
-                    return documents
+                    break
             
             response.raise_for_status()
             data = response.json()
             break
+        
+        # Track failures for circuit breaker
+        if rerank_failed:
+            if not hasattr(self, '_rerank_failures'):
+                self._rerank_failures = 0
+            self._rerank_failures += 1
+        else:
+            # Reset on success
+            if hasattr(self, '_rerank_failures'):
+                self._rerank_failures = 0
         
         if data is None:
             return documents
