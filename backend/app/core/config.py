@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # Tavily API for claim verification
     tavily_api_key: str | None = None
     
+    # Self-Learning Concerns Memory (for Query Orchestrator)
+    # Reduces API cost by caching LLM-generated concerns for 7 days
+    concerns_memory_enabled: bool = True  # Enable/disable self-learning
+    concerns_memory_ttl_days: int = 7  # Days before regenerating concerns
+    
     # Groq Configuration (ultra-fast inference)
     groq_api_key: str | None = None
     groq_default_model: str = "llama-3.3-70b-versatile"
