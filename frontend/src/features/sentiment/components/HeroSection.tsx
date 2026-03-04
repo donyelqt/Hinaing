@@ -27,13 +27,31 @@ export function HeroSection({
             <span className="uppercase tracking-wide">AI-Powered Analysis</span>
           </div>
 
-          <h2 className="text-4xl font-bold tracking-tight md:text-5xl xl:text-6xl leading-[1.1]">
-            Pulse of the City
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl leading-[1.15]">
+            Autonomous Good Governance
           </h2>
 
-          <p className="text-lg text-blue-100/90 md:text-xl leading-relaxed max-w-2xl">
-            Instantly decode public sentiment across Baguio City. Turn social chatter into actionable intelligence for rapid response.
+          <p className="text-sm md:text-base text-blue-100/80 leading-relaxed max-w-xl">
+            Agentic AI synthesizes novel search queries using domain context + temporal awareness,
+            then deploys 5-signal credibility verification and ensemble sentiment analysis to
+            quantify public concerns across Web, Facebook, and Reddit.
           </p>
+
+          {/* Architecture Badges - Compact */}
+          <div className="flex flex-wrap gap-1.5 text-[11px]">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded-full text-white/90 border border-white/10">
+              <span className="w-1 h-1 rounded-full bg-yellow-300 animate-pulse" />
+              Agentic Queries
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded-full text-white/90 border border-white/10">
+              <span className="w-1 h-1 rounded-full bg-emerald-300 animate-pulse" />
+              5-Signal Credibility
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded-full text-white/90 border border-white/10">
+              <span className="w-1 h-1 rounded-full bg-amber-300 animate-pulse" />
+              Ensemble Sentiment
+            </span>
+          </div>
         </div>
 
         <div className="grid w-full gap-4 sm:grid-cols-2">
