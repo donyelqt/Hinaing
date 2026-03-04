@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-# Build version: 2025-11-29-v3
+# Build version: 2026-03-03-BGE-large-v1
+# Upgrade: BGE-small (384d) → BGE-large (1024d) for higher accuracy
 
 # ============ Builder Stage ============
 FROM python:3.11-slim AS builder
@@ -18,6 +19,9 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
+# Install BM25 for hybrid search
+RUN pip install --no-cache-dir rank-bm25
+
 COPY pyproject.toml poetry.lock ./
 # Regenerate lock file if pyproject.toml changed, then install
 RUN poetry lock && poetry install --only main --no-root --no-ansi
@@ -27,9 +31,9 @@ FROM python:3.11-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
-    # PyTorch CPU optimizations
-    OMP_NUM_THREADS=2 \
-    MKL_NUM_THREADS=2 \
+    # PyTorch CPU optimizations - increased for BGE-large (1024d)
+    OMP_NUM_THREADS=4 \
+    MKL_NUM_THREADS=4 \
     EMBEDDING_CPU_THREADS=4 \
     # Disable tokenizers parallelism to avoid deadlocks in containers
     TOKENIZERS_PARALLELISM=false \
@@ -54,7 +58,7 @@ RUN python -c "from transformers import AutoModelForSequenceClassification, Auto
     AutoModelForSequenceClassification.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
     AutoTokenizer.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest')" && \
     python -c "from sentence_transformers import SentenceTransformer; \
-    SentenceTransformer('BAAI/bge-small-en-v1.5')"
+    SentenceTransformer('BAAI/bge-large-en-v1.5')"
 
 # Hugging Face Spaces uses port 7860 by default
 EXPOSE 7860
@@ -71,8 +75,8 @@ WORKDIR $HOME/app
 COPY --chown=user . .
 COPY --from=builder --chown=user /app/.venv /home/user/app/.venv
 
-# Health check for Hugging Face
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Health check for Hugging Face - increased timeout for BGE-large (1024d model)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
     CMD python -c "import os, urllib.request; port = os.getenv('PORT', '7860'); urllib.request.urlopen(f'http://localhost:{port}/health')" || exit 1
 
 CMD ["sh", "-c", "uvicorn app.main:create_app --factory --host 0.0.0.0 --port 7860"]
