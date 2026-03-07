@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles, Command, Eye } from "lucide-react";
+import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles, Command, Eye, Bot } from "lucide-react";
 import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 function BaguioTeamsPill() {
@@ -49,6 +49,61 @@ function BaguioTeamsPill() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
         </span>
         <span className="font-semibold text-white">Built for Baguio City teams</span>
+      </div>
+    </div>
+  );
+}
+
+function DataScientistBadge() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const target = 18;
+    const duration = 1200;
+    const stepTime = Math.floor(duration / target);
+    let current = 0;
+    const timer = setInterval(() => {
+      current += 1;
+      setCount(current);
+      if (current >= target) clearInterval(timer);
+    }, stepTime);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="group relative w-full">
+      {/* Hover glow */}
+      <div
+        className="pointer-events-none absolute -inset-2 rounded-2xl bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-cyan-400/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        aria-hidden="true"
+      />
+      {/* Gradient border wrapper — full width */}
+      <div className="relative w-full rounded-2xl bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 p-[1.5px] shadow-lg shadow-violet-500/15 group-hover:shadow-xl group-hover:shadow-violet-500/25 transition-all duration-300">
+        {/* Inner content */}
+        <div className="flex w-full items-center gap-3 rounded-[14px] bg-white/95 backdrop-blur-sm px-4 py-2.5">
+          {/* Number badge */}
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 via-blue-600 to-cyan-500 shadow-md shadow-violet-500/25">
+            <span className="text-sm font-black text-white tabular-nums tracking-tight">
+              {count}
+            </span>
+            {/* Live dot */}
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white"></span>
+            </span>
+          </div>
+          {/* Text — fills remaining space */}
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-slate-900 leading-tight">
+              Autonomous Data Scientists
+            </span>
+            <span className="text-[10px] font-medium text-slate-500 leading-tight">
+              Hire your 1st AI team for good governance
+            </span>
+          </div>
+          {/* Bot icon */}
+          <Bot className="h-4 w-4 text-violet-400 group-hover:text-violet-600 transition-colors shrink-0" />
+        </div>
       </div>
     </div>
   );
@@ -113,7 +168,7 @@ export function LandingHero() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:py-16 xl:px-8">
         {/* Left Content */}
         <div className="flex flex-col justify-center space-y-6 lg:max-w-2xl z-10">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
             <BaguioTeamsPill />
             <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-md hover:shadow-emerald-500/10 active:scale-95">
               <Sparkles className="h-3 w-3 text-emerald-500 animate-pulse" />
@@ -128,6 +183,7 @@ export function LandingHero() {
                 before it becomes a crisis.
               </span>
             </h1>
+
             <p className="max-w-lg text-base leading-relaxed text-slate-600">
               Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
               decision-makers can respond faster and plan better.
@@ -156,6 +212,7 @@ export function LandingHero() {
                 <p className="text-[9px] font-medium text-slate-500 uppercase tracking-wide">Major Channels</p>
               </div>
             </div>
+            <DataScientistBadge />
           </div>
 
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -165,7 +222,7 @@ export function LandingHero() {
               icon={<Command className="h-4 w-4" />}
               badge="⌘K"
               href="/app"
-             
+
             >
               Open Console
             </KeyboardButton>
@@ -189,9 +246,8 @@ export function LandingHero() {
           />
 
           <div className="relative w-full max-w-[440px] group">
-            <div className={`relative transform transition-all duration-700 ${
-              hoveredElement === 'card' ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'
-            }`}>
+            <div className={`relative transform transition-all duration-700 ${hoveredElement === 'card' ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'
+              }`}>
               {/* Animated Rainbow Border - Subtle Glow */}
               <div className="absolute -inset-[6px] rounded-[2.2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 opacity-30 blur-lg animate-rainbow-border" />
 
@@ -227,11 +283,10 @@ export function LandingHero() {
 
                       <div className="grid grid-cols-3 gap-2">
                         <div
-                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
-                            hoveredElement === 'negative' || hoveredElement === 'card'
-                              ? 'bg-rose-100'
-                              : 'bg-rose-50'
-                          }`}
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${hoveredElement === 'negative' || hoveredElement === 'card'
+                            ? 'bg-rose-100'
+                            : 'bg-rose-50'
+                            }`}
                           onMouseEnter={() => handleMouseEnter('negative')}
                           onMouseLeave={handleMouseLeave}
                         >
@@ -239,11 +294,10 @@ export function LandingHero() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700/70">Negative</p>
                         </div>
                         <div
-                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
-                            hoveredElement === 'neutral' || hoveredElement === 'card'
-                              ? 'bg-slate-100'
-                              : 'bg-slate-50'
-                          }`}
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${hoveredElement === 'neutral' || hoveredElement === 'card'
+                            ? 'bg-slate-100'
+                            : 'bg-slate-50'
+                            }`}
                           onMouseEnter={() => handleMouseEnter('neutral')}
                           onMouseLeave={handleMouseLeave}
                         >
@@ -251,11 +305,10 @@ export function LandingHero() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600/70">Neutral</p>
                         </div>
                         <div
-                          className={`rounded-xl p-3 text-center transition-all duration-500 ${
-                            hoveredElement === 'positive' || hoveredElement === 'card'
-                              ? 'bg-emerald-100'
-                              : 'bg-emerald-50'
-                          }`}
+                          className={`rounded-xl p-3 text-center transition-all duration-500 ${hoveredElement === 'positive' || hoveredElement === 'card'
+                            ? 'bg-emerald-100'
+                            : 'bg-emerald-50'
+                            }`}
                           onMouseEnter={() => handleMouseEnter('positive')}
                           onMouseLeave={handleMouseLeave}
                         >

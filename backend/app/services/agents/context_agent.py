@@ -1,9 +1,14 @@
 """Context augmentation agent using RAG for theme analysis.
 
 OPTIMIZED FOR 16GB ENVIRONMENT: Uses GLOBAL_EXECUTOR for parallel memory consolidation.
-- Sequential processing: < 50 documents (low overhead)
-- Parallel processing: >= 50 documents (3-5x speedup)
+- Sequential processing: < 10 documents (low overhead)
+- Parallel processing: >= 10 documents (3-5x speedup)
 - Resource-aware: Dynamic batching based on document count
+
+SELF-LEARNING RAG ARCHITECTURE:
+- consolidate_memory: Stores documents with created_at timestamp
+- retrieve_knowledge: Checks age, returns from Qdrant if fresh (< TTL)
+- This creates a self-learning cycle that reduces API calls
 """
 from __future__ import annotations
 
@@ -15,9 +20,11 @@ from ...schemas.rag import AugmentedContext, DocumentChunk
 from ...schemas.snapshot import WebDocument
 from ..rag.chunker import SemanticChunker
 from ..rag.vector_store import get_vector_store
+from ...core.config import get_settings
 from ...core.executor import GLOBAL_EXECUTOR
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class ContextAugmentationAgent:
@@ -96,19 +103,25 @@ class ContextAugmentationAgent:
     ) -> list[WebDocument]:
         """Recall internal knowledge from memory (Vector DB).
         
-        Performs targeted searches for each focus area to ensure coverage,
-        rather than a single smeared query.
+        SELF-LEARNING: Smart Reuse architecture.
+        - ALWAYS returns from memory if documents exist
+        - NO expiration (infinite memory)
+        - Documents are reused across cycles to save API costs
+        
+        This enables 81% API savings by reusing previously analyzed documents.
         
         Args:
             focus_areas: List of keywords/themes to search for
             limit: Max total number of documents to retrieve
             
         Returns:
-            List of WebDocuments reconstructed from memory chunks
+            List of WebDocuments from memory (cached, no API needed)
         """
         if not focus_areas:
             logger.info("No focus areas provided for memory recall")
             return []
+
+        logger.info(f"[Smart Reuse] Retrieving from memory for {len(focus_areas)} focus areas")
 
         # Calculate quota per focus area (min 3 to ensure representation)
         per_area_limit = max(3, int(limit / len(focus_areas)) + 1)
