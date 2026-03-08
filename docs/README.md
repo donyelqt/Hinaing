@@ -33,7 +33,33 @@ Under this license, others are free to share and adapt this work for non-commerc
 | **Sentiment** | Ensemble (RoBERTa 40% + LLM 60%) |
 | **Credibility** | 5-Signal Weighted Ensemble Framework |
 
-> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node to ensure Baguio-specific civic analysis.
+## Context Engineering: Pipeline-Structured Knowledge Injection
+
+> **Context Engineering**: The entire 7-node architecture is a form of context engineering - we design the pipeline structure, agent specializations, domain knowledge (FOCUS_CONCERN_KEYWORDS), temporal awareness (Baguio calendar facts), theme definitions, and credibility signals to inject domain-specific knowledge into the system. Rather than relying on a single LLM prompt, we engineer the context at every node: Node 1 provides domain + temporal context via ReAct tools for AI-generated queries, Node 3 recalls past analyses from vector memory, Node 4 runs parallel sentiment/credibility/theme analysis, Node 5 consolidates learnings back to memory, Node 6 spawns theme-specific agents, and Node 7 synthesizes with full context.
+
+### How Each Node Implements Context Engineering
+
+| Node | Context Engineering Mechanism | Implementation |
+|------|--------------------------------|----------------|
+| **Node 1** | ReAct Agent with Tool-Provided Context | `QueryOrchestratorAgent` uses 3 tools: (1) `get_domain_context` provides `FOCUS_CONCERN_KEYWORDS` from agent_tools.py + past discoveries from Qdrant memory, (2) `get_temporal_context` provides Baguio City calendar facts (seasonal events, weather, festivals), (3) `validate_query_diversity` evaluates query coverage. The AGENT REASONS through these tools and GENERATES queries autonomously - NOT copy-paste from keywords. |
+| **Node 2** | Source-Specific Retrieval | `RetrievalAgent` uses `BAGUIO_LOCATION_TERMS` set for location filtering. LangSearch provides semantic reranking. Facebook (Apify) and Reddit (PRAW) target Baguio-specific communities. |
+| **Node 3** | Memory-Augmented Context | `ContextAugmentationAgent` embeds the query and performs cosine similarity search against Qdrant vector store. Past analyses are recalled BEFORE current analysis - systemic memory. |
+| **Node 4** | Multi-Signal Ensemble | Three parallel agents via `asyncio.gather`: (1) `SentimentAgent` uses ensemble RoBERTa (40%) + Gemini (60%), (2) `CredibilityAgent` runs 5 sub-agents in parallel, (3) `ThemeRouterAgent` routes to theme buckets. |
+| **Node 5** | Self-Learning Consolidation | Same `ContextAugmentationAgent` instance writes enriched documents back to Qdrant. System learns without weight updates - non-parametric systemic learning. |
+| **Node 6** | Theme-Specific Agents | 6 conditionally-spawned `ThemeAgent` subclasses (InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent) with specialized prompts and domain knowledge. |
+| **Node 7** | Synthesis with Full Context | `CoordinatorAgent` receives complete state: query + retrieved documents + sentiment scores + credibility scores + theme buckets + memory context. Generates narrative with full domain context. |
+
+### Novel Contribution: Structural Inductive Bias
+
+Instead of relying solely on prompt engineering (which depends on single LLM capability), the **pipeline structure itself enforces domain knowledge**:
+- **Query generation** is guided by ReAct tools providing FOCUS_CONCERN_KEYWORDS + temporal calendar + memory recall
+- **Location filtering** is enforced at retrieval time by `BAGUIO_LOCATION_TERMS`
+- **Memory recall** happens automatically at Node 3 before any analysis
+- **Memory consolidation** happens automatically at Node 5 after analysis
+- **Credibility** is multi-dimensional (5 orthogonal signals)
+- **Thematic analysis** is distributed to specialized agents
+
+This is **context engineering** - engineering the entire pipeline to inject Baguio-specific civic knowledge.
 
 ---
 
