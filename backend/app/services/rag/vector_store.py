@@ -116,39 +116,21 @@ class VectorStore:
                 )
                 logger.info(f"[VectorStore] Created collection: {self.COLLECTION_NAME}")
             else:
-                # Check if collection has valid vectors - if not, recreate
-                # FIXED: Also check points_count to verify vectors actually exist
+                # Collection already exists — NEVER delete it, just log its status.
+                # Previous logic could silently wipe all stored documents if
+                # vectors_config was unreadable (SDK version mismatch, transient API error).
                 try:
                     collection_info = self.client.get_collection(self.COLLECTION_NAME)
-                    vectors_config = getattr(collection_info, 'vectors_config', None)
-                    points_count = getattr(collection_info, 'points_count', 0)
-                    
-                    has_vectors = False
-                    if vectors_config:
-                        if hasattr(vectors_config, 'size'):  # Single vector config
-                            has_vectors = True
-                        elif isinstance(vectors_config, dict) and vectors_config:
-                            has_vectors = True
-                    
-                    # CRITICAL FIX: Don't delete if there are points stored!
-                    # Even if vectors_config is missing, existing points mean vectors exist
-                    if points_count > 0:
-                        has_vectors = True
-                        logger.info(f"[VectorStore] Collection has {points_count} points - preserving data")
-                    
-                    if not has_vectors:
-                        logger.warning(f"[VectorStore] Collection {self.COLLECTION_NAME} has no vectors config AND no points, recreating...")
-                        self.client.delete_collection(self.COLLECTION_NAME)
-                        self.client.create_collection(
-                            collection_name=self.COLLECTION_NAME,
-                            vectors_config=VectorParams(
-                                size=self.embedding_service.embedding_dim,
-                                distance=Distance.COSINE
-                            )
-                        )
-                        logger.info(f"[VectorStore] Recreated collection: {self.COLLECTION_NAME}")
+                    points_count = getattr(collection_info, 'points_count', 'unknown')
+                    logger.info(
+                        f"[VectorStore] Collection '{self.COLLECTION_NAME}' already exists "
+                        f"with {points_count} points — preserving all data."
+                    )
                 except Exception as check_err:
-                    logger.warning(f"[VectorStore] Could not check vector config: {check_err}")
+                    # Even if we can't read the stats, DO NOT delete. Just warn.
+                    logger.warning(
+                        f"[VectorStore] Could not read collection stats (data preserved): {check_err}"
+                    )
             
             # Ensure payload indexes exist for filtering
             self._ensure_payload_indexes()
