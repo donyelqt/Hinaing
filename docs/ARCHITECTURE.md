@@ -18,14 +18,14 @@ Multi-Agentic AI system with real-time intelligent search and self learning RAG 
 
 > **Context Engineering**: The entire architecture is a form of context engineering. Rather than relying on a single LLM prompt, we design the pipeline structure, agent specializations (18 agents), emerging concerns (EMERGING_CONCERNS), theme definitions (THEME_GROUPS), credibility signals (5-signal framework), and domain trust tiers to inject Baguio-specific civic knowledge at every node.
 
-## Agent Count Summary (Federated Multi-Agent System)
+## Agent Count Summary (Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG)
 
 | Category | Agents | Responsibility |
 |----------|--------|----------------|
 | **Core Executive Agents** | 7 | Orchestration, Retrieval, Ensemble Sentiment, 5-Signal Credibility, Context, Routing, Synthesis |
 | **Theme Sub-Agents** | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment (Conditional Parallel Execution via get_theme_agent() factory - TRUE class-based sub-agents) |
 | **Credibility Sub-Agents** | 5 | DomainTrust, CrossReference, FactCheck, LLMAnalysis, Tavily (Parallel Ensemble) |
-| **Total Federated Agents** | **18** | Hierarchical Multi-Agent Graph |
+| **Total Federated Agents** | **18** | Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG |
 
 > **Federated Autonomy**: Theme processing uses `get_theme_agent()` factory function to spawn **true class-based sub-agents** (InfrastructureAgent, HealthAgent, etc.) conditionally invoked by Node 6 based on: (1) theme bucket has documents (from ThemeRouterAgent routing) AND (2) theme matches requested focus_areas. Each theme agent is a dataclass with `run()` method implementing the **Worker Pattern**. This **Conditional Parallel Execution** ensures high-performance resource management (SLA-driven).
 
