@@ -12,7 +12,7 @@
 >
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
 
-This directory houses the thesis documentation for **Hinaing**, a **hierarchical multi-agent agentic AI system** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
+This directory houses the thesis documentation for **Hinaing**, a **Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG** with real-time intelligent search and self-learning Retrieval-Augmented Generation for context-aware public opinion analysis in Baguio City.
 
 ## License
 
@@ -110,7 +110,7 @@ await asyncio.gather(
 | **7 Core Agent Classes** | 7 | Unique agent types |
 | **Total Agent Instances at Runtime** | **18** | 7 core + 5 credibility + 6 theme |
 
-## Agent Summary (18 Total - Federated Multi-Agent System)
+## Agent Summary (18 Total - Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG)
 
 | Category | Count | Agents |
 |----------|-------|--------|
@@ -166,8 +166,8 @@ await asyncio.gather(
 
 ### 1. QueryOrchestratorAgent (ReAct + Context Engineering)
 Located in `backend/app/services/agents/query_orchestrator.py`:
-- Uses KEYWORD_CLUSTERS for topic diversity (context engineering with 6 curated keyword clusters per focus area)
-- Tools: `analyze_focus_areas`, `generate_query`, `expand_contextual_queries`, `evaluate_query`
+- Uses FOCUS_CONCERN_KEYWORDS for topic diversity (context engineering with 68 keywords per focus area)
+- Tools: `get_domain_context`, `get_temporal_context`, `validate_query_diversity`
 - Gemini 2.5 Flash for fast reasoning
 - Time-based search operators (`after:YYYY-MM-DD`)
 
@@ -223,7 +223,7 @@ Located in `backend/app/services/agents/chat_agent.py`:
 
 ## Latest Updates (Jan 16, 2026)
 
-### 18-Agent Federated Multi-Agent System
+### 18-Agent Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG
 - **11 True Sub-Agents Implemented**: 5 Credibility + 6 Theme
 - **Credibility Sub-Agents**: DomainTrustAgent, CrossReferenceAgent, FactCheckAgent, LLMAnalysisAgent, TavilyAgent (no shared base class - orthogonal dimensions)
 - **Theme Sub-Agents**: InfrastructureAgent, HealthAgent, SafetyAgent, TourismAgent, EconomyAgent, EnvironmentAgent (BaseThemeAgent + factory pattern)

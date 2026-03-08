@@ -20,7 +20,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **18 s
 **Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
 **State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
 
-> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Keyword Clusters and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Emerging Concerns and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
 
 ## Agent Summary (18 Total)
 
@@ -34,7 +34,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **18 s
 
 | Capability | Agent(s) | Evidence |
 |------------|----------|----------|
-| ReAct Query Planning | **QueryOrchestratorAgent** | `query_orchestrator.py` - KEYWORD_CLUSTERS, 6 diverse queries |
+| ReAct Query Planning | **QueryOrchestratorAgent** | `query_orchestrator.py` - DEFAULT_EMERGING_CONCERNS + LLM-generated concerns, 6 diverse queries |
 | Multi-Source Retrieval | **RetrievalAgent** | `agents.py` - LangSearch + Facebook + Reddit |
 | RAG Memory Recall | **ContextAugmentationAgent** | `context_agent.py` - Query embedding → **Cosine similarity** → Top-K retrieval |
 | Ensemble Sentiment | **SentimentAgent** | `sentiment_agent.py` - RoBERTa (40%) + Gemini (60%) |
@@ -62,10 +62,10 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **18 s
 
 **Problem:** Single queries return homogeneous results, missing topic diversity and temporal relevance.
 
-**Solution:** **QueryOrchestratorAgent** uses ReAct reasoning with **context engineering** - pre-defined domain knowledge via KEYWORD_CLUSTERS and dynamic contextual expansion:
+**Solution:** **QueryOrchestratorAgent** uses ReAct reasoning with **dual-context engineering** - static FOCUS_CONCERN_KEYWORDS fallback + LLM-generated dynamic concerns via `_populate_memory_if_needed()` and dynamic contextual expansion via `get_temporal_context()`:
 
 ```python
-KEYWORD_CLUSTERS = {
+DEFAULT_EMERGING_CONCERNS = {
     "infrastructure": [
         ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
         ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
@@ -74,16 +74,18 @@ KEYWORD_CLUSTERS = {
     ],
     # ... 6 focus areas total
 }
+
+# Plus LLM-generated dynamic concerns via _populate_memory_if_needed()
+# Plus get_temporal_context() for temporal/seasonal awareness
 ```
 
-**Agent Tools (4 Total):**
+**Agent Tools (3 Total):**
 
 | Tool | Type | Purpose |
 |------|------|---------|
-| `analyze_focus_areas` | Static Context Engineering | Retrieves KEYWORD_CLUSTERS for focus areas |
-| `generate_query` | Query Construction | Creates diverse queries from clusters (1 per cluster) |
-| `expand_contextual_queries` | Dynamic Context Engineering | Adds seasonal/time-aware queries (Christmas, Panagbenga, typhoon) |
-| `evaluate_query` | Validation | Validates topic diversity coverage |
+| `get_domain_context` | Static + Dynamic Context Engineering | Retrieves FOCUS_CONCERN_KEYWORDS or LLM-generated concerns for focus areas |
+| `get_temporal_context` | Dynamic Context Engineering | Adds seasonal/time-aware queries (Christmas, Panagbenga, typhoon) - temporal awareness |
+| `validate_query_diversity` | Validation | Validates topic diversity coverage |
 
 **Result:** 6+ diverse queries per request combining static clusters and dynamic contextual expansion. Round-robin interleaving prevents topic domination.
 
@@ -169,15 +171,15 @@ KEYWORD_CLUSTERS = {
 ## Novel Contributions
 
 1. **Context-Engineered 7-Node Multi-Agent Architecture (18 Agents)**
-   - The entire architecture is context engineering - pipeline structure, agent specializations, keyword clusters, theme definitions, and credibility signals inject domain knowledge
+   - The entire architecture is context engineering - pipeline structure, agent specializations, emerging concern clusters, theme definitions, and credibility signals inject domain knowledge
    - Cyclic graph with 7 core agents + 5 credibility sub-agents + 6 theme sub-agents (conditionally spawned)
    - **ContextAugmentationAgent** handles both recall (Node 3) and consolidation (Node 5)
    - Verified self-reference loop
 
-2. **QueryOrchestratorAgent with Context Engineering**
-   - ReAct reasoning with 4 custom tools
-   - KEYWORD_CLUSTERS for static context engineering (Baguio-specific civic concerns)
-   - `expand_contextual_queries` for dynamic context engineering (seasonal/temporal awareness)
+2. **QueryOrchestratorAgent with Dual-Context Engineering**
+   - ReAct reasoning with 3 custom tools
+   - **Dual-context engineering**: FOCUS_CONCERN_KEYWORDS (static fallback) + LLM-generated concerns via `_populate_memory_if_needed()`
+   - `get_temporal_context` for dynamic context engineering (seasonal/temporal awareness)
    - 6+ diverse queries per request
 
 3. **SentimentAgent with Hybrid Ensemble**
@@ -202,9 +204,10 @@ KEYWORD_CLUSTERS = {
 SnapshotRequest
        |
        v
-Node 1: QueryOrchestratorAgent (ReAct + Context Engineering)
-       |-- Tools: analyze_focus_areas, generate_query, expand_contextual_queries, evaluate_query
-       |-- KEYWORD_CLUSTERS (static context engineering)
+Node 1: QueryOrchestratorAgent (ReAct + Dual-Context Engineering)
+       |-- Tools: get_domain_context, get_temporal_context, validate_query_diversity
+       |-- FOCUS_CONCERN_KEYWORDS (static fallback context engineering)
+       |-- LLM-generated concerns via _populate_memory_if_needed() (dynamic context engineering)
        |-- Contextual expansion (dynamic context engineering - seasonal/temporal)
        |-- Generate 6+ diverse queries
        v

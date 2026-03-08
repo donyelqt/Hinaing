@@ -80,9 +80,9 @@ This is your **key differentiator**. Explain it clearly using Graph Theory terms
 
 ```
 Node 1: QueryOrchestratorAgent (ReAct + Context Engineering)
-    |-- Tools: analyze_focus_areas, generate_query, expand_contextual_queries, evaluate_query
-    |-- KEYWORD_CLUSTERS for static context engineering
-    |-- expand_contextual_queries for dynamic context engineering (seasonal/temporal)
+    |-- Tools: get_domain_context, get_temporal_context, validate_query_diversity
+    |-- FOCUS_CONCERN_KEYWORDS for static context engineering
+    |-- get_temporal_context and get_domain_context for dynamic context engineering (seasonal/temporal/concerns)
     |-- 6 diverse queries per request
     v
 Node 2: RetrievalAgent
