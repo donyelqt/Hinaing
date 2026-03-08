@@ -56,7 +56,7 @@ The Hinaing system demonstrates **TRL 7** maturity — a system prototype demons
 | Core Executive Agents | 7 | QueryOrchestrator, Retrieval, ContextAugmentation, Sentiment, Credibility, ThemeRouter, Coordinator |
 | Credibility Sub-Agents | 5 | DomainTrust, CrossReference, FactCheck, LLMAnalysis, Tavily |
 | Theme Sub-Agents | 6 | Infrastructure, Health, Safety, Tourism, Economy, Environment |
-| **Total** | **18** | Hierarchical Multi-Agent Graph |
+| **Total** | **18** | Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG |
 
 ---
 
@@ -122,10 +122,10 @@ Per NASA Technology Readiness Assessment guidelines, TRL 7 requires:
 
 | Capability | Implementation | Evidence |
 |------------|----------------|----------|
-| Autonomous Planning | ReAct Loop with 4 Tools | `backend/app/services/agents/query_orchestrator.py` |
-| Dynamic Query Generation | LLM-generated emerging concerns | `generate_dynamic_clusters()` function |
-| Context Engineering | Seasonal/temporal query expansion | `expand_contextual_queries()` function |
-| Tool-Augmented Generation | 4 specialized tools (analyze, generate, expand, evaluate) | ReAct prompt definition |
+| Autonomous Planning | ReAct Loop with 3 Tools | `backend/app/services/agents/query_orchestrator.py` |
+| Dynamic Query Generation | LLM-generated emerging concerns | `_populate_memory_if_needed()` function |
+| Context Engineering | Seasonal/temporal query expansion | `get_temporal_context()` function |
+| Tool-Augmented Generation | 3 specialized tools (get_domain_context, get_temporal_context, validate_query_diversity) | ReAct prompt definition |
 
 ---
 

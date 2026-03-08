@@ -109,7 +109,7 @@ Our system implements a **Hybrid Agentic Architecture** that combines ReAct-base
     - **Agentic recall**: Query Orchestrator retrieves learned patterns from previous runs
     - **Dynamic updates**: New concerns discovered during analysis are stored back to memory (Node 5)
 
-3.  **Temporal Context Engineering (`expand_contextual_queries`)**: 
+3.  **Temporal Context Engineering (`get_temporal_context`)**: 
     - Agent generates **seasonal queries** based on civic calendar (Panagbenga in Feb, typhoons in Jun-Oct, etc.)
     - Combines **static domain knowledge** (e.g., Session Road) with **dynamic temporal context** (e.g., "January business reopening")
     - No hardcoded month-based logic—agent reasons about temporal patterns autonomously
