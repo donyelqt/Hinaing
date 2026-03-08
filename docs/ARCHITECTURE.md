@@ -325,7 +325,7 @@ This approach minimizes latency by performing reranking at the source level rath
   'rankSpacing': 55
  }}}%%
 flowchart TB
-    subgraph Pipeline["7-Node Self-Learning Cyclic RAG Pipeline"]
+    subgraph Pipeline["7-Node Self-Learning RAG Pipeline"]
         
         subgraph Node1["Node 1: Query Orchestrator"]
             QO[QueryOrchestratorAgent<br/>━━━━━━━━━━━━━━━<br/>ReAct Reasoning Loop<br/>Autonomous AI Synthesis<br/>Self-Learning Feedback]
@@ -660,11 +660,11 @@ sequenceDiagram
     API->>QO: SnapshotRequest
     
     Note over QO: ReAct Loop + Context Engineering (Gemini 2.5 Flash)
-    QO->>QO: analyze_focus_areas → EMERGING_CONCERNS (context engineering)
-    QO->>QO: generate_query → static cluster queries
-    QO->>QO: expand_contextual_queries → seasonal/time-aware queries
-    QO->>QO: evaluate_query → diversity check
-    QO-->>RA: QueryPlan (6+ diverse queries)
+    QO->>QO: get_domain_context → domain_knowledge + past_discoveries
+    QO->>QO: get_temporal_context → calendar_facts + time_suffix
+    QO->>QO: AI reasoning → generate 8-12 novel queries
+    QO->>QO: validate_query_diversity → coverage check
+    QO-->>RA: QueryPlan (8-12 AI-generated diverse queries)
 
     par Parallel External Retrieval (Batches of 2)
         RA->>RA: LangSearch Web API
@@ -835,9 +835,15 @@ classDiagram
         <<dataclass>>
         +llm: ChatGoogleGenerativeAI
         +tools: List[Tool]
-        +EMERGING_CONCERNS
+        +max_queries: int = 12
+        +max_iterations: int = 6
+        +_executor: AgentExecutor
         +run(request: SnapshotRequest) QueryPlan
-        "Autonomous query planning"
+        +_get_llm() ChatGoogleGenerativeAI
+        +_get_tools() List[Tool]
+        +_build_executor() AgentExecutor
+        +_store_queries_as_concerns()
+        "ReAct agent with 3 tools for autonomous query synthesis"
     }
 
     class RetrievalAgent {
@@ -949,7 +955,8 @@ classDiagram
     
     %% Composition (AOSE relationships)
     QueryOrchestratorAgent "uses" o--> ChatGoogleGenerativeAI
-    QueryOrchestratorAgent "uses" o--> "4" Tool
+    QueryOrchestratorAgent "uses" o--> "3" Tool
+    QueryOrchestratorAgent "uses" o--> ConcernsMemory
     RetrievalAgent "uses" o--> "3" DataSource
     SentimentAgent "uses" o--> RoBERTa
     SentimentAgent "uses" o--> GenerativeModel
@@ -992,6 +999,8 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 
 #### Protocol 1: Query Planning Protocol (Request-Response)
 
+> **Actual Implementation**: This protocol reflects the true ReAct agent implementation in `query_orchestrator.py`. The agent uses 3 specialized tools to gather context, then autonomously GENERATES diverse queries through AI reasoning (not copy-paste).
+
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {
   'primaryColor': '#1e1e1e',
@@ -1003,22 +1012,44 @@ Each **graph node** is an **autonomous agent** that executes tasks based on inpu
 sequenceDiagram
     participant C as CoordinatorAgent
     participant QO as QueryOrchestratorAgent
-    participant T1 as analyze_focus_areas
-    participant T2 as generate_query
-    participant T3 as expand_contextual_queries
-    participant T4 as evaluate_query
+    participant T1 as get_domain_context
+    participant T2 as get_temporal_context
+    participant T3 as validate_query_diversity
+    participant MEM as ConcernsMemory
 
     C->>QO: execute(SnapshotRequest)
-    QO->>T1: analyze_focus_areas(focus_areas)
-    T1-->>QO: EMERGING_CONCERNS
-    QO->>T2: generate_query(clusters)
-    T2-->>QO: static_queries
-    QO->>T3: expand_contextual_queries(date)
-    T3-->>QO: contextual_queries
-    QO->>T4: evaluate_query(all_queries)
-    T4-->>QO: coverage_assessment
-    QO-->>C: QueryPlan(6+ diverse queries)
+    QO->>T1: get_domain_context(focus_areas)
+    T1-->>QO: domain_knowledge + past_discoveries
+    
+    QO->>T2: get_temporal_context(focus_areas, time_window)
+    T2-->>QO: calendar_facts + time_suffix
+    
+    QO->>QO: AI reasoning over domain + temporal context
+    QO->>QO: Generate 8-12 diverse queries
+    
+    QO->>T3: validate_query_diversity(queries, focus_areas)
+    T3-->>QO: coverage_assessment
+    
+    QO->>MEM: store_queries_as_concerns(queries)
+    MEM-->>QO: confirmed
+    
+    QO-->>C: QueryPlan(8-12 AI-generated diverse queries)
 ```
+
+**Protocol Flow Description:**
+
+| Step | Tool | Description |
+|------|------|-------------|
+| 1 | `get_domain_context` | Retrieves FOCUS_CONCERN_KEYWORDS + past discoveries from Qdrant memory |
+| 2 | `get_temporal_context` | Returns current date, season, and Baguio-specific calendar facts |
+| 3 | **AI Reasoning** | Agent REASONS over domain + temporal context to generate NOVEL queries |
+| 4 | `validate_query_diversity` | Optional: Validates topic coverage across all focus areas |
+| 5 | Self-Learning | Generated query topics stored back to ConcernsMemory for future context enrichment |
+| 6 | Output | QueryPlan with 8-12 diverse, targeted queries with time suffixes |
+
+**Key Distinction from Old Implementation:**
+- **OLD**: Tools mechanically formatted keywords into "kw1 OR kw2" templates
+- **NEW**: Tools provide RAW CONTEXT; the AGENT generates queries through ReAct reasoning
 
 #### Protocol 2: Concurrent Analysis Protocol (Fan-Out/Fan-In)
 
@@ -1237,44 +1268,72 @@ Documents filtered by `published_at` timestamp after retrieval.
 
 The QueryOrchestratorAgent uses **context engineering** via EMERGING_CONCERNS and contextual expansion to generate diverse, Baguio-specific queries:
 
-### EMERGING_CONCERNS (Dynamic Context Engineering)
+### FOCUS_CONCERN_KEYWORDS (Domain Knowledge Base)
 
-Pre-defined domain knowledge organized by civic theme:
+The `get_domain_context` tool retrieves domain knowledge from `FOCUS_CONCERN_KEYWORDS` — a curated dictionary of Baguio-specific civic concern keywords organized by focus area:
 
 ```python
-EMERGING_CONCERNS = {
+FOCUS_CONCERN_KEYWORDS: dict[str, list[str]] = {
     "infrastructure": [
-        ["Baguio traffic congestion", "Session Road rehabilitation", "Baguio public transport"],
-        ["Baguio road repair", "Kennon Road closure", "Baguio construction delay"],
-        ["Baguio water shortage", "Baguio drainage issue", "Baguio power outage"],
-        ...
+        "Baguio traffic congestion", "Baguio road repair", "Baguio water shortage",
+        "Baguio power outage", "Baguio internet problem", "Kennon Road closure",
+        "Session Road rehabilitation", "Baguio parking problem", "Baguio drainage issue",
+        "Baguio construction delay", "Baguio jeepney modernization", "Baguio public transport",
     ],
-    "health": [...],
-    "safety": [...],
-    ...
+    "health": [
+        "Baguio hospital issue", "BGH Baguio problem", "Baguio healthcare concern",
+        "Baguio dengue outbreak", "Baguio COVID update", "Baguio mental health",
+        "Baguio medical services", "Baguio health center", "Baguio medicine shortage",
+        "Baguio doctor shortage", "Baguio emergency room", "Baguio vaccination",
+    ],
+    "safety": [
+        "Baguio crime incident", "Baguio landslide warning", "Baguio earthquake drill",
+        "Baguio fire incident", "Baguio accident report", "Baguio theft problem",
+        "Baguio road accident", "Baguio emergency response", "Baguio disaster preparedness",
+        "Baguio missing person", "Baguio police operation", "Baguio evacuation",
+    ],
+    "tourism": [
+        "Baguio tourist complaint", "Baguio overcrowding", "Burnham Park problem",
+        "Baguio hotel issue", "Baguio scam tourist", "Baguio travel advisory",
+        "Baguio tourist trap", "Session Road crowd", "Baguio weekend traffic",
+        "Baguio accommodation problem", "Baguio tour package complaint", "Panagbenga issue",
+    ],
+    "economy": [
+        "Baguio vendor issue", "Baguio market problem", "Baguio business closure",
+        "Baguio mallification protest", "SM Baguio expansion", "Baguio public market",
+        "Baguio unemployment", "Baguio cost of living", "Baguio livelihood program",
+    ],
+    "environment": [
+        "Baguio tree cutting", "Baguio air pollution", "Baguio flooding",
+        "Baguio waste management", "Baguio urban development", "Baguio green space",
+        "Baguio climate change", "Baguio pine trees", "Baguio environmental concern",
+    ],
 }
 ```
 
-> **Note**: In production, EMERGING_CONCERNS are dynamically generated by LLM (see `generate_emerging_concerns()` in query_orchestrator.py). The default values above serve as fallback.
+> **Note**: In production, EMERGING_CONCERNS are **dynamically generated by LLM** via `_populate_memory_if_needed()` in query_orchestrator.py. The FOCUS_CONCERN_KEYWORDS serve as fallback/inductive bias when memory is unavailable.
 
 ### Contextual Expansion (Dynamic Context Engineering)
 
-The `expand_contextual_queries` tool generates time-aware queries based on current date:
-- **December**: Christmas traffic, New Year safety, holiday tourism
-- **February**: Panagbenga festival, flower festival crowds
-- **June-October**: Typhoon updates, landslide warnings, flooding
-- **Summer**: Water shortage, tourist overcrowding
+The `get_temporal_context` tool generates time-aware queries based on current date. It returns **Baguio City calendar facts** for the agent to reason about:
 
-### ReAct Tool Workflow
+| Month | Calendar Facts |
+|-------|----------------|
+| **December** | Peak Christmas tourism, Christmas Village at Burnham Park, heavy traffic on Marcos Highway and Kennon Road, Night Market and Session Road pedestrianized |
+| **February** | Panagbenga Flower Festival month, Grand Float Parade and Street Dancing, Session Road closed for festival, massive crowd management needed |
+| **March-May** | Summer/dry season, peak domestic tourism, water shortage concerns, fire hazard risks |
+| **June-October** | Monsoon/rainy season, typhoon season — landslide and flooding risks, school opening season |
+| **November** | All Saints' Day (Undas) travel, early Christmas preparations |
+
+### ReAct Tool Workflow (Actual Implementation)
 
 | Tool | Purpose | Output |
 |------|---------|--------|
-| `analyze_focus_areas` | Retrieves EMERGING_CONCERNS for selected focus areas | emerging concerns organized by topic |
-| `generate_query` | Builds diverse queries from clusters (1 per cluster) | Static cluster queries |
-| `expand_contextual_queries` | Adds seasonal/time-aware queries | Contextual queries |
-| `evaluate_query` | Validates topic diversity coverage | Coverage assessment |
+| `get_domain_context` | Retrieves FOCUS_CONCERN_KEYWORDS + past discoveries from memory | domain_knowledge + past_discoveries |
+| `get_temporal_context` | Returns current date, season, Baguio calendar facts | calendar_facts + time_suffix |
+| `validate_query_diversity` | Validates topic coverage across all focus areas | coverage_assessment |
 
-**Strategy**: One query per cluster ensures topic diversity. Results are merged using round-robin interleaving to prevent any single topic from dominating.
+**Strategy**: The agent REASONS over domain + temporal context to generate NOVEL queries (not copy-paste). Results are merged using round-robin interleaving to prevent any single topic from dominating.
 
 ## RAG Memory System (Qdrant Cloud)
 
@@ -1368,17 +1427,17 @@ SPEED OPTIMIZATION: 60% faster execution (6-7s vs 15-20s) when cache hits occur
 | Layer | Technology |
 |-------|------------|
 | Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS |
-| Backend | FastAPI, Python 3.11+, Poetry |
-| Orchestration | LangChain, LangGraph |
-| LLM | Google Gemini (2.5-flash-lite for all agents) |
+| Backend | FastAPI, Python 3.12, Poetry (AOSE Principles) |
+| Orchestration | LangGraph (Directed Acyclic Graphs) |
+| LLM | Google Gemini (2.5-flash-lite for all 18 agents) |
 | Sentiment | RoBERTa (twitter-roberta-base-sentiment-latest) |
-| Embeddings | BGE-small-en-v1.5 (384 dimensions) |
-| Vector DB | Qdrant Cloud (with focus_area/topic payload indexes) |
-| Search | LangSearch API |
+| Embeddings | BAAI/bge-large-en-v1.5 (1,024 dimensions) |
+| Vector DB | Qdrant Cloud (6 isolated collections + 1 context collection) |
+| Search | LangSearch API (Semantic Search + Reranking) |
 | Social | Reddit (PRAW), Facebook (Apify) |
 | Fact-Check | Google Fact Check API, Tavily |
-| Database | Supabase |
-| Observability | LangSmith, Custom Telemetry and Scripts |
+| Database | Supabase (PostgreSQL) |
+| Observability | LangSmith, Custom Telemetry and Scripts (Real-time agent tracing) |
 
 ## Hybrid Architectures (Control vs Novel)
 
