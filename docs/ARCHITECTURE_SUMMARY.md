@@ -15,12 +15,12 @@
 > **Current Implementation:** Hinaing v2.0 (High-Performance 16GB RAM Optimized)
  
 **Document Status**: Official Defense Reference
-**System Type**: Multi-Agentic System with Hierarchical Map-Reduce Topology
+**System Type**: Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG
 
 ---
 
 ## 1. Executive Summary for Defense
-Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **18 Specialized Agents** organized in a **Hierarchical Federated System**. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next (Self-Learning Cyclic RAG - Read-Write Memory Loop).
+Hinaing is not a simple "wrapper" around an LLM. It is a **7-Node Cognitive Architecture** comprised of **18 Specialized Agents** organized in a **Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG**. While the control flow is linear (deterministic latency), the system employs **Episodic Memory Consolidation**, creating a **Temporal Data Cycle** where the output of one analysis run becomes the input memory for the next (Self-Learning Cyclic RAG - Read-Write Memory Loop).
 
 ---
 
