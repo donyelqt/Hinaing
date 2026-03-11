@@ -188,8 +188,8 @@ export function LandingHero() {
               Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
               decision-makers can respond faster and plan better.
             </p>
-            <p className="max-w-lg text-[13px] font-bold uppercase tracking-[0.2em] text-violet-600/80 animate-pulse">
-              The Agentic AI that actually works for your future — not just hard-coded logic
+            <p className="max-w-lg text-[12px] font-bold uppercase tracking-[0.2em] text-violet-600/80 animate-pulse">
+              The real novel agentic AI that actually works for your future — not just hard-coded logic
             </p>
 
             <div className="grid gap-2.5 sm:grid-cols-3 pt-2">
