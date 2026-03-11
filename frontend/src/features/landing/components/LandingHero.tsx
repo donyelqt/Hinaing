@@ -184,15 +184,13 @@ export function LandingHero() {
               </span>
             </h1>
 
-            <div className="space-y-4">
-              <p className="max-w-lg text-base leading-relaxed text-slate-600">
-                Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
-                decision-makers can respond faster and plan better.
-              </p>
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-violet-600/80 animate-pulse">
-                The agentic AI that can actually works for your better future
-              </p>
-            </div>
+            <p className="max-w-lg text-base leading-relaxed text-slate-600">
+              Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
+              decision-makers can respond faster and plan better.
+            </p>
+            <p className="max-w-lg text-[13px] font-bold uppercase tracking-[0.2em] text-violet-600/80 animate-pulse">
+              The Agentic AI that actually works for your future — not just hard-coded logic
+            </p>
 
             <div className="grid gap-2.5 sm:grid-cols-3 pt-2">
               <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-lg hover:shadow-violet-100/50 hover:-translate-y-1">
