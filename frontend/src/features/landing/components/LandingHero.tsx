@@ -189,7 +189,7 @@ export function LandingHero() {
               decision-makers can respond faster and plan better.
             </p>
             <p className="max-w-lg text-[12px] font-bold uppercase tracking-[0.2em] text-violet-600/80 animate-pulse">
-              The real novel agentic AI that actually works for your future — not just hard-coded logic
+              The agentic AI that actually works for your better future — not just hard-coded logic
             </p>
 
             <div className="grid gap-2.5 sm:grid-cols-3 pt-2">
