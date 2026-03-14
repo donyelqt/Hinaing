@@ -194,9 +194,9 @@ class ContextAugmentationAgent:
         for result in all_results:
             chunk = result.chunk
             
-            # Reconstruct metadata
+            # Reconstruct metadata - use dense_score for relevance tracking
             meta = chunk.metadata.copy()
-            meta["_score"] = result.score
+            meta["_score"] = result.dense_score if result.dense_score is not None else result.score
             meta["_source_type"] = "memory_recall"
             
             doc = WebDocument(
