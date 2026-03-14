@@ -135,24 +135,26 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
     logger.info("[snapshot] Internal retrieval recall in %.1f ms with %d docs", duration_ms, len(internal_docs))
     
     state["internal_documents"] = internal_docs
+    # Use dense_score (original cosine) for relevance calculation, not fused RRF score
     rag_scores = [
-        (d.metadata or {}).get("_score", 0.0) 
+        (d.metadata or {}).get("_score", 0.0)  # This is now the dense_score from RetrievalResult
         for d in internal_docs
     ]
     state["rag_relevance_scores"] = rag_scores
     
     # ── Context Agent Accuracy Metrics ──
+    # Calculate hit rate based on original dense scores (not fused RRF scores)
     if rag_scores:
         avg_score = sum(rag_scores) / len(rag_scores)
-        high_relevance = sum(1 for s in rag_scores if s >= 0.7)
-        mid_relevance = sum(1 for s in rag_scores if 0.4 <= s < 0.7)
-        low_relevance = sum(1 for s in rag_scores if s < 0.4)
+        high_relevance = sum(1 for s in rag_scores if s >= 0.5)  # 0.5 is reasonable for cosine
+        mid_relevance = sum(1 for s in rag_scores if 0.3 <= s < 0.5)
+        low_relevance = sum(1 for s in rag_scores if s < 0.3)
         top_score = max(rag_scores)
         hit_rate = high_relevance / len(rag_scores) * 100
         
         logger.info(
             "[Context Agent] RAG Accuracy: avg=%.3f, top=%.3f, hit_rate=%.1f%% "
-            "(%d high≥0.7, %d mid, %d low<0.4) from %d recalled docs",
+            "(%d high≥0.5, %d mid, %d low<0.3) from %d recalled docs",
             avg_score, top_score, hit_rate,
             high_relevance, mid_relevance, low_relevance, len(rag_scores)
         )

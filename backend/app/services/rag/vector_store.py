@@ -58,7 +58,10 @@ class VectorStore:
     """
     
     COLLECTION_NAME = "baguio_documents"
-    MIN_SCORE_THRESHOLD = 0.30  # Lowered for hybrid RRF (fused scores are naturally lower)
+    # RRF produces much lower scores (0.01-0.02) than raw cosine (0.5-0.9)
+    # Use separate thresholds for filtering vs relevance tracking
+    MIN_SCORE_THRESHOLD = 0.005  # Very low for RRF fusion scores
+    DENSE_HIGH_RELEVANCE = 0.5   # Threshold for "high relevance" using original cosine scores
     
     def __init__(self):
         """Initialize Qdrant client (Cloud or local) with BM25."""
@@ -398,6 +401,9 @@ class VectorStore:
         # Get dense (semantic) results
         query_embedding = self.embedding_service.embed_query(query)
         
+        # Track original dense scores for relevance calculation
+        dense_score_map: dict[int, float] = {}  # doc_id -> original cosine score
+        
         try:
             dense_response = self.client.query_points(
                 collection_name=self.COLLECTION_NAME,
@@ -408,6 +414,9 @@ class VectorStore:
             )
             dense_hits = getattr(dense_response, "points", dense_response) or []
             dense_results = [(hit.id, hit.score) for hit in dense_hits]
+            # Store original scores for later
+            for hit in dense_hits:
+                dense_score_map[hit.id] = hit.score
         except Exception as e:
             logger.warning(f"[VectorStore] Dense search failed: {e}")
             dense_results = []
@@ -484,15 +493,47 @@ class VectorStore:
                         embedding=None
                     )
                     
+                    # --- TEMPORAL-AWARE RECIPROCAL RANK FUSION (NOVELTY) ---
+                    # Apply exponential time decay to the RRF score
+                    # Half-life of 14 days (news loses half its relevance every 2 weeks)
+                    final_score = fused_score
+                    if published_at_dt:
+                        # Ensure timezone awareness
+                        now = datetime.now(timezone.utc)
+                        pub_time = published_at_dt
+                        if pub_time.tzinfo is None:
+                            pub_time = pub_time.replace(tzinfo=timezone.utc)
+                        
+                        days_old = max(0, (now - pub_time).total_seconds() / 86400.0)
+                        
+                        # Half-life formula: This mathematically forces the multi-agent 
+                        # to prioritize recent events over highly-semantic but outdated events,
+                        # directly solving the static problem of traditional Prolog-GraphRAGs.
+                        decay_factor = 0.5 ** (days_old / 14.0)
+                        
+                        # We don't want old historical facts to reach 0 completely, 
+                        # so we floor the decay at 0.3
+                        decay_factor = max(0.3, decay_factor)
+                        final_score = fused_score * decay_factor
+                    # -------------------------------------------------------
+                    
                     results.append(
                         RetrievalResult(
                             chunk=chunk,
-                            score=fused_score,
-                            rank=rank + 1
+                            score=final_score,
+                            rank=0, # Will be re-assigned after sorting
+                            dense_score=dense_score_map.get(doc_id)  # Original cosine score
                         )
                     )
+
+                # Re-sort using the Temporal-Aware scores
+                results.sort(key=lambda r: r.score, reverse=True)
                 
-                logger.info(f"Hybrid search: {len(results)} results (dense={len(dense_results)}, bm25={len(sparse_results)})")
+                # Re-assign semantic ranks
+                for i, r in enumerate(results):
+                    r.rank = i + 1
+                
+                logger.info(f"Temporal-Aware Hybrid search: {len(results)} results (dense={len(dense_results)}, bm25={len(sparse_results)})")
                 
                 # Log filtering stats
                 if fused_results:
