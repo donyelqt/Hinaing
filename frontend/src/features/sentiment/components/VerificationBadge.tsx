@@ -53,6 +53,17 @@ export function VerificationBadge({
   const hasTavilyVerification = tavilyVerifiedSources.length > 0;
   const hasRedFlags = redFlags.length > 0;
 
+  const externalSourcesCount = tavilyVerifiedSources.filter(source => {
+    const isObject = typeof source === 'object' && source !== null;
+    const url = isObject ? (source as TavilySource).url : String(source);
+    return !url.startsWith('internal://');
+  }).length;
+
+  const hasInternalConsensus = tavilyVerifiedSources.some(source => {
+    const isObject = typeof source === 'object' && source !== null;
+    return isObject && (source as TavilySource).url.startsWith('internal://');
+  });
+
   // Determine claim verification status
   // Priority: External verification > Internal signals > Red flags
   const getVerificationStatus = () => {
@@ -93,7 +104,7 @@ export function VerificationBadge({
         status: 'likely_accurate',
         icon: CheckCircle,
         label: 'Likely Accurate',
-        description: hasRedFlags 
+        description: hasRedFlags
           ? 'Event verified, but source may have bias. Cross-reference recommended.'
           : 'This claim appears credible based on source reputation and corroboration.',
         bgColor: 'bg-blue-50',
@@ -180,10 +191,16 @@ export function VerificationBadge({
           </p>
           {/* Quick stats */}
           <div className="mt-2 flex items-center gap-2 flex-wrap">
-            {hasTavilyVerification && (
+            {externalSourcesCount > 0 && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-medium">
                 <CheckCircle className="h-3 w-3" />
-                {tavilyVerifiedSources.length} external sources verified
+                {externalSourcesCount} external source{externalSourcesCount !== 1 ? 's' : ''} verified
+              </span>
+            )}
+            {hasInternalConsensus && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium border border-indigo-200">
+                <ShieldCheck className="h-3 w-3" />
+                Agentic Consensus
               </span>
             )}
             {corroboratingSources > 0 && (
@@ -299,19 +316,33 @@ export function VerificationBadge({
                 </span>
               )}
             </div>
-            
+
             {/* Verified Sources List */}
             {(hasTavilyVerification && tavilyVerificationStatus !== 'unverified') && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-slate-500 mb-1">Corroborating sources found:</p>
-                  {tavilyVerifiedSources.map((source, idx) => {
-                    // Handle both old format (string) and new format (object with url, domain, title)
-                    const isObject = typeof source === 'object' && source !== null;
-                    const url = isObject ? (source as TavilySource).url : `https://www.google.com/search?q=site:${encodeURIComponent(source as string)}`;
-                    const domain = isObject ? (source as TavilySource).domain : (source as string);
-                    const title = isObject ? (source as TavilySource).title : (source as string);
-                    
-                    return (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-slate-500 mb-1">Corroborating sources found:</p>
+                {tavilyVerifiedSources.map((source, idx) => {
+                  // Handle both old format (string) and new format (object with url, domain, title)
+                  const isObject = typeof source === 'object' && source !== null;
+                  const url = isObject ? (source as TavilySource).url : `https://www.google.com/search?q=site:${encodeURIComponent(source as string)}`;
+                  const domain = isObject ? (source as TavilySource).domain : (source as string);
+                  const title = isObject ? (source as TavilySource).title : (source as string);
+
+                  return (
+                    url.startsWith('internal://') ? (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs transition-colors"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-indigo-500" />
+                        <div className="flex-1 min-w-0">
+                          <span className="block font-medium whitespace-normal leading-tight">{title}</span>
+                          <span className="block truncate text-[10px] text-indigo-600 opacity-80 mt-0.5 font-semibold">
+                            {domain}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
                       <a
                         key={idx}
                         href={url}
@@ -326,13 +357,14 @@ export function VerificationBadge({
                         </div>
                         <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
                       </a>
-                    );
-                  })}
-                  <p className="mt-1.5 text-[9px] text-slate-400">
-                    Click to view the original articles
-                  </p>
-                </div>
-              )}
+                    )
+                  );
+                })}
+                <p className="mt-1.5 text-[9px] text-slate-400">
+                  Click to view the original articles
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Fact Check Rating */}
