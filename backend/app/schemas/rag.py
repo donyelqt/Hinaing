@@ -42,8 +42,9 @@ class RetrievalResult(BaseModel):
     """Result from vector similarity search."""
     
     chunk: DocumentChunk
-    score: float
+    score: float  # Fused RRF score (used for ranking)
     rank: int
+    dense_score: float | None = None  # Original cosine similarity (for relevance tracking)
     
     class Config:
         arbitrary_types_allowed = True
