@@ -256,6 +256,28 @@ export function LandingHero() {
 
               {/* Gradient Border Wrapper */}
               <div className="relative rounded-[2rem] bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 p-[1.5px] animate-rainbow-border">
+                {/* Classic Ribbon Style with Stitched Look - Positioned at top corner */}
+                <div className="absolute -top-3 -right-1 z-20">
+                  {/* Main ribbon body */}
+                  <div className="relative flex items-stretch">
+                    {/* Ribbon tail left - stitched edge */}
+                    <div className="relative w-5 bg-gradient-to-b from-violet-700 to-violet-600" style={{ clipPath: 'polygon(0 0, 100% 0, 80% 50%, 100% 100%, 0 100%)' }}>
+                      <div className="absolute inset-0 border-r-2 border-dashed border-violet-400/50" />
+                    </div>
+                    {/* Ribbon body with stitched border effect - center text vertically */}
+                    <div className="relative flex items-center bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 px-5 py-3 shadow-lg">
+                      {/* Stitched border effect */}
+                      <div className="absolute inset-1 border-2 border-dashed border-white/30 rounded-sm" />
+                      <span className="relative z-10 text-[9px] font-bold uppercase tracking-wider text-white whitespace-nowrap">
+                        State-of-the-art Agentic AI
+                      </span>
+                    </div>
+                    {/* Ribbon tail right - stitched edge */}
+                    <div className="relative w-5 bg-gradient-to-b from-cyan-500 to-cyan-400" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 20% 50%, 0 100%)' }}>
+                      <div className="absolute inset-0 border-l-2 border-dashed border-cyan-300/50" />
+                    </div>
+                  </div>
+                </div>
                 <Card
                   className="relative h-full w-full rounded-[1.9rem] border-0 bg-white/90 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl"
                   onMouseEnter={() => handleMouseEnter('card')}
