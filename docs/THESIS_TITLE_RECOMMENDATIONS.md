@@ -56,7 +56,7 @@ This document provides thesis title options for **Hinaing** based on the system'
 
 ### 🥉 Rank 3
 
-> **Hinaing: Hierarchical Multi-Agent System with Context Engineering and Self-Learning RAG for Public Opinion Monitoring in Baguio City**
+> **Hinaing: Hierarchical Federated Multi-Agent DAG with Self-Learning Cyclic RAG for Public Opinion Monitoring in Baguio City**
 
 | Aspect | Covered |
 |--------|---------|
