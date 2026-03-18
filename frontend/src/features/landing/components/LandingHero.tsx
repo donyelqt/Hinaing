@@ -172,7 +172,7 @@ export function LandingHero() {
             <BaguioTeamsPill />
             <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-md hover:shadow-emerald-500/10 active:scale-95">
               <Sparkles className="h-3 w-3 text-emerald-500 animate-pulse" />
-              <span>Thesis Grade Research AI Architecture</span>
+              <span>Thesis Grade Research Novel AI Architecture</span>
             </div>
           </div>
 
