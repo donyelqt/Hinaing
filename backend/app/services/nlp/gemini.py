@@ -254,7 +254,19 @@ class LLMNarrativeClient:
             "TASK:\n"
             "1. Analyze ALL supporting conversations above.\n"
             "2. Reference the theme insights for structured context.\n"
-            "3. Generate a comprehensive, engaging narrative summary.\n\n"
+            "3. Generate a comprehensive, engaging narrative summary with IN-LINE CITATIONS.\n\n"
+            "CITATION FORMAT (CRITICAL - MUST FOLLOW):\n"
+            "- After EVERY claim or statement, add an in-line citation in this EXACT format:\n"
+            "  [Src: domain.com | Cred: 0.XX | Sent: SENTIMENT]\n"
+            "- Examples:\n"
+            "  ✓ Traffic increased on Session Road [Src: facebook.com | Cred: 0.87 | Sent: Negative]\n"
+            "  ✓ Water shortage concerns persist [Src: pia.gov.ph | Cred: 0.95 | Sent: Neutral]\n"
+            "  ✓ Local businesses report growth [Src: inquirer.net | Cred: 0.82 | Sent: Positive]\n"
+            "- Extract the domain from the source URL (e.g., 'facebook.com' from 'https://facebook.com/post/123')\n"
+            "- Use the credibility_score from document metadata (round to 2 decimals)\n"
+            "- Use the sentiment from document metadata (Negative/Neutral/Positive)\n"
+            "- EVERY paragraph MUST have at least 2-3 citations\n"
+            "- Citations prove your claims are grounded in retrieved documents\n\n"
             "FORMATTING REQUIREMENTS:\n"
             "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
             "- Each paragraph should focus on ONE major theme/topic with depth and context\n"
@@ -271,12 +283,13 @@ class LLMNarrativeClient:
             "- The summary field MUST be a single JSON string with \\n\\n for paragraph breaks\n"
             "- DO NOT use template literals or backticks - they are invalid JSON\n\n"
             "Return a JSON object with keys:\n"
-            '- summary: "string narrative with \\n\\n between paragraphs" (use double quotes!)\n'
+            '- summary: "string narrative with \\n\\n between paragraphs and [Src: ...] citations" (use double quotes!)\n'
             "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n\n"
             "Example CORRECT format:\n"
-            '{"summary": "**Theme 1:** First paragraph.\\n\\n**Theme 2:** Second paragraph.", "insights": []}\n\n'
+            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Cred: 0.87 | Sent: Negative].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Cred: 0.95 | Sent: Neutral].", "insights": []}\n\n'
             "Example WRONG format (DO NOT USE):\n"
-            "{'summary': `text with backticks`, 'insights': []}  ← INVALID!\n"
+            "{'summary': `text with backticks`, 'insights': []}  <- INVALID!\n"
+            '{"summary": "Traffic increased.", "insights": []}  <- MISSING CITATIONS!\n'
         )
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
