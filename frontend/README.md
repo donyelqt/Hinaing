@@ -37,7 +37,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Sentiment & Credibility Metrics
 
-The Sentiment Generator page displays two related metric groups: sentiment polarity (Negative/Neutral/Positive) and credibility (Legit Sources/Potential Fake News). These values power the CS thesis dashboards and are computed as follows:
+The Sentiment Generator page displays two related metric groups: sentiment polarity (Negative/Neutral/Positive) and credibility (High Credibility/Low Credibility). These values power the CS thesis dashboards and are computed as follows:
 
 ### Sentiment Polarity (Negative / Neutral / Positive)
 
@@ -45,18 +45,23 @@ The Sentiment Generator page displays two related metric groups: sentiment polar
 2. The frontend multiplies each score by 100 and rounds to the nearest integer for display (`Math.round(score * 100)`).
 3. If any score is missing, we fall back to calibrated defaults (54% / 31% / 15%) so the UI never renders an empty card.
 
-### Credibility Breakdown (Legit Sources / Potential Fake News)
+### Credibility Breakdown (High Credibility / Low Credibility)
 
-1. For every source document in `snapshot.sources`, we inspect `source.metadata` for these fields:
-   - `is_verified`: boolean issued by the backend’s classifier.
-   - `verification_status`: textual status such as `"verified"`, `"unverified"`, `"rumor"`.
-   - `credibility`: classifier output such as `"legit"`, `"credible"`, `"hoax"`, `"misinfo"`.
+**Threshold**: 0.55 (aligned with backend metrics)
+
+1. For every source document in `snapshot.sources`, we inspect `source.metadata` for:
+   - `credibility_score`: float (0.0-1.0) from 5-signal weighted ensemble
+   - `credibility_tier`: string ("high", "medium", "low", "very_low")
+
 2. Classification rules:
-   - **Legit** if `is_verified === true`, or if `verification_status` contains `verified`, or if `credibility` contains `legit/credible`.
-   - **Potential Fake News** if either `verification_status` or `credibility` contains any of: `fake`, `hoax`, `misinfo`, `misinformation`, `rumor`, `unverified`.
-   - Ambiguous sources (no red flags and not explicitly verified) are conservatively treated as legit to avoid over-counting misinformation.
-3. We compute percentages as `(bucket_count / total_sources) * 100`, clamp to 0–100, and round to integers before rendering.
-4. If the snapshot has no sources or metadata, we surface calibrated placeholder values (currently 78% legit / 22% suspect) and copy that explains the numbers are estimates until fresh verification labels arrive.
+   - **High Credibility** if `credibility_score >= 0.55` OR `credibility_tier` is "high" or "medium"
+   - **Low Credibility** if `credibility_score < 0.55` OR `credibility_tier` is "low" or "very_low"
+
+3. We compute percentages as `(bucket_count / total_sources) * 100`, round to integers before rendering.
+
+4. If the snapshot has no sources or metadata, we surface calibrated placeholder values and copy that explains the numbers are estimates until fresh verification labels arrive.
+
+**Note**: The 0.55 threshold is intentionally stricter than 0.5 to ensure higher quality standards for civic monitoring. This threshold is consistent across backend metrics collection and frontend display.
 
 Because both calculations are deterministic and pure, they are straightforward to test within Storybook/Unit tests and to explain in academic documentation.
 
