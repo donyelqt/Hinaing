@@ -206,8 +206,8 @@ async def generate_snapshot(
 
                 cred_scores = [(d.metadata or {}).get("credibility_score", 0.5) for d in enriched]
                 avg_cred = sum(cred_scores) / max(len(cred_scores), 1)
-                high_cred = sum(1 for s in cred_scores if s >= 0.6)
-                low_cred = sum(1 for s in cred_scores if s < 0.4)
+                high_cred = sum(1 for s in cred_scores if s >= 0.55)
+                low_cred = sum(1 for s in cred_scores if s < 0.55)
                 metrics.record_credibility_metrics(avg_cred, high_cred, low_cred)
 
             theme_docs = state.get("theme_documents", {})
