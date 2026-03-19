@@ -498,11 +498,17 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
 # NODE 7: Build Snapshot
 # --------------------------------------------------------------------------
 async def build_snapshot(state: SnapshotState) -> SnapshotState:
-    """Final Synthesis Node."""
+    """Final Synthesis Node with Faithfulness Verification.
+    
+    Uses Sequential Pipeline Pattern within Node 7:
+    - Phase 1: Generate (CoordinatorAgent) - with CWA citations
+    - Phase 2: Verify (FaithfulnessAgent) - PGCV verification
+    - Phase 3: Assemble (SnapshotResponse)
+    """
     request = state["request"]
     # Use enriched docs if available (full/sentiment modes), otherwise use raw docs (epistemic mode)
     docs = state.get("enriched", []) or state.get("documents", [])
-    
+
     total = max(len(docs), 1)
     counts = Counter(doc.sentiment or "neutral" for doc in docs)
     scores = {
@@ -514,7 +520,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
     summary_text = None
     insights_payload: list[dict[str, str]] = []
     coordinator_agent = get_coordinator_agent()
-    
+
     if coordinator_agent.is_available and docs:
         try:
             summary_text, insights_payload = await coordinator_agent.run(
@@ -538,10 +544,31 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             }
         )
 
+    # ─────────────────────────────────────────────────────────────
+    # Phase 2: Verify Claims (PGCV) - NEW
+    # ─────────────────────────────────────────────────────────────
+    verification_report = None
+    if summary_text:
+        try:
+            from ..agents.faithfulness_agent import FaithfulnessAgent
+            verifier = FaithfulnessAgent()
+            verification_report = await verifier.verify(
+                summary=summary_text,
+                documents=[doc.model_dump() for doc in docs],
+            )
+            logger.info(
+                f"[Node 7] Verification complete: "
+                f"{verification_report['verified_claims']}/{verification_report['total_claims']} "
+                f"verified ({verification_report['faithfulness_score']:.2f})",
+            )
+        except Exception as exc:
+            logger.exception("[snapshot] FaithfulnessAgent verification failed: %s", exc)
+            verification_report = None
+
     # Insight selection logic (Theme Agents > Gemini > Fallback)
     insights: list[Insight] = []
     theme_fallbacks = state.get("theme_insights") or []
-    
+
     if theme_fallbacks:
         insights.extend(theme_fallbacks)
     elif insights_payload:
@@ -590,6 +617,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             actionable_insights=insights,
             alerts=alerts,
             sources=docs,
+            verification=verification_report,  # NEW: Include verification report
         )
     except Exception as exc:
         logger.exception("[snapshot] Failed to create SnapshotResponse: %s", exc)
