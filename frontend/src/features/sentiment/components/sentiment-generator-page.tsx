@@ -58,6 +58,19 @@ type SnapshotResponse = {
     sentiment?: string | null;
     metadata?: Record<string, unknown>;
   }[] | null;
+  verification?: {
+    total_claims: number;
+    verified_claims: number;
+    unverified_claims: number;
+    faithfulness_score: number;
+    claim_details: Array<{
+      claim: string;
+      category: string;
+      entailment_score: number;
+      status: string;
+      supporting_sources: string[];
+    }>;
+  } | null;
 };
 
 type NarrativeSummary = {
@@ -709,6 +722,49 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             </p>
                           </div>
                         </div>
+
+                        {/* Faithfulness Score - NEW */}
+                        {snapshot.verification && (
+                          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                              hoveredCardIndex === 7 && "transform scale-105 shadow-xl ring-2 ring-violet-300"
+                            )}>
+                              <strong className="block text-base sm:text-lg font-semibold text-violet-600">
+                                {Math.round(snapshot.verification.faithfulness_score * 100)}%
+                              </strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Faithfulness</span>
+                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                {snapshot.verification.faithfulness_score >= 0.85 ? '✅ SOTA' : '⚠️ Needs improvement'}
+                              </p>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                              hoveredCardIndex === 8 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
+                            )}>
+                              <strong className="block text-base sm:text-lg font-semibold text-emerald-600">
+                                {snapshot.verification.verified_claims}/{snapshot.verification.total_claims}
+                              </strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Claims Verified</span>
+                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                LLM extraction + NLI verification
+                              </p>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                              hoveredCardIndex === 9 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
+                            )}>
+                              <strong className="block text-base sm:text-lg font-semibold text-rose-600">
+                                {snapshot.verification.unverified_claims}
+                              </strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Unverified</span>
+                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                Requires review
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => setShowSources(!showSources)}
