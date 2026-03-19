@@ -113,7 +113,7 @@ flowchart TB
         subgraph Pipeline["7-Node Multi-Agent Pipeline (13 Agents)"]
             subgraph Node1["Node 1: QueryOrchestratorAgent (10%) - Context Engineering"]
                 QO[QueryOrchestratorAgent]
-                QO --> |EMERGING_CONCERNS + expand_contextual_queries| QP[QueryPlan<br/>6 diverse queries]
+                QO --> |FOCUS_CONCERN_KEYWORDS + get_temporal_context| QP[QueryPlan<br/>6 diverse queries]
             end
 
             subgraph Node2["Node 2: RetrievalAgent (25%)"]
@@ -230,10 +230,9 @@ sequenceDiagram
         
         Note over QO: Node 1: QueryOrchestratorAgent (Context Engineering)
         API->>QO: parse_user_intent(message)
-        QO->>QO: ReAct: analyze_focus_areas tool (Dynamic Context Engineering)
-        QO->>QO: ReAct: generate_query tool (EMERGING_CONCERNS)
-        QO->>QO: ReAct: expand_contextual_queries tool (dynamic context engineering)
-        QO->>QO: ReAct: evaluate_query tool
+        QO->>QO: ReAct: get_domain_context tool (Dynamic Context Engineering)
+        QO->>QO: ReAct: get_temporal_context tool (dynamic context engineering)
+        QO->>QO: ReAct: validate_query_diversity tool
         API-->>Client: SSE: {stage: "query_orchestrator", progress: 0.1}
         
         Note over RA: Node 2: RetrievalAgent
@@ -304,6 +303,8 @@ sequenceDiagram
 
 ## AI Assistant Architecture (1 Agent)
 
+**Important**: The Chat Agent uses **Groq** (not Gemini) as the primary LLM provider for fast inference.
+
 ```mermaid
 flowchart TB
     subgraph Frontend["Frontend (Next.js 15)"]
@@ -315,25 +316,20 @@ flowchart TB
     subgraph Backend["Backend (FastAPI)"]
         subgraph SingleAgent["ChatAgent (1 Agent)"]
             CA[ChatAgent]
-            GF[Gemini 2.0 Flash]
-            FC[Function Calling]
-            CA --> GF --> FC
-        end
-
-        subgraph Tools["Available Tools"]
-            SCD[search_civic_data]
+            GF[Groq (llama-3.3-70b)]
+            ID[Intent Detection]
+            CA --> GF --> ID
         end
 
         subgraph Search["LangSearch Client"]
-            LS[LangSearch API]
-            FB[+ Facebook PIO Pages]
-            LS --> FB
+            LS[LangSearch API<br/>30-day window]
+            LS --> |web docs| CA
         end
 
-        FC --> |tool_call| SCD
-        SCD --> Search
-        Search --> |results| FC
-        FC --> |final_response| Response[JSON Response]
+        ID --> |greeting/identity| Direct[Direct Response]
+        ID --> |civic question| Search
+        Search --> |grounded prompt| GF
+        GF --> |final_response| Response[JSON Response + Sources]
     end
 
     Request[User Message + History] --> SingleAgent
@@ -341,6 +337,41 @@ flowchart TB
 
     style SingleAgent fill:#e1f5fe
     style Search fill:#fff3e0
+    style Direct fill:#f1f8e9
+```
+
+### Chat Agent Specifications
+
+| Aspect | Implementation |
+|--------|----------------|
+| **LLM Provider** | **Groq** (`groq/compound` - llama-3.3-70b) |
+| **Retrieval** | LangSearch web search ONLY (30-day window) |
+| **Memory** | Conversation buffer (last 6 messages) - **NO Qdrant** |
+| **Intent Detection** | Keyword-based (greeting, identity, civic, sentiment) |
+| **Latency** | 1-2 seconds |
+| **Verification** | None (LLM grounding only) |
+| **Sentiment Analysis** | None |
+
+### Dead Code (Not Used)
+
+The following are defined but **NEVER called** in production:
+
+```python
+# Imported but never used
+from ..agents.context_agent import ContextAugmentationAgent  # ← Never called
+
+# Defined but never called
+context_agent = ContextAugmentationAgent()  # ← Dead code
+def search_sentiment_data(...)  # ← Dead code
+tools_map = {...}  # ← Dead code
+def _is_sentiment_query(...)  # ← Dead code
+```
+
+**Actual retrieval flow**:
+```python
+# Line 209: ONLY retrieval call
+search_client = LangSearchClient()
+web_docs = await search_client.search(query=fresh_query, time_window="30d", limit=20)
 ```
 
 ---
@@ -349,7 +380,7 @@ flowchart TB
 
 | Aspect | Chat Analyzer (13 Agents) | AI Assistant (1 Agent) |
 |--------|---------------------------|------------------------|
-| **QueryOrchestratorAgent** | ✅ ReAct with 4 tools (context engineering) | ❌ None |
+| **QueryOrchestratorAgent** | ✅ ReAct with 3 tools (context engineering) | ❌ None |
 | **RetrievalAgent** | ✅ LangSearch + FB + Reddit | ⚠️ LangSearch + Memory |
 | **ContextAugmentationAgent** | ✅ Memory recall + consolidation | ⚠️ Memory recall only (via tool) |
 | **SentimentAgent** | ✅ RoBERTa + Gemini ensemble | ❌ None |
