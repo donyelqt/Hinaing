@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# Build version: 2026-03-03-BGE-large-v1
-# Upgrade: BGE-small (384d) → BGE-large (1024d) for higher accuracy
+# Build version: 2026-03-20-NLI-v2
+# Added: rank-bm25, scikit-learn for NLI and hybrid search
 
 # ============ Builder Stage ============
 FROM python:3.11-slim AS builder
@@ -18,9 +18,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
-
-# Install BM25 for hybrid search
-RUN pip install --no-cache-dir rank-bm25
 
 COPY pyproject.toml poetry.lock ./
 # Regenerate lock file if pyproject.toml changed, then install

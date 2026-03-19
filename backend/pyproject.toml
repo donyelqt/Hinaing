@@ -29,7 +29,9 @@ sentence-transformers = "^5.1.2"
 transformers = "^4.40.0"
 praw = "^7.8.1"
 langchain-core = "^0.2.0"
-psutil = "^5.9.0"  # Memory monitoring for Railway debugging
+psutil = "^5.9.0"
+rank-bm25 = "^0.2.2"
+scikit-learn = "^1.3.0"
 
 [[tool.poetry.source]]
 name = "pytorch-cpu"
