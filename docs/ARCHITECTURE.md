@@ -1517,9 +1517,15 @@ SPEED OPTIMIZATION: 60% faster execution (6-7s vs 15-20s) when cache hits occur
 
 ### A. The Chat Agent (Control Group)
 - **Pattern:** Agentic RAG (ReAct Loop)
-- **Goal:** Single-turn, atomic question answering
-- **Stack:** Gemini 2.0 Flash + LangSearch
-- **Behavior:** Reactive, waiting for user input
+- **Goal:** Multi-turn civic Q&A with conversation history
+- **Stack:** Groq (llama-3.3-70b) + LangSearch + FastAPI
+- **Behavior:** Proactive - Intent detection → LangSearch → Grounded generation
+- **Retrieval:** Web search ONLY (LangSearch, 30-day window)
+- **Memory:** Conversation buffer (last 6 messages) - NO Qdrant
+- **Latency:** 1-2 seconds
+- **Agent Count:** 1 (ChatAgent)
+- **Verification:** None (relies on LLM grounding only)
+- **Sentiment Analysis:** None
 
 ### B. The Sentiment Generator (Novel Contribution)
 - **Pattern:** Hierarchical Graph-Based Multi-Agent System with Self-Learning
