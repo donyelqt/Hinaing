@@ -58,7 +58,7 @@ function DataScientistBadge() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const target = 18;
+    const target = 19;
     const duration = 1200;
     const stepTime = Math.floor(duration / target);
     let current = 0;
