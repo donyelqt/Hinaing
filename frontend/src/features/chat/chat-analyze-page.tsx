@@ -49,6 +49,19 @@ interface AnalysisData {
         high_percent: number;
         low_percent: number;
     };
+    verification?: {
+        total_claims: number;
+        verified_claims: number;
+        unverified_claims: number;
+        faithfulness_score: number;
+        claim_details?: Array<{
+            claim: string;
+            category: string;
+            entailment_score: number;
+            status: string;
+            supporting_sources: string[];
+        }>;
+    };
     document_count?: number;
     insights_count?: number;
     alerts?: string[];
@@ -241,6 +254,30 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                         <div className="bg-white/70 rounded-lg p-1.5 sm:p-2 shadow-inner">
                             <p className="text-base sm:text-lg font-bold text-rose-600">{cred.low_percent}%</p>
                             <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Review</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Faithfulness Scores - NEW */}
+                {data.verification && (
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center mt-1.5 sm:mt-2">
+                        <div className="bg-violet-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-violet-200">
+                            <p className="text-base sm:text-lg font-bold text-violet-600">
+                                {Math.round(data.verification.faithfulness_score * 100)}%
+                            </p>
+                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Faithfulness</p>
+                        </div>
+                        <div className="bg-emerald-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-emerald-200">
+                            <p className="text-base sm:text-lg font-bold text-emerald-600">
+                                {data.verification.verified_claims}/{data.verification.total_claims}
+                            </p>
+                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Claims</p>
+                        </div>
+                        <div className="bg-rose-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-rose-200">
+                            <p className="text-base sm:text-lg font-bold text-rose-600">
+                                {data.verification.unverified_claims}
+                            </p>
+                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Unverified</p>
                         </div>
                     </div>
                 )}
