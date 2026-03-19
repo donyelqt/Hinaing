@@ -95,6 +95,7 @@ class SnapshotResponse(BaseModel):
     actionable_insights: list[Insight]
     alerts: list[str] | None = None
     sources: list[WebDocument] | None = None
+    verification: VerificationReport | None = None  # NEW: Faithfulness verification
 
     @field_validator("alerts", mode="before")
     @classmethod
@@ -102,3 +103,32 @@ class SnapshotResponse(BaseModel):
         if not value:
             return value
         return [_sanitize_text(v) for v in value if v]
+
+
+class VerificationReport(BaseModel):
+    """Faithfulness verification report from FaithfulnessAgent.
+    
+    Contains claim-level verification results:
+    - total_claims: Number of claims extracted from summary
+    - verified_claims: Number of claims entailed by documents
+    - unverified_claims: Number of claims not supported by documents
+    - faithfulness_score: verified_claims / total_claims (0.0-1.0)
+    - claim_details: Detailed verification for each claim
+    """
+    total_claims: int = 0
+    verified_claims: int = 0
+    unverified_claims: int = 0
+    faithfulness_score: float = 0.0
+    claim_details: list[dict[str, Any]] = Field(default_factory=list)
+
+    @property
+    def is_faithful(self) -> bool:
+        """Check if faithfulness score meets threshold (≥0.70)."""
+        return self.faithfulness_score >= 0.70
+
+    @property
+    def verification_rate(self) -> float:
+        """Calculate verification rate (verified / total)."""
+        if self.total_claims == 0:
+            return 0.0
+        return self.verified_claims / self.total_claims
