@@ -5,7 +5,7 @@ export function ThesisSection() {
   const contributions = [
     { label: "Context Engineering", desc: "KEYWORD_CLUSTERS & variable trust tiers", icon: Layers },
     { label: "Self-Learning Cyclic RAG", desc: "Memory persistence + Smart Reuse for 81% API savings", icon: Database },
-    { label: "18-Agent Architecture", desc: "Hierarchical & conditional spawning", icon: Network },
+    { label: "19-Agent Architecture", desc: "Hierarchical & conditional spawning", icon: Network },
     { label: "Agentic AI with ReAct", desc: "Autonomous reasoning & tool use", icon: Brain },
     { label: "Ensemble Sentiment", desc: "RoBERTa + Gemini fusion tracking", icon: Cpu },
     { label: "5-Signal Credibility", desc: "Multi-modal source verification", icon: Award },
@@ -32,7 +32,7 @@ export function ThesisSection() {
             <br />
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            A Self-Learning Temporal-Aware Multi-Agent Framework for Truth Discovery in Civic Social Listening
+            A Self-Learning Temporal-Aware Multi-Agent Framework for Cost Efficiency and Truth Discovery in Public Opinion Analysis
           </p>
         </div>
 
@@ -158,7 +158,7 @@ export function ThesisSection() {
 
                   {/* Node 4: Synthesis */}
                   <div className="w-full p-3 rounded-lg border border-cyan-200 bg-cyan-50 text-center shadow-sm relative hover:border-cyan-400 transition-colors">
-                    <span className="text-xs font-bold text-cyan-700 uppercase tracking-wide">Synthesis & Reporting</span>
+                    <span className="text-xs font-bold text-cyan-700 uppercase tracking-wide">Synthesis, Reporting & Faithfulness</span>
                   </div>
 
                   {/* Loop Back Line (Visual Only) */}
