@@ -180,7 +180,7 @@ This is why "7 core agents" fits into "7 nodes"—Node 4 contains 3 agents runni
 │                                                                             │
 │  Self-Learning Loop: Node 5 stores enriched docs → Node 3 recalls them     │
 │  Smart Reuse: 81% API cost reduction | Cache: 0% → 95%+ over time          │
-│  Faithfulness: 100% verification rate (12/12 claims verified)              │
+│  Faithfulness: 100% on run verification (12/12 claims, n=1)                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 ### Node Descriptions (Agent & Node Mapping)
@@ -370,7 +370,7 @@ flowchart TB
 
         subgraph Node7["Node 7: Coordinator + Faithfulness Verification"]
             COORD[CoordinatorAgent<br/>━━━━━━━━━━━━━━━<br/>Narrative Synthesis<br/>Sentiment Alignment<br/>Gemini 2.5 Flash-Lite]
-            FAITH[FaithfulnessAgent<br/>━━━━━━━━━━━━━━━<br/>Claim Extraction (Groq)<br/>NLI Verification (DeBERTa-v3)<br/>100% Verification Rate]
+            FAITH[FaithfulnessAgent<br/>━━━━━━━━━━━━━━━<br/>Claim Extraction (Groq)<br/>NLI Verification (DeBERTa-v3)<br/>~100% Verification Rate]
         end
 
         %% Linear Flow
