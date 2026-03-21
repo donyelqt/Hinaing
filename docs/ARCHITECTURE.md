@@ -574,11 +574,17 @@ flowchart TB
         TH1 & TH2 & TH3 & TH4 & TH5 & TH6 --> TI
     end
 
-    subgraph Node7["Node 7: Coordinator"]
+    subgraph Node7["Node 7: Executive Synthesis + Verification"]
+        direction LR
         COORD[CoordinatorAgent]
+        FAITH[FaithfulnessAgent]
         SD["Sentiment Alignment"]
         NR["Narrative Gen"]
+        CE["Claim Extraction"]
+        NV["NLI Verification"]
         COORD --> SD --> NR
+        NR --> CE --> NV
+        FAITH --> CE & NV
         SR[SnapshotResponse]
         NR --> SR
     end
@@ -652,10 +658,15 @@ flowchart TB
 - **Conditional**: Only spawned if theme bucket has documents AND matches focus_areas
 - **Output**: 3 insights per active theme
 
-**Node 7: Coordinator**
-- **Sentiment Alignment**: Receives sentiment distribution from Node 4
-- **Narrative Generation**: Gemini 2.5 Flash-Lite synthesizes final summary
-- **Quality Check**: Ensures summary matches sentiment percentages
+**Node 7: Executive Synthesis + Verification (Sequential 2-Phase)**
+- **Phase 1 - CoordinatorAgent**:
+  - **Sentiment Alignment**: Receives sentiment distribution from Node 4
+  - **Narrative Generation**: Gemini 2.5 Flash-Lite synthesizes final summary
+  - **Quality Check**: Ensures summary matches sentiment percentages
+- **Phase 2 - FaithfulnessAgent**:
+  - **Claim Extraction**: Groq LLM extracts factual claims from narrative
+  - **NLI Verification**: DeBERTa-v3 checks entailment between claims and source documents
+  - **Faithfulness Score**: Computes percentage of claims verified by sources (~100% target)
 
 ### Self-Learning Loop Flow
 
