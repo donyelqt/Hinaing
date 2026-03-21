@@ -403,7 +403,7 @@ flowchart TB
 | **4** | SentimentAgent + CredibilityAgent + ThemeRouterAgent | **Smart Reuse check** → Parallel analysis (sentiment + credibility + routing) | Concurrent (I/O-bound) | **81% API cost savings** via cache |
 | **5** | ContextAugmentationAgent | Semantic chunking, BGE embedding, Qdrant storage, metadata enrichment | Parallel (CPU-bound) | Stores enriched docs for future reuse |
 | **6** | 6 Theme Agents (factory-spawned) | Domain-specific insight generation (Infrastructure, Health, Safety, Tourism, Economy, Environment) | Parallel (CPU-bound) | Conditional execution based on focus areas |
-| **7** | CoordinatorAgent | Narrative synthesis, sentiment alignment, final response assembly | Sequential (CPU-bound) | Ensures summary matches sentiment % |
+| **7** | CoordinatorAgent + FaithfulnessAgent | **Phase 1**: Narrative synthesis, sentiment alignment<br>**Phase 2**: Claim extraction (Groq LLM) + NLI verification (DeBERTa-v3) | Sequential 2-Phase | Ensures summary matches sentiment % + ~95% faithfulness |
 
 ### Hybrid Search Architecture (Dense + Sparse BM25)
 
