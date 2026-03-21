@@ -6,7 +6,7 @@ export function ThesisSection() {
     { label: "Temporal-Aware Context Engineering (NOVEL)", desc: "Baguio calendar facts + TA-RRF (14-day half-life)", icon: Layers },
     { label: "Analysis Consolidation (NOVEL)", desc: "First to cache enriched analysis for 81% API cost reduction", icon: Database },
     { label: "Self-Learning Cyclic RAG (NOVEL)", desc: "CIR 0% → 81% over consecutive runs, 35% speedup", icon: Database },
-    { label: "19-Agent Architecture", desc: "7 core + 5 credibility + 6 theme + 1 faithfulness", icon: Network },
+    { label: "19-Agent Architecture (Overall NOVEL)", desc: "7 core + 5 credibility + 6 theme + 1 faithfulness", icon: Network },
     { label: "Agentic AI with ReAct", desc: "Autonomous query synthesis with 3 specialized tools", icon: Brain },
     { label: "Ensemble Sentiment (NOVEL)", desc: "RoBERTa (40%) + Gemini (60%) = 98% accuracy", icon: Cpu },
     { label: "5-Signal Credibility (NOVEL)", desc: "97% Agentic Verification Rate (AVR) in production", icon: ShieldCheck },
