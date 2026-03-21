@@ -1,14 +1,15 @@
 import { Card } from "@/components/ui/card";
-import { GraduationCap, BookOpen, Award, Target, Network, ArrowDown, ArrowRight, Sparkles, GitBranch, Database, Cpu, Brain, Layers } from "lucide-react";
+import { GraduationCap, BookOpen, Award, Target, Network, ArrowDown, ArrowRight, Sparkles, GitBranch, Database, Cpu, Brain, Layers, Zap, ShieldCheck } from "lucide-react";
 
 export function ThesisSection() {
   const contributions = [
-    { label: "Context Engineering", desc: "KEYWORD_CLUSTERS & variable trust tiers", icon: Layers },
-    { label: "Self-Learning Cyclic RAG", desc: "Memory persistence + Smart Reuse for 81% API savings", icon: Database },
-    { label: "19-Agent Architecture", desc: "Hierarchical & conditional spawning", icon: Network },
-    { label: "Agentic AI with ReAct", desc: "Autonomous reasoning & tool use", icon: Brain },
-    { label: "Ensemble Sentiment", desc: "RoBERTa + Gemini fusion tracking", icon: Cpu },
-    { label: "5-Signal Credibility", desc: "Multi-modal source verification", icon: Award },
+    { label: "Temporal-Aware Context Engineering (NOVEL)", desc: "Baguio calendar facts + TA-RRF (14-day half-life)", icon: Layers },
+    { label: "Analysis Consolidation (NOVEL)", desc: "First to cache enriched analysis for 81% API cost reduction", icon: Database },
+    { label: "Self-Learning Cyclic RAG (NOVEL)", desc: "CIR 0% → 81% over consecutive runs, 35% speedup", icon: Database },
+    { label: "19-Agent Architecture", desc: "7 core + 5 credibility + 6 theme + 1 faithfulness", icon: Network },
+    { label: "Agentic AI with ReAct", desc: "Autonomous query synthesis with 3 specialized tools", icon: Brain },
+    { label: "Ensemble Sentiment (NOVEL)", desc: "RoBERTa (40%) + Gemini (60%) = 98% accuracy", icon: Cpu },
+    { label: "5-Signal Credibility (NOVEL)", desc: "97% Agentic Verification Rate (AVR) in production", icon: ShieldCheck },
   ];
 
   return (
@@ -31,8 +32,8 @@ export function ThesisSection() {
             </span>
             <br />
           </h2>
-          <p className="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
-            A Self-Learning Temporal-Aware Multi-Agent Framework for Cost Efficiency and Truth Discovery in Public Opinion Analysis
+          <p className="text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto">
+            A Self-Learning Temporal-Aware Multi-Agent Framework for Cost-Efficiency and Truth Discovery in Public Opinion Analysis
           </p>
         </div>
 
@@ -42,7 +43,7 @@ export function ThesisSection() {
           {/* Left Column: Research Details */}
           <div className="space-y-6">
 
-            {/* Reach Focus Card */}
+            {/* Research Focus Card */}
             <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-violet-200/50 hover:-translate-y-1 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative flex items-start gap-4">
@@ -52,7 +53,7 @@ export function ThesisSection() {
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-slate-900">Research Focus</h3>
                   <p className="text-sm text-slate-600 leading-relaxed text-justify">
-                    This thesis explores the intersection of <strong>multi-agent systems</strong>, <strong>epistemic truth discovery</strong>, and <strong>civic social listening</strong>. Hinaing represents a novel approach to automated public opinion analysis that combines agentic AI with rigorous credibility verification.
+                    This thesis explores the intersection of <strong>multi-agent systems</strong>, <strong>epistemic truth discovery</strong>, and <strong>public opinion analysis</strong>. AgenticHinaing represents a novel approach to automated civic discourse monitoring that combines agentic AI with rigorous real-time credibility verification and cost-efficient analysis consolidation.
                   </p>
                 </div>
               </div>
@@ -68,7 +69,7 @@ export function ThesisSection() {
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-slate-900">Novelty & Impact</h3>
                   <p className="text-sm text-slate-600 leading-relaxed text-justify">
-                    Unlike traditional sentiment analysis tools, Hinaing implements a <strong>federated multi-agent system</strong> where 18 autonomous agents collaborate to provide verified, context-aware insights. The system learns from each analysis, continuously improving its understanding of civic discourse in Baguio City.
+                    Unlike traditional sentiment analysis tools, AgenticHinaing implements a <strong>federated multi-agent system</strong> where 19 autonomous agents collaborate to provide verified, context-aware insights. The system achieves <strong>81% API cost reduction</strong> through Analysis Consolidation—caching and reusing enriched analysis (sentiment + credibility) across query cycles—while maintaining <strong>97% Agentic Verification Rate</strong> through real-time 5-signal credibility framework.
                   </p>
                 </div>
               </div>
