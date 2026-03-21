@@ -253,7 +253,7 @@ flowchart TB
 
             subgraph Node7["Node 7: Coordinator + Faithfulness"]
                 COORD[CoordinatorAgent<br/>Narrative Synthesis]
-                FAITH[FaithfulnessAgent<br/>NLI Claim Verification]
+                FAITH[FaithfulnessAgent<br/>LLM Extraction + NLI Verification]
             end
 
             Node1 --> Node2
@@ -370,7 +370,7 @@ flowchart TB
 
         subgraph Node7["Node 7: Coordinator + Faithfulness Verification"]
             COORD[CoordinatorAgent<br/>━━━━━━━━━━━━━━━<br/>Narrative Synthesis<br/>Sentiment Alignment<br/>Gemini 2.5 Flash-Lite]
-            FAITH[FaithfulnessAgent<br/>━━━━━━━━━━━━━━━<br/>Claim Extraction (Groq)<br/>NLI Verification (DeBERTa-v3)<br/>~100% Verification Rate]
+            FAITH[FaithfulnessAgent<br/>━━━━━━━━━━━━━━━<br/>LLM Claim Extraction<br/>NLI Verification<br/>~100% Rate]
         end
 
         %% Linear Flow
