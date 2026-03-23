@@ -53,9 +53,15 @@ COPY app ./app
 # Pre-download models during build to avoid startup timeout
 RUN python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
     AutoModelForSequenceClassification.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
-    AutoTokenizer.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest')" && \
+    AutoTokenizer.from_pretrained('cardiffnlp/twitter-roberta-base-sentiment-latest'); \
+    print('✓ RoBERTa sentiment model downloaded')" && \
     python -c "from sentence_transformers import SentenceTransformer; \
-    SentenceTransformer('BAAI/bge-large-en-v1.5')"
+    SentenceTransformer('BAAI/bge-large-en-v1.5'); \
+    print('✓ BGE-large embedding model downloaded')" && \
+    python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
+    AutoModelForSequenceClassification.from_pretrained('MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33'); \
+    AutoTokenizer.from_pretrained('MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33'); \
+    print('✓ DeBERTa-v3 NLI entailment model downloaded')"
 
 # Hugging Face Spaces uses port 7860 by default
 EXPOSE 7860
@@ -72,8 +78,8 @@ WORKDIR $HOME/app
 COPY --chown=user . .
 COPY --from=builder --chown=user /app/.venv /home/user/app/.venv
 
-# Health check for Hugging Face - increased timeout for BGE-large (1024d model)
-HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=3 \
+# Health check for Hugging Face - increased timeout for model loading (RoBERTa + BGE + NLI)
+HEALTHCHECK --interval=30s --timeout=30s --start-period=180s --retries=3 \
     CMD python -c "import os, urllib.request; port = os.getenv('PORT', '7860'); urllib.request.urlopen(f'http://localhost:{port}/health')" || exit 1
 
 CMD ["sh", "-c", "uvicorn app.main:create_app --factory --host 0.0.0.0 --port 7860"]

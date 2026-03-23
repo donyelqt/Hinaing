@@ -30,7 +30,7 @@ def _load_models_sync():
         logger.info("System cleaned: Ollama removed.")
     except Exception as e:
         logger.warning(f"[startup] Failed to preload sentiment model: {e}")
-    
+
     # Preload embedding model for RAG
     try:
         from .services.rag.embeddings import get_embedding_service
@@ -38,7 +38,15 @@ def _load_models_sync():
         logger.info("[startup] Embedding model loaded")
     except Exception as e:
         logger.warning(f"[startup] Failed to preload embedding model: {e}")
-    
+
+    # Preload NLI entailment model for claim verification
+    try:
+        from .services.verification.entailment_checker import get_entailment_checker
+        get_entailment_checker(use_gpu=False)  # CPU-only for stability
+        logger.info("[startup] NLI entailment model loaded")
+    except Exception as e:
+        logger.warning(f"[startup] Failed to preload entailment model: {e}")
+
     logger.info("[startup] Model preloading complete")
 
 
