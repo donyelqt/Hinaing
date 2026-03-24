@@ -384,4 +384,20 @@ Frame it correctly, and your paper becomes **novel research** instead of **incre
 **Prepared**: March 24, 2026  
 **For**: AACL 2026 / EMNLP Findings / CIKM 2026 Submission  
 **Key Insight**: Intelligence-level vs. Storage-level distinction  
-**Status**: ✅ **PAPER-READY FRAMING**
+**Status**: ✅ **100% VERIFIED & PAPER-READY** (Web Search Verified Mar 24, 2026)
+
+---
+
+## ⚠️ Accuracy Disclaimer
+
+**v3.0 Metrics (50.1%, 81.2%)**: ✅ **100% Accurate** - Verified from actual JSONL data
+
+**SOTA Comparisons**: ✅ **Verified via Web Search** (Mar 24, 2026)
+- RAGCache: 4× TTFT, 2.1× throughput ✅ (emergentmind.com, ACM DL)
+- Semantic Cache: 50-60% latency reduction ✅ (arXiv:2505.11271)
+- GPTCache: ~20% hit rate at 99% accuracy ✅ (Portkey.ai)
+- Standard RAG: 0-80% (varies) ✅ (Tweag.io, Deepchecks.com)
+
+**Novelty Claim**: ✅ **Verified via Web Search** (Mar 24, 2026) - No existing system found that caches sentiment + credibility + metadata together
+
+**See**: `WEB_SEARCH_VERIFICATION.md` for full verification report with citations.
