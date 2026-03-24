@@ -34,7 +34,7 @@
    - 100.0% agentic verification rate (6 runs achieved perfect verification)
    - 100.0% faithfulness score (NLI-verified claims)"
 
-✅ "Thesis benchmark runs demonstrate SOTA performance:
+✅ "Thesis demonstration runs show peak performance:
    - 81.2% API cost reduction (run 7e074c00, Feb 6, 2026)
    - 97.4% agentic verification rate (run c059a907, Mar 19, 2026)
    - 100% faithfulness score (runs e767599d, 1fd33277)"
@@ -46,8 +46,9 @@
 
 ```markdown
 ✅ "AgenticHinaing achieves 81.2% API cost reduction under optimal
-   conditions, operating at intelligence-level (caching enriched analysis)
-   rather than storage-level (caching raw documents). For comparison:
+   conditions (run 7e074c00, high cache overlap), operating at
+   intelligence-level (caching enriched analysis) rather than
+   storage-level (caching raw documents). For comparison:
    RAGCache reports 4× TTFT reduction and 2.1× throughput [15],
    GPTCache reports ~20% hit rate at 99% accuracy [18], and standard
    RAG achieves 0-80% (varies by retrieval quality) [31]. Average
@@ -62,7 +63,7 @@
 ✅ "NLI-based faithfulness verification achieves 100% claim
    verification (26/26 claims across 2 runs), exceeding the >90%
    threshold for 'grounded' RAG systems [31, 32]. This is the
-   strongest SOTA claim, with direct empirical validation."
+   strongest claim, with direct empirical validation."
 ```
 
 ---
@@ -244,23 +245,24 @@ from memory), 100% verification (6 runs), and 100% faithfulness
 
 **API Cost Reduction**: AgenticHinaing achieves 100.0% under optimal
 conditions (run 6efdf5b9, all documents from memory), with 81.2% in
-thesis benchmark runs (run 7e074c00). This operates at intelligence-level
-(caching enriched analysis), fundamentally different from storage-level
-approaches. For comparison: RAGCache reports 4× TTFT reduction and 2.1×
-throughput [15], GPTCache reports ~20% hit rate at 99% accuracy [18],
-and standard RAG achieves 0-80% (varies by retrieval quality) [31].
-Average performance (50.1%, 95% CI: [45.8%, 54.4%]) reflects production
-deployment with diverse queries and varying cache overlap.
+high cache overlap conditions (run 7e074c00). This operates at
+intelligence-level (caching enriched analysis), fundamentally different
+from storage-level approaches. For comparison: RAGCache reports 4× TTFT
+reduction and 2.1× throughput [15], GPTCache reports ~20% hit rate at
+99% accuracy [18], and standard RAG achieves 0-80% (varies by retrieval
+quality) [31]. Average performance (50.1%, 95% CI: [45.8%, 54.4%])
+reflects production deployment with diverse queries and varying cache
+overlap.
 
 **Agentic Verification**: The 5-signal credibility framework achieves
-100.0% verification rate (6 runs), with 97.4% in thesis benchmark runs
-(run c059a907). Average performance (62.8%, 95% CI: [58.9%, 66.7%])
-reflects diverse source quality (gov.ph vs. social media).
+100.0% verification rate (6 runs), with 97.4% in run c059a907. Average
+performance (62.8%, 95% CI: [58.9%, 66.7%]) reflects diverse source
+quality (gov.ph vs. social media).
 
 **Faithfulness Score**: NLI-based post-generation verification achieves
 100% claim verification (26/26 claims across 2 runs), exceeding the
->90% threshold for 'grounded' RAG systems [31, 32]. This is the strongest
-SOTA claim, with direct empirical validation."
+>90% threshold for 'grounded' RAG systems [31, 32]. This is the
+strongest claim, with direct empirical validation."
 ```
 
 ### **For Section 6.1 (Limitations):**
@@ -336,15 +338,16 @@ further validation."
 
 | System | API Reduction | Verification | Faithfulness | Source |
 |--------|---------------|--------------|--------------|--------|
-| **AgenticHinaing (best)** | **100.0%** | **100.0%** | **100%** | This work ✅ |
-| **AgenticHinaing (avg)** | **50.1%** | **62.8%** | **100%** | This work ✅ |
-| **AgenticHinaing (benchmark)** | **81.2%** | **97.4%** | **100%** | This work ✅ |
+| **AgenticHinaing (best-case)** | **100.0%** | **100.0%** | **100%** | This work ✅ |
+| **AgenticHinaing (best-case)** | **81.2%** | **97.4%** | **100%** | This work ✅ |
+| **AgenticHinaing (average)** | **50.1%** | **62.8%** | **100%** | This work ✅ |
 | RAGCache | 4× TTFT, 2.1× throughput | N/A | N/A | Jin et al. 2024 [15] ✅ |
 | GPTCache | ~20% hit rate (99% accuracy) | N/A | N/A | Portkey 2023 [18] ✅ |
 | Semantic Cache | 50-60% latency reduction | N/A | N/A | Couturier et al. 2025 [16] ✅ |
+| HyDE | N/A (retrieval quality) | N/A | N/A | Gao et al. 2023 [17] |
 | Standard RAG | 0-80% (varies by retrieval) | 60-75% | >90% (grounded threshold) | Industry [31] ✅ |
 
-**Note:** AgenticHinaing operates at **intelligence-level** (caching enriched analysis), while baselines operate at **storage-level** (caching KV-states, summaries, or raw documents). Direct quantitative comparison is challenging due to different evaluation conditions.
+**Note:** AgenticHinaing operates at **intelligence-level** (caching enriched analysis), while baselines operate at **storage-level** (caching KV-states, summaries, or raw documents) or **retrieval-level** (HyDE). Direct quantitative comparison is challenging due to different evaluation conditions (RAGCache: web search queries; AgenticHinaing: civic social listening). N/A indicates metrics not reported in the cited literature. AgenticHinaing best-case: 100.0% API reduction (run 6efdf5b9), 100.0% verification (6 runs), 100% faithfulness (26/26 claims across 2 runs). Best-case representative runs: 81.2% API reduction (run 7e074c00), 97.4% verification (run c059a907), 100% faithfulness (run e767599d). These are production runs from v3.0 dataset (102 runs total). Average (v3.0): 50.1% API, 62.8% verification, 100% faithfulness.
 
 **Web Search Verified**: Mar 24, 2026 ✅
 
@@ -355,7 +358,7 @@ further validation."
 Before submitting paper, verify:
 
 - [x] **All claims use v3.0 data only** (Feb-Mar 2026, 102 runs)
-- [x] **Best-case runs are from v3.0** (6efdf5b9, c059a907, e767599d, 1fd33277)
+- [x] **Specific run IDs cited** (6efdf5b9, 7e074c00, c059a907, e767599d, 1fd33277)
 - [x] **Averages computed from v3.0 only** (50.1% API, 62.8% verification)
 - [x] **95% confidence intervals reported** ([45.8%, 54.4%] API, [58.9%, 66.7%] verification)
 - [x] **SOTA comparison cites verified sources** (RAGCache [15], GPTCache [18], Semantic Cache [16], Standard RAG [31])
@@ -364,6 +367,7 @@ Before submitting paper, verify:
 - [x] **Faithfulness claims note N=2 runs** (26/26 claims, 100%)
 - [x] **No aggregation with v1.0/v2.0 runs** (253 total is context only)
 - [x] **Intelligence-level novelty claim verified** (web search found no conflicting systems)
+- [x] **No "benchmark" terminology** (use "specific run" or "production run" instead)
 
 ---
 
