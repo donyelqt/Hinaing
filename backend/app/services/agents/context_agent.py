@@ -99,21 +99,21 @@ class ContextAugmentationAgent:
     async def retrieve_knowledge(
         self,
         focus_areas: list[str] | None,
-        limit: int = 10
+        limit: int = 50  # Increased from 10 to 50 for higher cache hit rate
     ) -> list[WebDocument]:
         """Recall internal knowledge from memory (Vector DB).
-        
+
         SELF-LEARNING: Smart Reuse architecture.
         - ALWAYS returns from memory if documents exist
         - NO expiration (infinite memory)
         - Documents are reused across cycles to save API costs
-        
+
         This enables 81% API savings by reusing previously analyzed documents.
-        
+
         Args:
             focus_areas: List of keywords/themes to search for
-            limit: Max total number of documents to retrieve
-            
+            limit: Max total number of documents to retrieve (default: 50)
+
         Returns:
             List of WebDocuments from memory (cached, no API needed)
         """
@@ -121,10 +121,10 @@ class ContextAugmentationAgent:
             logger.info("No focus areas provided for memory recall")
             return []
 
-        logger.info(f"[Smart Reuse] Retrieving from memory for {len(focus_areas)} focus areas")
+        logger.info(f"[Smart Reuse] Retrieving from memory for {len(focus_areas)} focus areas (limit={limit})")
 
-        # Calculate quota per focus area (min 3 to ensure representation)
-        per_area_limit = max(3, int(limit / len(focus_areas)) + 1)
+        # Calculate quota per focus area (min 5 to ensure representation)
+        per_area_limit = max(5, int(limit / len(focus_areas)) + 2)
         
         all_results = []
         seen_ids = set()

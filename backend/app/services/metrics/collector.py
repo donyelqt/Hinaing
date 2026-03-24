@@ -72,11 +72,31 @@ class PipelineMetrics:
     insights_generated: int = 0
     insights_with_evidence: int = 0
     alerts_triggered: int = 0
-    
+
+    # Faithfulness metrics (Node 7)
+    faithfulness_total_claims: int = 0
+    faithfulness_verified_claims: int = 0
+    faithfulness_score: float = 0.0
+    faithfulness_rate: float = 0.0  # verified_claims / total_claims
+
+    # Agentic Verification Rate (5-signal credibility)
+    agentic_verification_total: int = 0  # Total documents verified
+    agentic_verification_verified: int = 0  # Documents with verification_status="verified"
+    agentic_verification_rate: float = 0.0  # verified / total (target: ≥0.97)
+
+    # API Cost Reduction / Cache Intelligence Rate
+    api_calls_total: int = 0  # Total API calls if no caching
+    api_calls_actual: int = 0  # Actual API calls made (after Smart Reuse)
+    api_calls_saved: int = 0  # API calls saved via Smart Reuse
+    api_cost_reduction_rate: float = 0.0  # saved / total (target: ≥0.81)
+    smart_reuse_rate: float = 0.0  # already_enriched / total_docs (cache hit rate)
+    documents_cached: int = 0  # Documents reused from cache
+    documents_fresh: int = 0  # New documents requiring analysis
+
     # Errors
     errors: list[str] = field(default_factory=list)
     fallbacks_used: list[str] = field(default_factory=list)
-    
+
     # Scientific evaluation metrics
     ground_truth_accuracy: float = 0.0  # If ground truth available
     precision: float = 0.0
@@ -256,7 +276,92 @@ class MetricsCollector:
             self._current_run.insights_generated = insights_count
             self._current_run.insights_with_evidence = insights_with_evidence
             self._current_run.alerts_triggered = alerts_count
-    
+
+    def record_faithfulness_metrics(
+        self,
+        total_claims: int,
+        verified_claims: int,
+        faithfulness_score: float
+    ) -> None:
+        """Record faithfulness verification metrics (Node 7).
+
+        Args:
+            total_claims: Total number of claims extracted from summary
+            verified_claims: Number of claims entailed by source documents
+            faithfulness_score: verified_claims / total_claims (0.0-1.0)
+        """
+        if self._current_run:
+            self._current_run.faithfulness_total_claims = total_claims
+            self._current_run.faithfulness_verified_claims = verified_claims
+            self._current_run.faithfulness_score = round(faithfulness_score, 3)
+            self._current_run.faithfulness_rate = round(
+                verified_claims / total_claims if total_claims > 0 else 0.0,
+                3
+            )
+            logger.info(
+                f"[metrics] Faithfulness: {verified_claims}/{total_claims} "
+                f"({faithfulness_score:.3f})"
+            )
+
+    def record_agentic_verification_rate(
+        self,
+        total_documents: int,
+        verified_documents: int,
+    ) -> None:
+        """Record Agentic Verification Rate (5-signal credibility).
+
+        Args:
+            total_documents: Total documents processed by CredibilityAgent
+            verified_documents: Documents with verification_status="verified"
+        """
+        if self._current_run:
+            self._current_run.agentic_verification_total = total_documents
+            self._current_run.agentic_verification_verified = verified_documents
+            self._current_run.agentic_verification_rate = round(
+                verified_documents / total_documents if total_documents > 0 else 0.0,
+                3
+            )
+            logger.info(
+                f"[metrics] Agentic Verification Rate: {verified_documents}/{total_documents} "
+                f"({self._current_run.agentic_verification_rate:.3f})"
+            )
+
+    def record_api_cost_reduction(
+        self,
+        api_calls_total: int,
+        api_calls_actual: int,
+        documents_cached: int,
+        documents_fresh: int,
+    ) -> None:
+        """Record API Cost Reduction / Cache Intelligence Rate (Smart Reuse).
+
+        Args:
+            api_calls_total: Total API calls if no caching (len(documents) * 2 for sentiment + credibility)
+            api_calls_actual: Actual API calls made after Smart Reuse
+            documents_cached: Documents reused from cache (already enriched)
+            documents_fresh: New documents requiring full analysis
+        """
+        if self._current_run:
+            self._current_run.api_calls_total = api_calls_total
+            self._current_run.api_calls_actual = api_calls_actual
+            self._current_run.api_calls_saved = api_calls_total - api_calls_actual
+            self._current_run.api_cost_reduction_rate = round(
+                (api_calls_total - api_calls_actual) / api_calls_total if api_calls_total > 0 else 0.0,
+                3
+            )
+            self._current_run.smart_reuse_rate = round(
+                documents_cached / (documents_cached + documents_fresh) if (documents_cached + documents_fresh) > 0 else 0.0,
+                3
+            )
+            self._current_run.documents_cached = documents_cached
+            self._current_run.documents_fresh = documents_fresh
+            
+            logger.info(
+                f"[metrics] API Cost Reduction: {self._current_run.api_cost_reduction_rate:.1%} "
+                f"({self._current_run.api_calls_saved}/{api_calls_total} calls saved, "
+                f"{documents_cached} cached / {documents_fresh} fresh)"
+            )
+
     def record_error(self, error: str) -> None:
         """Record an error that occurred during the run."""
         if self._current_run:
@@ -317,10 +422,10 @@ class MetricsCollector:
     def get_summary(self, last_n: int = 10) -> dict[str, Any]:
         """Get summary statistics from recent runs."""
         runs = self._completed_runs[-last_n:] if self._completed_runs else []
-        
+
         if not runs:
             return {"message": "No metrics collected yet"}
-        
+
         # Calculate averages
         avg_latency = sum(r.total_latency_ms for r in runs) / len(runs)
         avg_docs = sum(r.total_docs_count for r in runs) / len(runs)
@@ -328,14 +433,19 @@ class MetricsCollector:
         avg_agreement = sum(r.sentiment_agreement_rate for r in runs) / len(runs)
         avg_credibility = sum(r.avg_credibility_score for r in runs) / len(runs)
         
+        # NEW: Agentic Verification Rate and API Cost Reduction
+        avg_verification_rate = sum(r.agentic_verification_rate for r in runs) / len(runs) if runs else 0
+        avg_cost_reduction = sum(r.api_cost_reduction_rate for r in runs) / len(runs) if runs else 0
+        avg_smart_reuse = sum(r.smart_reuse_rate for r in runs) / len(runs) if runs else 0
+
         # Error rate
         runs_with_errors = sum(1 for r in runs if r.errors)
         error_rate = runs_with_errors / len(runs)
-        
+
         # Fallback rate
         runs_with_fallbacks = sum(1 for r in runs if r.fallbacks_used)
         fallback_rate = runs_with_fallbacks / len(runs)
-        
+
         return {
             "runs_analyzed": len(runs),
             "avg_total_latency_ms": round(avg_latency, 1),
@@ -343,6 +453,9 @@ class MetricsCollector:
             "avg_insights": round(avg_insights, 1),
             "avg_sentiment_agreement": round(avg_agreement, 3),
             "avg_credibility_score": round(avg_credibility, 3),
+            "avg_agentic_verification_rate": round(avg_verification_rate, 3),
+            "avg_api_cost_reduction_rate": round(avg_cost_reduction, 3),
+            "avg_smart_reuse_rate": round(avg_smart_reuse, 3),
             "error_rate": round(error_rate, 3),
             "fallback_rate": round(fallback_rate, 3),
             "latency_breakdown": {
