@@ -35,9 +35,9 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Sentiment & Credibility Metrics
+## Agentic Orchestrator (7-Node Multi-Agent Pipeline)
 
-The Sentiment Generator page displays two related metric groups: sentiment polarity (Negative/Neutral/Positive) and credibility (High Credibility/Low Credibility). These values power the CS thesis dashboards and are computed as follows:
+The Agentic Orchestrator page displays two related metric groups: sentiment polarity (Negative/Neutral/Positive) and credibility (High Credibility/Low Credibility). These values power the CS thesis dashboards and are computed as follows:
 
 ### Sentiment Polarity (Negative / Neutral / Positive)
 
