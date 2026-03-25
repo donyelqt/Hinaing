@@ -70,6 +70,9 @@ export function Sidebar({
             <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
               Public Sentiment Suite
             </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Live monitoring
+            </p>
           </div>
 
           {/* Mobile Filters Button */}
@@ -93,7 +96,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('sentiment')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'sentiment'
+            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors group ${activePage === 'sentiment'
               ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
@@ -102,86 +105,88 @@ export function Sidebar({
             <Cpu className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="truncate">Agentic Orchestrator</p>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="p-0.5 rounded hover:bg-white/10 transition-colors"
-                      aria-label="Show pipeline help"
-                    >
-                      <HelpCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="start" className="w-72 bg-white">
-                    <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
-                    <div className="space-y-1.5 text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">📡</span>
-                        <div>
-                          <div className="font-medium">Node 1: Query Orchestrator</div>
-                          <div className="text-slate-500 text-[10px]">ReAct Planning</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🔍</span>
-                        <div>
-                          <div className="font-medium">Node 2: Document Retrieval</div>
-                          <div className="text-slate-500 text-[10px]">Multi-Source</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🔗</span>
-                        <div>
-                          <div className="font-medium">Node 3: RAG Memory Recall</div>
-                          <div className="text-slate-500 text-[10px]">Qdrant Vector DB</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">⚡</span>
-                        <div>
-                          <div className="font-medium">Node 4: Parallel Analysis</div>
-                          <div className="text-slate-500 text-[10px]">Sentiment + Credibility + Theme</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">💾</span>
-                        <div>
-                          <div className="font-medium">Node 5: Memory Consolidation</div>
-                          <div className="text-slate-500 text-[10px]">Self-Learning Loop</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🎯</span>
-                        <div>
-                          <div className="font-medium">Node 6: 6 Theme Agents</div>
-                          <div className="text-slate-500 text-[10px]">Domain Specialists</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">✅</span>
-                        <div>
-                          <div className="font-medium">Node 7: NLI Verification</div>
-                          <div className="text-slate-500 text-[10px]">100% Faithfulness</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
-                      <div className="flex items-center justify-between">
-                        <span>19 Agents</span>
-                        <span>•</span>
-                        <span>100% Faithfulness</span>
-                        <span>•</span>
-                        <span>81% API Savings</span>
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <p className="truncate max-w-[180px]">Agentic Orchestrator</p>
               </div>
-              <p className={`text-xs mt-0.5 truncate ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
-                Live monitoring • 7-Node Multi-Agent Pipeline
+              <p className={`text-xs mt-0.5 ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
+                7-Node & 19 Agents
               </p>
             </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="p-1 rounded hover:bg-white/20 transition-colors flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Show pipeline help"
+                >
+                  <HelpCircle className={`h-3.5 w-3.5 ${activePage === 'sentiment' ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="start" className="w-72 bg-white z-[9999]">
+                <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
+                <div className="space-y-1.5 text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📡</span>
+                    <div>
+                      <div className="font-medium">Node 1: Query Orchestrator</div>
+                      <div className="text-slate-500 text-[10px]">ReAct Planning</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🔍</span>
+                    <div>
+                      <div className="font-medium">Node 2: Document Retrieval</div>
+                      <div className="text-slate-500 text-[10px]">Multi-Source</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🔗</span>
+                    <div>
+                      <div className="font-medium">Node 3: RAG Memory Recall</div>
+                      <div className="text-slate-500 text-[10px]">Qdrant Vector DB</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚡</span>
+                    <div>
+                      <div className="font-medium">Node 4: Parallel Analysis</div>
+                      <div className="text-slate-500 text-[10px]">Sentiment + Credibility + Theme</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">💾</span>
+                    <div>
+                      <div className="font-medium">Node 5: Memory Consolidation</div>
+                      <div className="text-slate-500 text-[10px]">Self-Learning Loop</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🎯</span>
+                    <div>
+                      <div className="font-medium">Node 6: 6 Theme Agents</div>
+                      <div className="text-slate-500 text-[10px]">Domain Specialists</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">✅</span>
+                    <div>
+                      <div className="font-medium">Node 7: NLI Verification</div>
+                      <div className="text-slate-500 text-[10px]">100% Faithfulness</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
+                  <div className="flex items-center justify-between">
+                    <span>19 Agents</span>
+                    <span>•</span>
+                    <span>100% Faithfulness</span>
+                    <span>•</span>
+                    <span>81% API Savings</span>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </button>
           </TooltipProvider>
 
