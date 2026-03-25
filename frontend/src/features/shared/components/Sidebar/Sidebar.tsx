@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles } from "lucide-react";
+import { BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles, Cpu, HelpCircle } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SidebarProps = {
   onOpenMobileFilters: () => void;
@@ -55,7 +56,7 @@ export function Sidebar({
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:relative lg:z-auto lg:w-[20rem] lg:flex-shrink-0
-          lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:sticky lg:top-8
+          lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:sticky lg:top-8
           lg:rounded-2xl lg:bg-white/80 lg:backdrop-blur-sm lg:border lg:border-slate-200/50 lg:shadow-sm
         `}
         role="complementary"
@@ -88,6 +89,7 @@ export function Sidebar({
           aria-label="Workspace navigation"
           role="navigation"
         >
+          <TooltipProvider>
           <button
             type="button"
             onClick={() => handleNavClick('sentiment')}
@@ -97,14 +99,91 @@ export function Sidebar({
               }`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
-            <BarChart3 className="h-5 w-5" aria-hidden="true" />
-            <div>
-              <p>Sentiment Generator</p>
-              <p className={`text-xs ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
-                Live monitoring (Hinaing Multi-Agent System)
+            <Cpu className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate">Agentic Orchestrator</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                      aria-label="Show pipeline help"
+                    >
+                      <HelpCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="start" className="w-72 bg-white">
+                    <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
+                    <div className="space-y-1.5 text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">📡</span>
+                        <div>
+                          <div className="font-medium">Node 1: Query Orchestrator</div>
+                          <div className="text-slate-500 text-[10px]">ReAct Planning</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🔍</span>
+                        <div>
+                          <div className="font-medium">Node 2: Document Retrieval</div>
+                          <div className="text-slate-500 text-[10px]">Multi-Source</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🔗</span>
+                        <div>
+                          <div className="font-medium">Node 3: RAG Memory Recall</div>
+                          <div className="text-slate-500 text-[10px]">Qdrant Vector DB</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">⚡</span>
+                        <div>
+                          <div className="font-medium">Node 4: Parallel Analysis</div>
+                          <div className="text-slate-500 text-[10px]">Sentiment + Credibility + Theme</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">💾</span>
+                        <div>
+                          <div className="font-medium">Node 5: Memory Consolidation</div>
+                          <div className="text-slate-500 text-[10px]">Self-Learning Loop</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🎯</span>
+                        <div>
+                          <div className="font-medium">Node 6: 6 Theme Agents</div>
+                          <div className="text-slate-500 text-[10px]">Domain Specialists</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">✅</span>
+                        <div>
+                          <div className="font-medium">Node 7: NLI Verification</div>
+                          <div className="text-slate-500 text-[10px]">100% Faithfulness</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
+                      <div className="flex items-center justify-between">
+                        <span>19 Agents</span>
+                        <span>•</span>
+                        <span>100% Faithfulness</span>
+                        <span>•</span>
+                        <span>81% API Savings</span>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <p className={`text-xs mt-0.5 truncate ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
+                Live monitoring • 7-Node Multi-Agent Pipeline
               </p>
             </div>
           </button>
+          </TooltipProvider>
 
           <button
             type="button"
@@ -118,7 +197,7 @@ export function Sidebar({
             <PieChart className="h-5 w-5" aria-hidden="true" />
             <div>
               <p>Dashboard</p>
-              <p className={`text-xs ${activePage === 'dashboard' ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 ${activePage === 'dashboard' ? 'text-white/80' : 'text-slate-500'}`}>
                 Real-time insights & trends
               </p>
             </div>
@@ -136,7 +215,7 @@ export function Sidebar({
             <Sparkles className="h-5 w-5" aria-hidden="true" />
             <div>
               <p>AI Assistant</p>
-              <p className={`text-xs ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
                 Quick Q&A (Agentic RAG)
               </p>
             </div>
@@ -154,7 +233,7 @@ export function Sidebar({
             <BarChart3 className="h-5 w-5" aria-hidden="true" />
             <div>
               <p>Chat Analyzer</p>
-              <p className={`text-xs ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
                 Multi-agent analysis in chat (Thesis Novelty)
               </p>
             </div>
@@ -172,7 +251,7 @@ export function Sidebar({
             <Save className="h-5 w-5" aria-hidden="true" />
             <div>
               <p>Saved Reports</p>
-              <p className={`text-xs ${activePage === 'reports' ? 'text-white/80' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 ${activePage === 'reports' ? 'text-white/80' : 'text-slate-500'}`}>
                 Access generated reports
               </p>
             </div>

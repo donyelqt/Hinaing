@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { apiGet, apiPost } from "@/lib/api";
 import { Sidebar } from "../../shared/components";
 import type { ActivePage } from "../../shared/types/navigation";
-import { useSentimentGenerator } from "../hooks/useSentimentGenerator";
+import { useAgenticOrchestrator } from "../hooks/useAgenticOrchestrator";
 import { HeroSection } from "./HeroSection";
 import { StatsCards } from "./StatsCards";
 import { PlatformSelector } from "./PlatformSelector";
@@ -270,7 +270,7 @@ function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; in
 }
 
 export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }: SentimentGeneratorPageProps = {}) {
-  const { state, actions, computed, validation } = useSentimentGenerator();
+  const { state, actions, computed, validation } = useAgenticOrchestrator();
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [snapshot, setSnapshot] = React.useState<SnapshotResponse | null>(null);
