@@ -214,9 +214,9 @@ export function Sidebar({
           >
             <Sparkles className="h-5 w-5" aria-hidden="true" />
             <div>
-              <p>AI Assistant</p>
+              <p>Agentic RAG</p>
               <p className={`text-xs mt-0.5 ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
-                Quick Q&A (Agentic RAG)
+                Quick Q&A
               </p>
             </div>
           </button>
@@ -232,9 +232,9 @@ export function Sidebar({
           >
             <BarChart3 className="h-5 w-5" aria-hidden="true" />
             <div>
-              <p>Chat Analyzer</p>
+              <p>AgenticHinaing</p>
               <p className={`text-xs mt-0.5 ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
-                Multi-agent analysis in chat (Thesis Novelty)
+                7-Node & 19 Agents + Agentic RAG
               </p>
             </div>
           </button>
