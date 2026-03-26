@@ -79,6 +79,25 @@ class PipelineMetrics:
     faithfulness_score: float = 0.0
     faithfulness_rate: float = 0.0  # verified_claims / total_claims
 
+    # Citation Accuracy metrics (NEW - verifies citation truthfulness)
+    citation_total: int = 0  # Total citations found in summary
+    citation_valid: int = 0  # Citations with accurate metadata and matching source
+    citation_accuracy_rate: float = 0.0  # valid / total (target: ≥0.90)
+
+    # Hallucination Detection metrics (NEW - best practice separation)
+    hallucination_count: int = 0  # TRUE hallucinations (fabricated claims)
+    hallucination_rate: float = 0.0  # hallucinations / total_claims (target: 0.0)
+    hallucination_types: dict[str, int] = field(default_factory=dict)
+    is_hallucination_free: bool = True
+    
+    # Misattribution metrics (NEW - separate from hallucination)
+    misattribution_count: int = 0  # Claims true but cited to wrong source
+    misattribution_rate: float = 0.0  # misattributions / total_claims
+    
+    # Numerical hallucination metrics (NEW)
+    numerical_hallucination_count: int = 0  # Fabricated numbers
+    numerical_hallucination_rate: float = 0.0
+
     # Agentic Verification Rate (5-signal credibility)
     agentic_verification_total: int = 0  # Total documents verified
     agentic_verification_verified: int = 0  # Documents with verification_status="verified"
@@ -140,11 +159,15 @@ class MetricsCollector:
         self._max_history = 100  # Keep last 100 runs in memory
         self._initialized = True
         
-        # File path for persistent storage
-        self._metrics_dir = Path("backend/data/metrics")
+        # File path for persistent storage - use absolute path from project root
+        import os
+        # Find project root (parent of backend/app)
+        current_file = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+        self._metrics_dir = Path(project_root) / "backend" / "data" / "metrics"
         self._metrics_dir.mkdir(parents=True, exist_ok=True)
         
-        logger.info("[metrics] MetricsCollector initialized")
+        logger.info(f"[metrics] MetricsCollector initialized, saving to: {self._metrics_dir}")
     
     def start_run(
         self,
@@ -281,7 +304,9 @@ class MetricsCollector:
         self,
         total_claims: int,
         verified_claims: int,
-        faithfulness_score: float
+        faithfulness_score: float,
+        citation_verification: dict[str, Any] | None = None,
+        hallucination_analysis: dict[str, Any] | None = None,
     ) -> None:
         """Record faithfulness verification metrics (Node 7).
 
@@ -289,6 +314,8 @@ class MetricsCollector:
             total_claims: Total number of claims extracted from summary
             verified_claims: Number of claims entailed by source documents
             faithfulness_score: verified_claims / total_claims (0.0-1.0)
+            citation_verification: Citation accuracy report from FaithfulnessAgent
+            hallucination_analysis: Hallucination detection report from FaithfulnessAgent
         """
         if self._current_run:
             self._current_run.faithfulness_total_claims = total_claims
@@ -298,10 +325,51 @@ class MetricsCollector:
                 verified_claims / total_claims if total_claims > 0 else 0.0,
                 3
             )
-            logger.info(
-                f"[metrics] Faithfulness: {verified_claims}/{total_claims} "
-                f"({faithfulness_score:.3f})"
-            )
+
+            # Record citation accuracy metrics (NEW)
+            if citation_verification:
+                self._current_run.citation_total = citation_verification.get("total_citations", 0)
+                self._current_run.citation_valid = citation_verification.get("valid_citations", 0)
+                self._current_run.citation_accuracy_rate = round(
+                    citation_verification.get("citation_accuracy_rate", 0.0),
+                    3
+                )
+                logger.info(
+                    f"[metrics] Citation Accuracy: {self._current_run.citation_valid}/"
+                    f"{self._current_run.citation_total} "
+                    f"({self._current_run.citation_accuracy_rate:.3f})"
+                )
+
+            # Record hallucination detection metrics (NEW - best practice separation)
+            if hallucination_analysis:
+                # TRUE hallucinations
+                h_analysis = hallucination_analysis.get("hallucination_analysis", {})
+                self._current_run.hallucination_count = h_analysis.get("hallucination_count", 0)
+                self._current_run.hallucination_rate = h_analysis.get("hallucination_rate", 0.0)
+                self._current_run.hallucination_types = h_analysis.get("hallucination_types", {})
+                self._current_run.is_hallucination_free = h_analysis.get("is_hallucination_free", True)
+                
+                # Misattribution (separate from hallucination)
+                m_analysis = hallucination_analysis.get("misattribution_analysis", {})
+                self._current_run.misattribution_count = m_analysis.get("misattribution_count", 0)
+                self._current_run.misattribution_rate = m_analysis.get("misattribution_rate", 0.0)
+                
+                # Numerical hallucinations
+                n_analysis = hallucination_analysis.get("numerical_hallucinations", {})
+                self._current_run.numerical_hallucination_count = n_analysis.get("count", 0)
+                self._current_run.numerical_hallucination_rate = n_analysis.get("rate", 0.0)
+                
+                logger.info(
+                    f"[metrics] Hallucination Detection: {self._current_run.hallucination_count} hallucinations, "
+                    f"{self._current_run.misattribution_count} misattributions, "
+                    f"{self._current_run.numerical_hallucination_count} numerical hallucinations, "
+                    f"hallucination_free={self._current_run.is_hallucination_free}"
+                )
+            else:
+                logger.info(
+                    f"[metrics] Faithfulness: {verified_claims}/{total_claims} "
+                    f"({faithfulness_score:.3f})"
+                )
 
     def record_agentic_verification_rate(
         self,

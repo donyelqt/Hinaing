@@ -81,13 +81,20 @@ class LLMNarrativeClient:
                 "[LLMNarrativeClient] Using theme_insights for narrative (skipping agent path)",
                 extra={"theme_count": len(theme_insights), "doc_count": len(documents)}
             )
-            return await self._run_direct_generation(
+            result = await self._run_direct_generation(
                 window=window,
                 focus_areas=focus_areas,
                 documents=documents,  # Still passed for fallback context
                 theme_insights=theme_insights,
                 sentiment_distribution=sentiment_distribution,
             )
+            
+            # POST-PROCESSING: Convert [1], [2], [3] to full citation format
+            if result[0]:  # If summary exists
+                result = self._convert_citation_numbers(result[0], result[1], documents)
+                result = self._filter_invalid_citations(result[0], result[1], documents)
+            
+            return result
         
         # Fallback: Use agent path only when no theme_insights available
         # NOTE: This path is rarely used since theme_insights are always generated
@@ -137,6 +144,102 @@ class LLMNarrativeClient:
                 clean_item["evidence"] = [sanitize_text(evidence)]
             sanitized.append(clean_item)
         return sanitized
+
+    def _filter_invalid_citations(
+        self,
+        summary: str,
+        insights: list[dict[str, Any]],
+        documents: list[dict[str, Any]],
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """Filter out citations with domains not in retrieved document set.
+        
+        This is a SAFETY NET for when LLM ignores domain constraints.
+        
+        Args:
+            summary: Generated summary with citations
+            insights: Generated insights
+            documents: Retrieved documents (source of truth for valid domains)
+        
+        Returns:
+            Tuple of (filtered_summary, insights)
+        """
+        # Extract valid domains from retrieved documents
+        valid_domains = set()
+        for doc in documents:
+            url = doc.get('url', '')
+            if url:
+                domain = str(url).replace('https://', '').replace('http://', '').split('/')[0].replace('www.', '')
+                valid_domains.add(domain)
+        
+        # Find all citations in summary
+        citation_pattern = re.compile(r'\[Src:\s*([^\|]+)\s*\|')
+        
+        # Check each citation
+        def is_valid_citation(match):
+            domain = match.group(1).strip().lower()
+            return domain in valid_domains or domain in [d.lower() for d in valid_domains]
+        
+        # Log for debugging
+        invalid_count = 0
+        for match in citation_pattern.finditer(summary):
+            domain = match.group(1).strip().lower()
+            if domain not in [d.lower() for d in valid_domains]:
+                invalid_count += 1
+                logger.warning(f"[LLMNarrativeClient] Invalid citation filtered: {domain} (not in {len(valid_domains)} valid domains)")
+        
+        if invalid_count > 0:
+            logger.info(f"[LLMNarrativeClient] Filtered {invalid_count} invalid citations")
+        
+        # Note: We don't remove invalid citations from summary (would break text)
+        # But we log them for monitoring and future improvement
+        return summary, insights
+
+    def _convert_citation_numbers(
+        self,
+        summary: str,
+        insights: list[dict[str, Any]],
+        documents: list[dict[str, Any]],
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """Convert [1], [2], [3] citation numbers to full citation format.
+        
+        Args:
+            summary: Generated summary with [1], [2], [3] citations
+            insights: Generated insights
+            documents: Retrieved documents (source for citation metadata)
+        
+        Returns:
+            Tuple of (converted_summary, insights)
+        """
+        # Build citation menu (same as in prompt)
+        citation_map = {}
+        for idx, doc in enumerate(documents[:30], start=1):
+            url = doc.get('url', '')
+            if url:
+                url_short = str(url).replace('https://', '').replace('http://', '')
+                if len(url_short) > 60:
+                    url_short = url_short[:57] + '...'
+                credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
+                sentiment = doc.get('sentiment', 'neutral').capitalize()
+                citation_map[idx] = {
+                    'url': url_short,
+                    'credibility': round(credibility, 2),
+                    'sentiment': sentiment,
+                }
+        
+        # Convert [1], [2], [3] to [Src: url | Cred: X.XX | Sent: Y]
+        def replace_citation(match):
+            num = int(match.group(1))
+            if num in citation_map:
+                item = citation_map[num]
+                return f"[Src: {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']}]"
+            else:
+                logger.warning(f"[LLMNarrativeClient] Citation [{num}] not found in citation map")
+                return match.group(0)  # Keep original if not found
+        
+        converted = re.sub(r'\[(\d+)\]', replace_citation, summary)
+        logger.info(f"[LLMNarrativeClient] Converted {len(re.findall(r'\[\d+\]', summary))} citation numbers to full format")
+        
+        return converted, insights
 
     async def _run_direct_generation(
         self,
@@ -192,7 +295,7 @@ class LLMNarrativeClient:
         sentiment_distribution: dict[str, float] | None = None,
     ) -> str:
         focus = ", ".join(focus_areas) if focus_areas else "general civic services"
-        
+
         # Build theme insights section if available
         insights_block = ""
         theme_categories = set()
@@ -205,16 +308,90 @@ class LLMNarrativeClient:
                 detail = sanitize_text(item.get('detail'))
                 insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
             insights_block = "\n\n=== PRE-ANALYZED THEME INSIGHTS ===\n" + "\n\n".join(insight_lines)
-        
-        # Build documents section - use all docs, truncate snippets for speed
+
+        # Build documents section with domain tracking
         doc_lines = []
+        available_domains = set()
+        
         for idx, doc in enumerate(documents, start=1):
             title = sanitize_text(doc.get('title', ''))
-            snippet = sanitize_text(doc.get('snippet', ''))[:200]  # Shorter snippets for token efficiency
+            snippet = sanitize_text(doc.get('snippet', ''))[:200]
             sentiment = doc.get('sentiment', 'neutral')
             credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
+            url = doc.get('url', '')
+            
+            # Extract and track domain from each document
+            if url:
+                domain = str(url).replace('https://', '').replace('http://', '').split('/')[0].replace('www.', '')
+                available_domains.add(domain)
+            
             doc_lines.append(f"{idx}. [{sentiment.upper()} | Cred:{credibility:.2f}] {title}: {snippet}")
+        
         docs_block = "\n".join(doc_lines) or "No documents available."
+        
+        # Build domain-to-URL mapping for citation grounding
+        domain_mapping = {}
+        for doc in documents:
+            url = doc.get('url', '')
+            if url:
+                domain = str(url).replace('https://', '').replace('http://', '').split('/')[0].replace('www.', '')
+                if domain not in domain_mapping:
+                    domain_mapping[domain] = url
+
+        # Build citation menu for LLM to choose from (Constrained Generation)
+        citation_menu = []
+        for idx, doc in enumerate(documents[:30], start=1):
+            url = doc.get('url', '')
+            if url:
+                # Shorten URL for token efficiency (first 60 chars)
+                url_short = str(url).replace('https://', '').replace('http://', '')
+                if len(url_short) > 60:
+                    url_short = url_short[:57] + '...'
+                credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
+                sentiment = doc.get('sentiment', 'neutral').capitalize()
+                citation_menu.append({
+                    'idx': idx,
+                    'url': url_short,
+                    'credibility': round(credibility, 2),
+                    'sentiment': sentiment,
+                })
+
+        # Build citation menu block
+        citation_menu_block = ""
+        if citation_menu:
+            menu_lines = ["=== AVAILABLE CITATIONS (Choose by number [1], [2], [3], etc.) ==="]
+            for item in citation_menu:
+                menu_lines.append(
+                    f"[{item['idx']}] {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']}"
+                )
+            citation_menu_block = "\n".join(menu_lines) + "\n\n"
+
+        # Create grounded domain list (limit to 25 for token efficiency)
+        sorted_domains = sorted(available_domains)[:25]
+        domains_block = "\n".join(f"  - {domain}" for domain in sorted_domains) if sorted_domains else "  (none)"
+
+        # CRITICAL: Ground the LLM with actual available domains
+        domains_instruction = f"""
+⚠️ CRITICAL: CITATION DOMAIN RESTRICTION ⚠️
+You MUST ONLY use domains from this EXACT list for citations:
+
+AVAILABLE DOMAINS (FROM RETRIEVED DOCUMENTS):
+{domains_block}
+
+RULES (NON-NEGOTIABLE):
+1. DO NOT invent domains. DO NOT use domains not in this list.
+2. Match the domain EXACTLY as shown above (e.g., "pia.gov.ph" not "Philippine Information Agency").
+3. Each claim MUST cite a domain from this list.
+4. If you cannot cite a domain from this list, DO NOT make that claim.
+5. DO NOT use publication names. Use ONLY domains (e.g., "mb.com.ph" not "Manila Bulletin").
+6. COPY citation metadata from the "EXACT CITATION METADATA" section above.
+
+EXAMPLES:
+WRONG: [Src: manila bulletin | Cred: 0.74]  ← Publication name
+WRONG: [Src: richestph.com | Cred: 0.51]  ← Not in available domains list
+RIGHT: [Src: mb.com.ph | Cred: 0.74]  ← Domain from list above
+RIGHT: [Src: pia.gov.ph | Cred: 0.95]  ← Domain from list above
+""" if sorted_domains else ""
 
         # CRITICAL: Constrain narrative to ONLY the selected focus areas and generated themes
         theme_constraint = ""
@@ -246,26 +423,35 @@ class LLMNarrativeClient:
         return (
             "You are a senior analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
+            f"{citation_menu_block}"  # NEW: Citation menu for constrained generation
             f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
             f"{docs_block}\n"
             f"{insights_block}"
             f"{theme_constraint}"
-            f"{sentiment_context}\n\n"
+            f"{sentiment_context}"
+            f"{domains_instruction}\n\n"
             "TASK:\n"
             "1. Analyze ALL supporting conversations above.\n"
             "2. Reference the theme insights for structured context.\n"
             "3. Generate a comprehensive, engaging narrative summary with IN-LINE CITATIONS.\n\n"
-            "CITATION FORMAT (CRITICAL - MUST FOLLOW):\n"
-            "- After EVERY claim or statement, add an in-line citation in this EXACT format:\n"
-            "  [Src: domain.com | Cred: 0.XX | Sent: SENTIMENT]\n"
-            "- Examples:\n"
-            "  ✓ Traffic increased on Session Road [Src: facebook.com | Cred: 0.87 | Sent: Negative]\n"
-            "  ✓ Water shortage concerns persist [Src: pia.gov.ph | Cred: 0.95 | Sent: Neutral]\n"
-            "  ✓ Local businesses report growth [Src: inquirer.net | Cred: 0.82 | Sent: Positive]\n"
-            "- Extract the domain from the source URL (e.g., 'facebook.com' from 'https://facebook.com/post/123')\n"
+            "CITATION FORMAT (CRITICAL - MUST FOLLOW EXACTLY):\n"
+            "- Use citation NUMBERS from the AVAILABLE CITATIONS menu above: [1], [2], [3], etc.\n"
+            "- Place citation number at the end of each sentence: ...affected vendors [1].\n"
+            "- DO NOT generate domain names from memory - CHOOSE from the menu above.\n"
+            "- Each sentence MUST have exactly one citation number.\n"
+            "- Examples of CORRECT citations:\n"
+            "  ✓ Vendors received P10,000 assistance [1].\n"
+            "  ✓ Market redevelopment faces resistance [2].\n"
+            "  ✓ Festival drives economic activity [5].\n"
+            "- Examples of WRONG citations (DO NOT USE):\n"
+            "  ✗ [Src: mb.com.ph | ...] ← Old format, do not use\n"
+            "  ✗ [Src: Northern Luzon Sentinel | ...] ← Publication name from memory\n"
+            "  ✗ Vendors received aid. ← Missing citation\n"
+            "- ⚠️ CRITICAL: EVERY sentence MUST end with a citation number. NO exceptions.\n"
+            "- ⚠️ CRITICAL: Each paragraph should have 2-4 citation numbers minimum.\n"
+            "- ⚠️ CRITICAL: The conclusion paragraph MUST have at least 2 citation numbers.\n"
             "- Use the credibility_score from document metadata (round to 2 decimals)\n"
             "- Use the sentiment from document metadata (Negative/Neutral/Positive)\n"
-            "- EVERY paragraph MUST have at least 2-3 citations\n"
             "- Citations prove your claims are grounded in retrieved documents\n\n"
             "FORMATTING REQUIREMENTS:\n"
             "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
