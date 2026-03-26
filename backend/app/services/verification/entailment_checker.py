@@ -20,13 +20,14 @@ class EntailmentChecker:
     - Entailment: Claim is supported by document
     - Neutral: Claim is unrelated to document
     - Contradiction: Claim contradicts document
-    
+
     GPU Support: Automatically detects and uses CUDA/MPS if available.
     Falls back to CPU if no GPU is found or NLI_USE_GPU=false env var is set.
     """
 
     MODEL_NAME = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33"
-    ENTAILMENT_THRESHOLD = 0.70  # Minimum score for "verified"
+    ENTAILMENT_THRESHOLD = 0.75  # Minimum score for "verified" (increased for precision)
+    CONTRADICTION_THRESHOLD = 0.85  # Minimum score for "contradicted" (high confidence)
 
     def __init__(self, use_gpu: bool = None):
         """Initialize entailment checker with NLI model.
