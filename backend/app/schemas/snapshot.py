@@ -107,19 +107,29 @@ class SnapshotResponse(BaseModel):
 
 class VerificationReport(BaseModel):
     """Faithfulness verification report from FaithfulnessAgent.
-    
+
     Contains claim-level verification results:
     - total_claims: Number of claims extracted from summary
     - verified_claims: Number of claims entailed by documents
     - unverified_claims: Number of claims not supported by documents
     - faithfulness_score: verified_claims / total_claims (0.0-1.0)
     - claim_details: Detailed verification for each claim
+    - hallucination_analysis: Hallucination detection results
+    - misattribution_analysis: Misattribution detection results
+    - numerical_hallucinations: Numerical hallucination detection
+    - citation_verification: Citation accuracy verification
     """
     total_claims: int = 0
     verified_claims: int = 0
     unverified_claims: int = 0
     faithfulness_score: float = 0.0
     claim_details: list[dict[str, Any]] = Field(default_factory=list)
+    
+    # NEW: Best practice metrics for Row 2 display
+    hallucination_analysis: dict[str, Any] | None = None
+    misattribution_analysis: dict[str, Any] | None = None
+    numerical_hallucinations: dict[str, Any] | None = None
+    citation_verification: dict[str, Any] | None = None
 
     @property
     def is_faithful(self) -> bool:
