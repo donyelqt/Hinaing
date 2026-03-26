@@ -573,7 +573,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
         )
 
     # ─────────────────────────────────────────────────────────────
-    # Phase 2: Verify Claims (PGCV) - NEW
+    # Phase 2: Verify Claims (PGCV) - Enhanced with Citation Verification
     # ─────────────────────────────────────────────────────────────
     verification_report = None
     if summary_text:
@@ -589,13 +589,16 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             logger.info(
                 f"[Node 7] Verification complete: "
                 f"{verification_report['verified_claims']}/{verification_report['total_claims']} "
-                f"verified ({verification_report['faithfulness_score']:.2f})",
+                f"verified ({verification_report['faithfulness_score']:.2f}), "
+                f"{verification_report['hallucination_analysis']['hallucination_count']} hallucinations detected",
             )
-            # Record faithfulness metrics for production tracking
+            # Record faithfulness metrics with citation accuracy and hallucination detection
             metrics.record_faithfulness_metrics(
                 total_claims=verification_report["total_claims"],
                 verified_claims=verification_report["verified_claims"],
                 faithfulness_score=verification_report["faithfulness_score"],
+                citation_verification=verification_report.get("citation_verification"),
+                hallucination_analysis=verification_report.get("hallucination_analysis"),
             )
         except Exception as exc:
             logger.exception("[snapshot] FaithfulnessAgent verification failed: %s", exc)
