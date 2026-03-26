@@ -9,6 +9,14 @@ import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 
 // --- Types ---
 
+// Import new best-practice types from sentiment types
+import type { 
+  FaithfulnessVerification, 
+  HallucinationAnalysis, 
+  MisattributionAnalysis, 
+  NumericalHallucinationAnalysis 
+} from "../sentiment/types";
+
 interface AnalysisSource {
     title: string;
     snippet: string;
@@ -49,19 +57,7 @@ interface AnalysisData {
         high_percent: number;
         low_percent: number;
     };
-    verification?: {
-        total_claims: number;
-        verified_claims: number;
-        unverified_claims: number;
-        faithfulness_score: number;
-        claim_details?: Array<{
-            claim: string;
-            category: string;
-            entailment_score: number;
-            status: string;
-            supporting_sources: string[];
-        }>;
-    };
+    verification?: FaithfulnessVerification;
     document_count?: number;
     insights_count?: number;
     alerts?: string[];
@@ -89,6 +85,8 @@ interface ChatAnalyzePageProps {
 }
 
 type AnalysisMode = 'auto' | 'full' | 'sentiment' | 'credibility';
+type SystemMode = 'agentic_hinaing' | 'evaluation';
+type EvalMode = 'llm_only' | 'rag' | 'agentic_rag';
 
 // --- Components ---
 
@@ -249,7 +247,7 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                         </div>
                         <div className="bg-white/70 rounded-lg p-1.5 sm:p-2 shadow-inner">
                             <p className="text-base sm:text-lg font-bold text-emerald-600">{cred.high_percent}%</p>
-                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Verified</p>
+                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Verified Hinaing</p>
                         </div>
                         <div className="bg-white/70 rounded-lg p-1.5 sm:p-2 shadow-inner">
                             <p className="text-base sm:text-lg font-bold text-rose-600">{cred.low_percent}%</p>
@@ -258,27 +256,117 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                     </div>
                 )}
 
-                {/* Faithfulness Scores - NEW */}
+                {/* Faithfulness Scores - Enhanced with Best Practice Metrics */}
                 {data.verification && (
-                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center mt-1.5 sm:mt-2">
-                        <div className="bg-violet-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-violet-200">
-                            <p className="text-base sm:text-lg font-bold text-violet-600">
-                                {Math.round(data.verification.faithfulness_score * 100)}%
-                            </p>
-                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Faithfulness</p>
+                    <div className="space-y-2 mt-2 sm:mt-3">
+                        {/* Row 1: Core Metrics */}
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center">
+                            <div className="bg-violet-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-violet-200">
+                                <p className="text-base sm:text-lg font-bold text-violet-600">
+                                    {Math.round(data.verification.faithfulness_score * 100)}%
+                                </p>
+                                <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Faithfulness</p>
+                            </div>
+                            <div className="bg-emerald-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-emerald-200">
+                                <p className="text-base sm:text-lg font-bold text-emerald-600">
+                                    {data.verification.verified_claims}/{data.verification.total_claims}
+                                </p>
+                                <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Claims</p>
+                            </div>
+                            <div className="bg-rose-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-rose-200">
+                                <p className="text-base sm:text-lg font-bold text-rose-600">
+                                    {data.verification.unverified_claims}
+                                </p>
+                                <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Unverified</p>
+                            </div>
                         </div>
-                        <div className="bg-emerald-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-emerald-200">
-                            <p className="text-base sm:text-lg font-bold text-emerald-600">
-                                {data.verification.verified_claims}/{data.verification.total_claims}
-                            </p>
-                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Claims</p>
-                        </div>
-                        <div className="bg-rose-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-rose-200">
-                            <p className="text-base sm:text-lg font-bold text-rose-600">
-                                {data.verification.unverified_claims}
-                            </p>
-                            <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Unverified</p>
-                        </div>
+
+                        {/* Row 2: NEW Best Practice Metrics */}
+                        {data.verification.hallucination_analysis && (
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center">
+                                {/* Hallucination Count */}
+                                <div className={clsx(
+                                    "rounded-lg p-1.5 sm:p-2 shadow-inner border",
+                                    data.verification.hallucination_analysis.is_hallucination_free
+                                        ? "bg-emerald-50/70 border-emerald-200"
+                                        : "bg-amber-50/70 border-amber-200"
+                                )}>
+                                    <p className={clsx(
+                                        "text-base sm:text-lg font-bold",
+                                        data.verification.hallucination_analysis.is_hallucination_free
+                                            ? "text-emerald-600"
+                                            : "text-amber-600"
+                                    )}>
+                                        {data.verification.hallucination_analysis.hallucination_count}
+                                    </p>
+                                    <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Hallucinations</p>
+                                </div>
+
+                                {/* Citation Accuracy */}
+                                {data.verification.citation_verification && (
+                                    <div className="bg-blue-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-blue-200">
+                                        <p className="text-base sm:text-lg font-bold text-blue-600">
+                                            {Math.round(data.verification.citation_verification.citation_accuracy_rate * 100)}%
+                                        </p>
+                                        <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Citation Rate</p>
+                                    </div>
+                                )}
+
+                                {/* Misattribution Count */}
+                                {data.verification.misattribution_analysis && (
+                                    <div className="bg-indigo-50/70 rounded-lg p-1.5 sm:p-2 shadow-inner border border-indigo-200">
+                                        <p className="text-base sm:text-lg font-bold text-indigo-600">
+                                            {data.verification.misattribution_analysis.misattribution_count}
+                                        </p>
+                                        <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Misattributed</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Hallucination Type Breakdown (if any detected) */}
+                        {data.verification.hallucination_analysis &&
+                         data.verification.hallucination_analysis.hallucination_count > 0 && (
+                            <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-2">
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-amber-700 mb-1.5">
+                                    Hallucination Breakdown
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                    {Object.entries(data.verification.hallucination_analysis.hallucination_types)
+                                        .filter(([_, count]) => count > 0)
+                                        .map(([type, count]) => (
+                                            <span
+                                                key={type}
+                                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-medium"
+                                            >
+                                                {type === "fabricated_claim" && "🎭"}
+                                                {type === "contradicted_claim" && "❌"}
+                                                {type === "numerical_hallucination" && "🔢"}
+                                                {type.replace("_", " ")}: {count}
+                                            </span>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Numerical Hallucinations */}
+                        {data.verification.numerical_hallucinations &&
+                         data.verification.numerical_hallucinations.count > 0 && (
+                            <div className="bg-rose-50/50 border border-rose-200 rounded-lg p-2">
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5">
+                                    ⚠ Numerical Hallucinations Detected
+                                </p>
+                                <div className="space-y-1">
+                                    {data.verification.numerical_hallucinations.details?.slice(0, 3).map((detail, idx) => (
+                                        <div key={idx} className="text-[10px] text-rose-700">
+                                            <span className="font-medium">Claim:</span> {detail.claim}
+                                            <br />
+                                            <span className="font-medium">Unsupported numbers:</span> {detail.unsupported_numbers.join(", ")}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -667,6 +755,10 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<AnalysisMode>('auto');
+  
+  // NEW: System mode toggle (AgenticHinaing vs Evaluation)
+  const [systemMode, setSystemMode] = React.useState<SystemMode>('agentic_hinaing');
+  const [evalMode, setEvalMode] = React.useState<EvalMode>('agentic_rag');
 
     const bottomRef = React.useRef<HTMLDivElement>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -751,7 +843,10 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     history: history,
                     platforms: ["web"],
                     time_window: "24h",
-                    mode: mode
+                    mode: mode,
+                    // NEW: System mode toggle
+                    system_mode: systemMode,
+                    eval_mode: systemMode === 'evaluation' ? evalMode : undefined,
                 })
             });
 
@@ -999,30 +1094,72 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             {/* Input Area - Safe area padding for mobile */}
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto space-y-2">
-                                    {/* Mode Selector */}
-                                    <div className="flex items-center justify-center gap-1 sm:gap-2">
-                                        <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Mode:</span>
-                                        {[
-                                            { value: 'auto', label: 'Auto', desc: 'Smart routing' },
-                                            { value: 'full', label: 'Full', desc: 'Complete analysis' },
-                                            { value: 'sentiment', label: 'Sentiment', desc: 'Sentiment only' },
-                                            { value: 'credibility', label: 'Credibility', desc: 'Fact-checking & verification' }
-                                        ].map((option) => (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                onClick={() => setMode(option.value as AnalysisMode)}
-                                                className={clsx(
-                                                    "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
-                                                    mode === option.value
-                                                        ? "bg-blue-100 text-blue-700 border border-blue-200"
-                                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                                                )}
-                                                title={option.desc}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        ))}
+                                    {/* Mode Row with System Toggle */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        {/* Left: Mode Selector */}
+                                        <div className="flex items-center gap-1 sm:gap-1.5">
+                                            <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Mode:</span>
+                                            {systemMode === 'agentic_hinaing' ? (
+                                                // AgenticHinaing Modes (Auto, Full, Sentiment, Credibility)
+                                                [
+                                                    { value: 'auto', label: 'Auto' },
+                                                    { value: 'full', label: 'Full' },
+                                                    { value: 'sentiment', label: 'Sentiment' },
+                                                    { value: 'credibility', label: 'Credibility' }
+                                                ].map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => setMode(option.value as AnalysisMode)}
+                                                        className={clsx(
+                                                            "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
+                                                            mode === option.value
+                                                                ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                                                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                // Evaluation Modes (LLM Only, Simple RAG, Agentic RAG)
+                                                [
+                                                    { value: 'llm_only', label: 'LLM Only' },
+                                                    { value: 'rag', label: 'Simple RAG' },
+                                                    { value: 'agentic_rag', label: 'Agentic RAG' }
+                                                ].map((option) => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => setEvalMode(option.value as EvalMode)}
+                                                        className={clsx(
+                                                            "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
+                                                            evalMode === option.value
+                                                                ? "bg-amber-100 text-amber-700 border border-amber-200"
+                                                                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        {/* Right: System Toggle (Minimalist Pill) */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setSystemMode(systemMode === 'agentic_hinaing' ? 'evaluation' : 'agentic_hinaing')}
+                                            className={clsx(
+                                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold transition-all shadow-sm",
+                                                systemMode === 'agentic_hinaing'
+                                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                                                    : "bg-gradient-to-r from-amber-500 to-amber-600 text-white"
+                                            )}
+                                        >
+                                            <span className="text-xs">{systemMode === 'agentic_hinaing' ? '🟢' : '⚪'}</span>
+                                            <span className="hidden sm:inline">{systemMode === 'agentic_hinaing' ? 'AgenticHinaing' : 'Evaluation'}</span>
+                                            <span className="sm:hidden">{systemMode === 'agentic_hinaing' ? 'AH' : 'Eval'}</span>
+                                        </button>
                                     </div>
 
                                     <div className="relative group">
@@ -1037,7 +1174,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             <input
                                                 value={input}
                                                 onChange={(e) => setInput(e.target.value)}
-                                                placeholder="Ask about Baguio..."
+                                                placeholder={systemMode === 'agentic_hinaing' ? "Ask about Baguio..." : "Enter question for baseline testing..."}
                                                 className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
                                                 disabled={isLoading}
                                             />
@@ -1065,7 +1202,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                         </form>
                                     </div>
                                     <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
-                                        Smart routing: Civic social listening and epistemic truth discovery → 18 autonomous agents | Q&A → Fast search
+                                        {systemMode === 'agentic_hinaing' 
+                                            ? "Smart routing: Civic social listening → 19 agents | Q&A → Fast search"
+                                            : "Evaluation mode: Baseline metrics for API cost comparison"}
                                     </p>
                                 </div>
                             </div>

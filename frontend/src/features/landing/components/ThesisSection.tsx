@@ -33,7 +33,7 @@ export function ThesisSection() {
             <br />
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto">
-            A Self-Learning Temporal-Aware Multi-Agent Framework for Cost-Efficiency and Truth Discovery in Public Opinion Analysis
+            A Self-Learning Temporal-Aware Multi-Agent Framework for Cost-Efficient Epistemic Truth Discovery in Public Op
           </p>
         </div>
 
