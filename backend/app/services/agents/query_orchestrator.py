@@ -555,8 +555,10 @@ class QueryOrchestratorAgent:
             for q in queries:
                 # Extract meaningful terms from the query
                 clean = q.query.split(" after:")[0].strip("()")
-                area = q.topic.split("-")[0] if "-" in q.topic else (
-                    focus_values[0].lower() if focus_values else "general"
+                # Use focus_area from QueryTask if available, otherwise fall back to topic parsing
+                area = q.focus_area.lower() if q.focus_area else (
+                    q.topic.split("-")[0].lower() if "-" in q.topic else
+                    (focus_values[0].lower() if focus_values else "general")
                 )
                 concerns_by_area.setdefault(area, []).append(
                     [term.strip('" ') for term in clean.split(" OR ")[:3] if term.strip('" ')]
@@ -669,20 +671,26 @@ class QueryOrchestratorAgent:
     def _fallback_plan(
         self, focus_values: list[str], time_window: str | None = None
     ) -> QueryPlan:
-        """Deterministic fallback using FOCUS_CONCERN_KEYWORDS for diversity."""
+        """Deterministic fallback using FOCUS_CONCERN_KEYWORDS with balanced distribution.
+        
+        FIXED: Now ensures equal queries per focus area to prevent theme dominance.
+        """
         global _fallback_used
         _fallback_used = True
 
         time_suffix = _get_time_search_suffix(time_window)
 
+        # BALANCED QUERY GENERATION: Ensure equal distribution across focus areas
+        queries_per_area = max(1, self.max_queries // len(focus_values))  # ~2 queries per area for 6 areas
+        
         queries = []
         for area in focus_values:
             area_lower = area.lower()
             keywords = FOCUS_CONCERN_KEYWORDS.get(area_lower, [])
 
             if keywords:
-                # Pick pairs of keywords for diverse coverage
-                for i in range(0, min(len(keywords), 4), 2):
+                # Pick pairs of keywords for diverse coverage (up to queries_per_area)
+                for i in range(0, min(len(keywords), queries_per_area * 2), 2):
                     kw1 = keywords[i]
                     kw2 = keywords[i + 1] if i + 1 < len(keywords) else ""
 
@@ -708,14 +716,36 @@ class QueryOrchestratorAgent:
             if len(queries) >= self.max_queries:
                 break
 
+        # If we don't have enough queries, add more from remaining areas
+        if len(queries) < self.max_queries:
+            for area in focus_values:
+                if len(queries) >= self.max_queries:
+                    break
+                area_lower = area.lower()
+                keywords = FOCUS_CONCERN_KEYWORDS.get(area_lower, [])
+                if keywords:
+                    # Get any remaining keywords
+                    for i in range(len(queries) % len(keywords), len(keywords), 2):
+                        if len(queries) >= self.max_queries:
+                            break
+                        kw1 = keywords[i]
+                        kw2 = keywords[i + 1] if i + 1 < len(keywords) else ""
+                        query = f'"{kw1}" OR "{kw2}"' if kw2 else f'"{kw1}"'
+                        queries.append(QueryTask(
+                            query=f"({query}){time_suffix}",
+                            intent="targeted",
+                            topic=kw1.replace("Baguio ", ""),
+                            priority=len(queries) + 1,
+                        ))
+
         if not queries:
             query = f"Baguio City {' '.join(focus_values)} problem OR concern{time_suffix}"
             queries = [QueryTask(query=query, intent="broad", topic="general", priority=1)]
 
-        logger.info("[query_orchestrator] Fallback: %d queries from domain knowledge", len(queries))
+        logger.info("[query_orchestrator] Fallback: %d balanced queries from domain knowledge", len(queries))
 
         return QueryPlan(
-            strategy=f"Fallback (domain knowledge) for {', '.join(focus_values)}",
+            strategy=f"Balanced fallback (domain knowledge) for {', '.join(focus_values)}",
             queries=queries,
-            expected_results=[f"Baseline results for {', '.join(focus_values)}"],
+            expected_results=[f"Balanced coverage for {', '.join(focus_values)}"],
         )
