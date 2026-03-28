@@ -242,10 +242,18 @@ export function TechniquesSection() {
               <div className="text-2xl font-bold text-amber-600">100%</div>
               <div className="text-xs text-slate-500 mt-1">Citation Rate (Production)</div>
             </div>
-            {/* 0% Hallucination - Centered when alone on row */}
-            <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 md:col-span-2 md:mx-auto md:w-full lg:col-span-2 lg:col-start-2 lg:mx-auto lg:w-full">
-              <div className="text-2xl font-bold text-slate-600">0%</div>
-              <div className="text-xs text-slate-500 mt-1">Hallucination (Production)</div>
+            {/* 0% Hallucination and 97% Agentic Verification Rate - Centered, same size as other metrics */}
+            <div className="md:col-span-3 lg:col-span-4">
+              <div className="flex justify-center gap-4">
+                <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 flex-1 max-w-[245px]">
+                  <div className="text-2xl font-bold text-slate-600">0%</div>
+                  <div className="text-xs text-slate-500 mt-1">Hallucination (Production)</div>
+                </div>
+                <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 flex-1 max-w-[245px]">
+                  <div className="text-2xl font-bold text-indigo-600">97%</div>
+                  <div className="text-xs text-slate-500 mt-1">Agentic Verification Rate (Production)</div>
+                </div>
+              </div>
             </div>
           </div>
 
