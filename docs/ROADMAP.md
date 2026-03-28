@@ -38,9 +38,9 @@ This document tracks what has been delivered so far and the remaining work neede
 ### Agent-Specific Implementations
 
 #### QueryOrchestratorAgent (Context Engineering)
-- ReAct reasoning with 4 tools: `analyze_focus_areas`, `generate_query`, `expand_contextual_queries`, `evaluate_query`
-- KEYWORD_CLUSTERS for static context engineering (4 clusters per focus area)
-- `expand_contextual_queries` for dynamic context engineering (seasonal/temporal awareness)
+- ReAct reasoning with 3 tools: `get_domain_context`, `get_temporal_context`, `validate_query_diversity`
+- FOCUS_CONCERN_KEYWORDS for static context engineering (68 keywords per focus area)
+- `get_temporal_context` for dynamic context engineering (seasonal/temporal awareness)
 - 6 diverse queries generated per request
 - Time-based search operators (`after:YYYY-MM-DD`)
 
