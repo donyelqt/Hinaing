@@ -82,8 +82,8 @@ export function TechniquesSection() {
     },
     {
       id: "CIT-10",
-      title: "In-Line Citation System with Credibility and Sentiment attribution",
-      description: "Every claim includes source attribution in [Src: domain | Cred: 0.87 | Sent: Negative] format for transparent epistemic grounding.",
+      title: "Epistemic Authority Encoding (Neuro-Symbolic)",
+      description: "Neuro-symbolic constrained generation: Symbolic rules (VSEE thresholds, prompt constraints) prioritize AI-verified sources (Tavily AI web search, VSEE consensus) for neural LLM generation. Citations include source URL, credibility score, and sentiment: [Src: pia.gov.ph | Cred: 0.95 | Sent: Positive].",
       icon: Quote,
       isNovel: true,
       color: "text-teal-500 bg-teal-50 border-teal-100",
@@ -145,7 +145,7 @@ export function TechniquesSection() {
         <div className="mb-10 flex flex-wrap items-center justify-center gap-4">
           <div className="flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 backdrop-blur-sm">
             <Sparkles className="h-3 w-3 animate-pulse" />
-            <span>8 Novel Research Contributions</span>
+            <span>9 Novel Research Contributions</span>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 backdrop-blur-sm">
             <Award className="h-3 w-3" />
