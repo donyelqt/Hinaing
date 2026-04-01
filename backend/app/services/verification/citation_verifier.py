@@ -4,8 +4,8 @@ Verifies that in-line citations in generated summaries actually match
 their source documents and accurately represent the cited content.
 
 Supports TWO citation formats:
-1. URL-based (preferred): [Src: https://example.com/article | Cred: 0.XX | Sent: SENTIMENT]
-2. Domain-based (fallback): [Src: example.com | Cred: 0.XX | Sent: SENTIMENT]
+1. New format (verification status): [Src: example.com | Sent: SENTIMENT | Verified/Unverified/Contradicted]
+2. Old format (credibility score): [Src: example.com | Cred: 0.XX | Sent: SENTIMENT]
 """
 from __future__ import annotations
 
@@ -22,15 +22,15 @@ class CitationVerifier:
     Checks:
     1. Citation format validity
     2. URL matches a source document (with alias resolution)
-    3. Credibility score is accurate (within ±0.08)
+    3. Verification status is accurate (Verified/Unverified/Contradicted)
     4. Sentiment label matches document
     5. Cited document semantically supports the claim
     """
 
-    # Citation format: [Src: URL_OR_DOMAIN | Cred: 0.XX | Sent: SENTIMENT]
+    # NEW citation format: [Src: URL_OR_DOMAIN | Sent: SENTIMENT | Verified/Unverified/Contradicted]
     # Supports both full URLs and domain-only citations
     CITATION_PATTERN = re.compile(
-        r'\[Src:\s*([^\|]+)\s*\|\s*Cred:\s*([\d.]+)\s*\|\s*Sent:\s*(\w+)\]'
+        r'\[Src:\s*([^\|]+)\s*\|\s*Sent:\s*([^\|]+)\s*\|\s*(Verified|Unverified|Contradicted)\]'
     )
 
     # Production-grade thresholds (relaxed for LLM generation variance)
@@ -119,24 +119,26 @@ class CitationVerifier:
         """Extract all citations from text.
 
         Args:
-            text: Text containing citations in format [Src: ... | Cred: ... | Sent: ...]
+            text: Text containing citations in format [Src: ... | Sent: ... | Verified/Unverified/Contradicted]
 
         Returns:
             List of citation dicts with:
             - raw: Original citation string
             - source: Extracted URL or domain
-            - credibility: Credibility score (float)
             - sentiment: Sentiment label
+            - verification_status: Verified/Unverified/Contradicted
             - position: Character position in text
         """
         citations = []
         for match in self.CITATION_PATTERN.finditer(text):
             source = match.group(1).strip()
+            sentiment = match.group(2).strip()
+            verification_status = match.group(3).strip()
             citations.append({
                 "raw": match.group(0),
                 "source": source,
-                "credibility": float(match.group(2)),
-                "sentiment": match.group(3).strip(),
+                "sentiment": sentiment,
+                "verification_status": verification_status,
                 "position": match.start(),
             })
         logger.info(f"[CitationVerifier] Extracted {len(citations)} citations")
@@ -186,64 +188,64 @@ class CitationVerifier:
         """Find the document matching a citation.
 
         PRODUCTION STRATEGY (3-tier fallback):
-        1. Metadata matching (sentiment + credibility) - PRIMARY
+        1. Metadata matching (sentiment + verification_status) - PRIMARY
         2. Direct URL match - SECONDARY
         3. Domain alias resolution - FALLBACK
 
         Args:
-            citation: Citation dict with 'source', 'credibility', 'sentiment' keys
+            citation: Citation dict with 'source', 'sentiment', 'verification_status' keys
             documents: List of source documents with metadata
 
         Returns:
             Matching document or None
         """
-        cited_cred = citation.get("credibility", 0.0)
+        cited_status = citation.get("verification_status", "").lower().strip()
         cited_sent = citation.get("sentiment", "").lower().strip()
         cited_source = citation.get("source", "").lower().strip()
-        
-        logger.debug(f"[CitationVerifier] Looking for: cred={cited_cred}, sent={cited_sent}, source={cited_source}")
+
+        logger.debug(f"[CitationVerifier] Looking for: status={cited_status}, sent={cited_sent}, source={cited_source}")
 
         # ============================================================
         # TIER 1: METADATA MATCHING (PRIMARY - Most Accurate)
-        # Match on sentiment + credibility (what LLM actually copies correctly)
+        # Match on sentiment + verification_status
         # ============================================================
-        cred_tolerance = 0.03  # ±0.03 tolerance for rounding
         metadata_matches = []
-        
+
         for doc in documents:
-            doc_cred = doc.get("metadata", {}).get("credibility_score", doc.get("credibility_score", 0.0))
+            doc_status = doc.get("metadata", {}).get("tavily_verification_status", "unverified").lower().strip()
             doc_sent = doc.get("sentiment", "neutral").lower().strip()
-            
+
             # Check sentiment match (exact)
             sent_match = cited_sent == doc_sent
-            
-            # Check credibility match (with tolerance)
-            cred_match = abs(cited_cred - doc_cred) <= cred_tolerance
-            
-            if sent_match and cred_match:
-                metadata_matches.append((doc, abs(cited_cred - doc_cred)))
-                logger.debug(f"[CitationVerifier] Metadata match: cred={doc_cred}, sent={doc_sent}, diff={abs(cited_cred - doc_cred):.3f}")
-        
-        # Return best metadata match (lowest cred difference)
+
+            # Check verification status match
+            # Map "Verified" → "verified", "Unverified" → "unverified", "Contradicted" → "contradicted"
+            status_match = cited_status == doc_status
+
+            if sent_match and status_match:
+                metadata_matches.append(doc)
+                logger.debug(f"[CitationVerifier] Metadata match: status={doc_status}, sent={doc_sent}")
+
+        # Return first metadata match (should be unique with sentiment + status)
         if metadata_matches:
             # TIEBREAKER: If multiple docs have same metadata, use domain matching
             if len(metadata_matches) > 1:
                 cited_domain = self._extract_domain(cited_source) if cited_source else None
                 logger.debug(f"[CitationVerifier] Collision detected ({len(metadata_matches)} docs), using domain tiebreaker: {cited_domain}")
-                
-                for doc, diff in metadata_matches:
+
+                for doc in metadata_matches:
                     doc_url = doc.get("url", "")
                     if doc_url and cited_domain:
                         doc_domain = self._extract_domain(doc_url)
                         # Check if domains match (including alias resolution)
                         resolved_cited = self.DOMAIN_ALIASES.get(cited_domain, cited_domain)
                         resolved_doc = self.DOMAIN_ALIASES.get(doc_domain, doc_domain)
-                        
+
                         if resolved_cited == doc_domain or resolved_cited == resolved_doc or cited_domain == doc_domain:
                             logger.info(f"[CitationVerifier] Found metadata + domain match (Tier 1, tiebreaker)")
                             return doc
-            
-            best_match = min(metadata_matches, key=lambda x: x[1])[0]
+
+            best_match = metadata_matches[0]
             logger.info(f"[CitationVerifier] Found metadata match (Tier 1)")
             return best_match
 
@@ -384,30 +386,40 @@ class CitationVerifier:
         """Verify citation metadata accuracy.
 
         Args:
-            citation: Extracted citation with domain, credibility, sentiment
+            citation: Extracted citation with domain, sentiment, verification_status
             document: Source document with metadata
 
         Returns:
             Verification result:
             - domain_match: bool
-            - credibility_accurate: bool (within ±0.03)
+            - verification_status_accurate: bool
             - sentiment_match: bool
             - accuracy_score: float (0.0-1.0)
         """
         # Check domain match (already done in find_cited_document)
         domain_match = True
 
-        # Check credibility score accuracy (TIGHTER: ±0.03)
-        doc_credibility = document.get("metadata", {}).get(
-            "credibility_score",
-            document.get("credibility_score", 0.0)
+        # Check verification status accuracy
+        doc_status = document.get("metadata", {}).get(
+            "tavily_verification_status",
+            "unverified"
+        ).lower().strip()
+        citation_status = citation.get("verification_status", "").lower().strip()
+        
+        # Normalize status labels (handle case differences)
+        status_map = {
+            "verified": ["verified", "true"],
+            "unverified": ["unverified", "false"],
+            "contradicted": ["contradicted", "disputed"],
+        }
+        
+        verification_status_accurate = (
+            citation_status in status_map.get(doc_status, [doc_status])
         )
-        cred_diff = abs(citation["credibility"] - doc_credibility)
-        credibility_accurate = cred_diff <= self.CREDIBILITY_TOLERANCE
 
         # Check sentiment match
         doc_sentiment = document.get("sentiment", "neutral").lower()
-        citation_sentiment = citation["sentiment"].lower()
+        citation_sentiment = citation.get("sentiment", "").lower()
 
         # Normalize sentiment labels
         sentiment_map = {
@@ -423,19 +435,18 @@ class CitationVerifier:
         # Calculate accuracy score (equal weights)
         accuracy_score = (
             (1.0 if domain_match else 0.0) * 0.34 +
-            (1.0 if credibility_accurate else 0.0) * 0.33 +
+            (1.0 if verification_status_accurate else 0.0) * 0.33 +
             (1.0 if sentiment_match else 0.0) * 0.33
         )
 
         return {
             "domain_match": domain_match,
-            "credibility_accurate": credibility_accurate,
+            "verification_status_accurate": verification_status_accurate,
             "sentiment_match": sentiment_match,
             "accuracy_score": round(accuracy_score, 3),
-            "cited_credibility": citation["credibility"],
-            "actual_credibility": doc_credibility,
-            "credibility_diff": round(cred_diff, 3),
-            "cited_sentiment": citation["sentiment"],
+            "cited_verification_status": citation.get("verification_status"),
+            "actual_verification_status": doc_status,
+            "cited_sentiment": citation.get("sentiment"),
             "actual_sentiment": doc_sentiment,
         }
 
@@ -568,7 +579,7 @@ class CitationVerifier:
                     "source": citation["source"],
                     "is_valid": is_valid,
                     "accuracy_score": metadata_result["accuracy_score"],
-                    "credibility_match": metadata_result["credibility_accurate"],
+                    "verification_status_match": metadata_result["verification_status_accurate"],
                     "sentiment_match": metadata_result["sentiment_match"],
                     "source_url": matched_doc.get("url"),
                 })
@@ -579,7 +590,7 @@ class CitationVerifier:
                     "source": citation["source"],
                     "is_valid": False,
                     "accuracy_score": 0.0,
-                    "credibility_match": False,
+                    "verification_status_match": False,
                     "sentiment_match": False,
                     "source_url": None,
                     "error": "No matching source document found",
