@@ -145,50 +145,51 @@ def compute_semantic_cross_reference_scores(
     similarity_threshold: float = 0.70,
 ) -> tuple[list[float], list[int]]:
     """Signal 2: Score based on semantic corroboration across sources.
-    
+
     Uses BGE-small embeddings for semantic similarity instead of keyword Jaccard.
     This captures meaning rather than just word overlap.
-    
+
     Args:
         documents: List of documents
         embeddings: Pre-computed embeddings for each document
         domains: Pre-extracted domains for each document
         similarity_threshold: Cosine similarity threshold for "same story" (default 0.70)
-    
+
     Returns:
         Tuple of (scores, corroborator_counts) for each document
     """
     n = len(documents)
     if n <= 1:
         return [0.50] * n, [0] * n
-    
+
     scores = []
     corroborator_counts = []
-    
+
     for i in range(n):
         domain_i = domains[i]
         emb_i = embeddings[i]
-        
+
         # Count corroborating sources (different domains with semantically similar content)
         corroborating_domains = set()
-        
+
         for j in range(n):
             if i == j:
                 continue
             domain_j = domains[j]
+
             # Skip same domain (not independent)
             if domain_i == domain_j:
                 continue
-            
+
             emb_j = embeddings[j]
-            
+
             # Semantic similarity using cosine distance
             similarity = compute_cosine_similarity(emb_i, emb_j)
-            
+
             # Threshold: 0.70 cosine similarity = semantically same story
             if similarity >= similarity_threshold:
                 corroborating_domains.add(domain_j)
-        
+
         # Score based on number of independent corroborating sources
         unique_corroborators = len(corroborating_domains)
         if unique_corroborators >= 3:
@@ -201,10 +202,10 @@ def compute_semantic_cross_reference_scores(
             # Baseline when there are no corroborating domains
             # Boosted from 0.45 to 0.55 to prevent overly penalizing new, uncorroborated local news
             score = 0.55
-        
+
         scores.append(score)
         corroborator_counts.append(unique_corroborators)
-    
+
     return scores, corroborator_counts
 
 
@@ -1152,14 +1153,149 @@ class CredibilityAgent:
             embedding_service=get_embedding_service()
         )
     
+    def score(
+        self,
+        documents: list[WebDocument],
+        disable_signals: list[str] | None = None,
+        simulate_api_failure: bool = False,
+        disable_vsee: bool = False,
+    ) -> list[dict]:
+        """Synchronous wrapper for benchmark evaluation.
+
+        Args:
+            documents: List of WebDocument objects to analyze
+            disable_signals: List of signals to disable for ablation study
+                Options: ["domain", "cross_reference", "fact_check", "llm", "tavily"]
+            simulate_api_failure: Simulate Google Fact Check and Tavily API failures
+            disable_vsee: Disable VSEE bypass mechanism for comparison
+
+        Returns:
+            List of credibility analysis results (dicts with scores and metadata)
+        """
+        import asyncio
+
+        # Run async evaluation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(
+                self._score_async(
+                    documents,
+                    disable_signals=disable_signals,
+                    simulate_api_failure=simulate_api_failure,
+                    disable_vsee=disable_vsee,
+                )
+            )
+        finally:
+            loop.close()
+
+    async def _score_async(
+        self,
+        documents: list[WebDocument],
+        disable_signals: list[str] | None = None,
+        simulate_api_failure: bool = False,
+        disable_vsee: bool = False,
+    ) -> list[dict]:
+        """Internal async scoring with benchmark support."""
+        if not documents:
+            return []
+
+        # Store original API keys for restoration
+        original_fact_check_key = self.factcheck_agent.api_key
+        original_tavily_key = self.tavily_agent.api_key
+
+        # Simulate API failures by removing API keys
+        if simulate_api_failure:
+            self.factcheck_agent.api_key = None
+            self.tavily_agent.api_key = None
+
+        # Run credibility analysis
+        enriched_docs = await self.run(documents)
+
+        # Restore API keys
+        if simulate_api_failure:
+            self.factcheck_agent.api_key = original_fact_check_key
+            self.tavily_agent.api_key = original_tavily_key
+
+        # Convert to result dicts
+        results = []
+        for doc in enriched_docs:
+            metadata = doc.metadata or {}
+            breakdown = metadata.get("credibility_breakdown", {})
+
+            # Apply signal disabling for ablation study
+            if disable_signals:
+                for signal in disable_signals:
+                    if signal in breakdown:
+                        breakdown[signal] = 0.50  # Neutral score when disabled
+
+                # Recalculate final score with disabled signals
+                weights = {
+                    "domain": 0.25,
+                    "cross_reference": 0.20,
+                    "fact_check": 0.15,
+                    "llm": 0.20,
+                    "tavily": 0.20,
+                }
+                active_weight = sum(w for s, w in weights.items() if s not in disable_signals)
+                if active_weight > 0:
+                    final_score = sum(
+                        breakdown.get(s, 0.50) * w
+                        for s, w in weights.items()
+                        if s not in disable_signals
+                    ) / active_weight
+                else:
+                    final_score = 0.50
+            else:
+                final_score = metadata.get("credibility_score", 0.50)
+
+            # Handle VSEE disabling
+            vsee_applied = False
+            if not disable_vsee and not simulate_api_failure:
+                # Check if VSEE would have been triggered
+                crossref = breakdown.get("cross_reference", 0.50)
+                domain = breakdown.get("domain", 0.50)
+                is_verified_via_vsee = (crossref >= 0.70 and domain >= 0.45)
+                is_verified_via_domain = (domain >= 0.70 and crossref >= 0.55)
+                vsee_applied = is_verified_via_vsee or is_verified_via_domain
+
+            result = {
+                "credibility_score": final_score,
+                "credibility_tier": metadata.get("credibility_tier", "medium"),
+                "signals": breakdown,
+                "vsee_applied": vsee_applied and not disable_vsee,
+                "api_error": simulate_api_failure,
+            }
+            results.append(result)
+
+        return results
+
+    def set_vsee_thresholds(
+        self,
+        crossref_threshold: float = 0.70,
+        domain_threshold: float = 0.45,
+    ) -> None:
+        """Set VSEE bypass thresholds for optimization.
+
+        Args:
+            crossref_threshold: Minimum cross-reference score for VSEE bypass
+            domain_threshold: Minimum domain trust score for VSEE bypass
+        """
+        self._vsee_crossref_threshold = crossref_threshold
+        self._vsee_domain_threshold = domain_threshold
+        logger.info(
+            f"[CredibilityAgent] VSEE thresholds updated: "
+            f"crossref>={crossref_threshold:.2f}, domain>={domain_threshold:.2f}"
+        )
+
     async def run(self, documents: list[WebDocument]) -> list[WebDocument]:
         """Assess credibility using 5 parallel sub-agents.
-        
+
         Expected speedup: 3-5x (78s → ~20s)
         """
         if not documents:
             return []
-        
+
         n = len(documents)
         logger.info(f"[CredibilityAgent] Analyzing {n} documents with 5 parallel sub-agents")
         
@@ -1230,20 +1366,26 @@ class CredibilityAgent:
                 tavily_verified_sources = list(tavily_result.get("verified_sources", []))
 
             # ------------- VECTOR-SYMBOLIC EPISTEMIC ENTAILMENT (NOVELTY) -------------
-            # If the factual claim is heavily corroborated by independent internal sources 
-            # (Vector Semantic Similarity > 0.70 across 1+ distinct domains), we can mathematically 
-            # bypass the need for external web search (Tavily/Google). 
+            # If the factual claim is heavily corroborated by independent internal sources
+            # (Vector Semantic Similarity > 0.70 across 1+ distinct domains), we can mathematically
+            # bypass the need for external web search (Tavily/Google).
             # Local consensus = Verified Truth. This directly solves the Prolog-GraphRAG
             # problem without needing heavy symbolic logic, while bypassing external API failures.
-            # 
-            # UPDATED (Domain Priority Bypass): 
+            #
+            # UPDATED (Domain Priority Bypass):
             # Condition 1: High Corroboration (crossref_score >= 0.70 and base trust)
             # Condition 2: High Authority Domain (domain_score >= 0.70 and minimum trust baseline)
-            # High authority domains (like Philippine News Agency or LGUs) do not require 
+            # High authority domains (like Philippine News Agency or LGUs) do not require
             # external validation to establish epistemic truth.
-            
-            is_verified_via_vsee = (crossref_score >= 0.70 and domain_score >= 0.45)
-            is_verified_via_domain = (domain_score >= 0.70 and crossref_score >= 0.55)
+
+            # Use configurable thresholds if set, otherwise use defaults
+            vsee_crossref_thresh = getattr(self, '_vsee_crossref_threshold', 0.70)
+            vsee_domain_thresh = getattr(self, '_vsee_domain_threshold', 0.45)
+            vsee_crossref_thresh_2 = getattr(self, '_vsee_domain_threshold', 0.70)  # For condition 2
+            vsee_domain_thresh_2 = getattr(self, '_vsee_crossref_threshold', 0.55)  # For condition 2
+
+            is_verified_via_vsee = (crossref_score >= vsee_crossref_thresh and domain_score >= vsee_domain_thresh)
+            is_verified_via_domain = (domain_score >= vsee_crossref_thresh_2 and crossref_score >= vsee_domain_thresh_2)
             
             if is_verified_via_vsee or is_verified_via_domain:
                 if tavily_verification_status in ["unverified", "rate_limited", "skipped_limit", "disabled", "error", "no_claims", "partial"]:
@@ -1303,6 +1445,15 @@ class CredibilityAgent:
                     "llm_reasoning": llm_result.get("reasoning", ""),
                     "tavily_verified_sources": tavily_verified_sources,
                     "tavily_verification_status": tavily_verification_status,
+                    # NEW: Verification contributions from each signal
+                    "verification_contributions": {
+                        "domain_trust": domain_score >= 0.70,      # High domain trust
+                        "cross_reference": crossref_score >= 0.70,  # Strong corroboration
+                        "fact_check": factcheck_score >= 0.75,     # Fact-check confirmed
+                        "llm_analysis": llm_score_async >= 0.75,   # LLM assessed credible
+                        "tavily": tavily_verification_status,      # "verified"/"unverified"/"contradicted"
+                        "vsee_override": is_verified_via_vsee or is_verified_via_domain,  # VSEE activated
+                    },
                 }
             }))
         

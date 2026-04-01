@@ -70,6 +70,20 @@ Task: Analyze the documents below and generate EXACTLY 3 ACTIONABLE RECOMMENDATI
 Documents ({doc_count} shown):
 {context}
 
+⚠️ CRITICAL: SOURCE VERIFICATION PRIORITIZATION ⚠️
+When selecting evidence URLs for your recommendations, PRIORITIZE in this order:
+
+1. VERIFIED SOURCES FIRST: Documents with "Verified" status or high credibility (≥0.75)
+   - Government sources (gov.ph, pia.gov.ph)
+   - Established news (inquirer.net, philstar.com, gmanetwork.com)
+   - Documents with high credibility scores
+
+2. AVOID LOW CREDIBILITY SOURCES: Documents with credibility <0.55
+   - Social media posts without verification
+   - Unverified user-generated content
+
+3. NEVER cite contradicted sources unless explicitly noting the dispute
+
 CRITICAL REQUIREMENTS FOR GOOD GOVERNANCE:
 1. Generate EXACTLY 3 actionable recommendations (no more, no less)
 2. Each recommendation must address a DIFFERENT issue or sub-topic
@@ -79,8 +93,8 @@ CRITICAL REQUIREMENTS FOR GOOD GOVERNANCE:
 
 Format for each recommendation:
 - Title: Clear problem statement
-- Detail: Specific action the government should take (under 240 characters)
-- Evidence: URLs from documents supporting this recommendation
+- Detail: Specific action the government can take (under 240 characters)
+- Evidence: URLs from VERIFIED/HIGH-CREDIBILITY documents supporting this recommendation
 
 Examples of ACTIONABLE recommendations for Infrastructure:
 ✅ GOOD (Actionable):

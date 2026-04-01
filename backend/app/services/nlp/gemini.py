@@ -89,11 +89,10 @@ class LLMNarrativeClient:
                 sentiment_distribution=sentiment_distribution,
             )
             
-            # POST-PROCESSING: Convert [1], [2], [3] to full citation format
+            # POST-PROCESSING: Filter invalid citations (safety net for LLM errors)
             if result[0]:  # If summary exists
-                result = self._convert_citation_numbers(result[0], result[1], documents)
                 result = self._filter_invalid_citations(result[0], result[1], documents)
-            
+
             return result
         
         # Fallback: Use agent path only when no theme_insights available
@@ -220,25 +219,30 @@ class LLMNarrativeClient:
                     url_short = url_short[:57] + '...'
                 credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
                 sentiment = doc.get('sentiment', 'neutral').capitalize()
+                verification_status = doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
                 citation_map[idx] = {
                     'url': url_short,
                     'credibility': round(credibility, 2),
                     'sentiment': sentiment,
+                    'verification_status': verification_status,
                 }
         
-        # Convert [1], [2], [3] to [Src: url | Cred: X.XX | Sent: Y]
+        # Convert [1], [2], [3] to [Src: url | Cred: X.XX | Sent: Y | Verified/Unverified]
         def replace_citation(match):
             num = int(match.group(1))
             if num in citation_map:
                 item = citation_map[num]
-                return f"[Src: {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']}]"
+                # Add verification status if available
+                verification = item.get('verification_status', 'unverified').capitalize()
+                return f"[Src: {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']} | {verification}]"
             else:
                 logger.warning(f"[LLMNarrativeClient] Citation [{num}] not found in citation map")
                 return match.group(0)  # Keep original if not found
-        
+
         converted = re.sub(r'\[(\d+)\]', replace_citation, summary)
-        logger.info(f"[LLMNarrativeClient] Converted {len(re.findall(r'\[\d+\]', summary))} citation numbers to full format")
-        
+        citation_count = len(re.findall(r'\[\d+\]', summary))
+        logger.info(f"[LLMNarrativeClient] Converted {citation_count} citation numbers to full format with verification status")
+
         return converted, insights
 
     async def _run_direct_generation(
@@ -349,11 +353,13 @@ class LLMNarrativeClient:
                     url_short = url_short[:57] + '...'
                 credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
                 sentiment = doc.get('sentiment', 'neutral').capitalize()
+                verification_status = doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
                 citation_menu.append({
                     'idx': idx,
                     'url': url_short,
                     'credibility': round(credibility, 2),
                     'sentiment': sentiment,
+                    'verification_status': verification_status,
                 })
 
         # Build citation menu block
@@ -361,8 +367,24 @@ class LLMNarrativeClient:
         if citation_menu:
             menu_lines = ["=== AVAILABLE CITATIONS (Choose by number [1], [2], [3], etc.) ==="]
             for item in citation_menu:
+                # Extract verification_status from document metadata
+                doc_credibility = item.get('credibility', 0.0)
+                doc_verification_status = item.get('verification_status', 'unverified')
+
+                # Professional text label based on verification status
+                if doc_verification_status == 'verified':
+                    status_label = "Verified"  # Tavily or VSEE confirmed
+                elif doc_verification_status == 'contradicted':
+                    status_label = "Contradicted"  # Actively disputed
+                elif doc_credibility >= 0.75:
+                    status_label = "High Credibility"  # Strong but unverified
+                elif doc_credibility < 0.55:
+                    status_label = "Low Credibility"  # Weak sourcing
+                else:
+                    status_label = "Unverified"  # Moderate sourcing
+
                 menu_lines.append(
-                    f"[{item['idx']}] {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']}"
+                    f"[{item['idx']}] {item['url']} | {status_label} | Sent: {item['sentiment']}"
                 )
             citation_menu_block = "\n".join(menu_lines) + "\n\n"
 
@@ -420,10 +442,44 @@ RIGHT: [Src: pia.gov.ph | Cred: 0.95]  ← Domain from list above
                 f"- Match the tone to the actual sentiment breakdown above\n"
             )
 
+        # Build verification prioritization instruction
+        verification_instruction = """
+⚠️ CRITICAL: CITATION PRIORITIZATION ⚠️
+When multiple sources support the same claim, PRIORITIZE in this order:
+
+1. VERIFIED SOURCES: Choose these FIRST (verification_status: Verified)
+   - These are confirmed by Tavily web search OR VSEE internal consensus
+   - VSEE verifies via: cross-reference ≥0.70 + domain trust ≥0.45
+   - Look for: "Verified" label in citation menu
+   - Example: [3] pia.gov.ph | Cred: 0.82 | Verified | Sent: Positive
+
+2. HIGH CREDIBILITY: Choose if no verified sources available (Cred: ≥0.75)
+   - These have strong domain trust + internal corroboration
+   - Look for: "High Credibility" label in citation menu
+   - Example: [5] inquirer.net | Cred: 0.78 | High Credibility | Sent: Neutral
+
+3. LOW CREDIBILITY: AVOID unless no alternative (Cred: <0.55)
+   - These lack external confirmation or internal consensus
+   - Look for: "Low Credibility" label in citation menu
+   - Example: [8] facebook.com | Cred: 0.42 | Low Credibility | Sent: Positive
+
+4. CONTRADICTED: DO NOT CITE unless explicitly noting dispute
+   - These are actively disputed by fact-checkers
+   - Look for: "Contradicted" label in citation menu
+   - Example: [12] unknown.com | Cred: 0.28 | Contradicted | Sent: Negative
+
+RULES:
+- ALWAYS prefer VERIFIED over HIGH CREDIBILITY
+- AVOID LOW CREDIBILITY unless no other source supports the claim
+- NEVER cite CONTRADICTED sources without noting the dispute
+- When in doubt, choose sources with higher credibility scores
+"""
+
         return (
             "You are a senior analyst supporting the Baguio City command center. "
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
             f"{citation_menu_block}"  # NEW: Citation menu for constrained generation
+            f"{verification_instruction}"  # NEW: Verification prioritization
             f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
             f"{docs_block}\n"
             f"{insights_block}"
@@ -435,23 +491,17 @@ RIGHT: [Src: pia.gov.ph | Cred: 0.95]  ← Domain from list above
             "2. Reference the theme insights for structured context.\n"
             "3. Generate a comprehensive, engaging narrative summary with IN-LINE CITATIONS.\n\n"
             "CITATION FORMAT (CRITICAL - MUST FOLLOW EXACTLY):\n"
-            "- Use citation NUMBERS from the AVAILABLE CITATIONS menu above: [1], [2], [3], etc.\n"
-            "- Place citation number at the end of each sentence: ...affected vendors [1].\n"
-            "- DO NOT generate domain names from memory - CHOOSE from the menu above.\n"
-            "- Each sentence MUST have exactly one citation number.\n"
-            "- Examples of CORRECT citations:\n"
-            "  ✓ Vendors received P10,000 assistance [1].\n"
-            "  ✓ Market redevelopment faces resistance [2].\n"
-            "  ✓ Festival drives economic activity [5].\n"
-            "- Examples of WRONG citations (DO NOT USE):\n"
-            "  ✗ [Src: mb.com.ph | ...] ← Old format, do not use\n"
-            "  ✗ [Src: Northern Luzon Sentinel | ...] ← Publication name from memory\n"
-            "  ✗ Vendors received aid. ← Missing citation\n"
-            "- ⚠️ CRITICAL: EVERY sentence MUST end with a citation number. NO exceptions.\n"
-            "- ⚠️ CRITICAL: Each paragraph should have 2-4 citation numbers minimum.\n"
-            "- ⚠️ CRITICAL: The conclusion paragraph MUST have at least 2 citation numbers.\n"
-            "- Use the credibility_score from document metadata (round to 2 decimals)\n"
-            "- Use the sentiment from document metadata (Negative/Neutral/Positive)\n"
+            "- Each sentence MUST end with a full citation in this EXACT format:\n"
+            "  [Src: domain.com | Sent: SENTIMENT | Verified/Unverified/Contradicted]\n"
+            "- Example: Vendors received P10,000 assistance [Src: pia.gov.ph | Sent: Positive | Verified].\n"
+            "- Use the citation menu above to select sources - COPY the domain EXACTLY as shown\n"
+            "- DO NOT use numbered citations like [1], [2], [3] - use FULL format ONLY\n"
+            "- EVERY sentence MUST have exactly one citation. NO exceptions.\n"
+            "- Each paragraph should have 2-4 citations minimum.\n"
+            "- The conclusion paragraph MUST have at least 2 citations.\n"
+            "- Prioritize VERIFIED sources (marked 'Verified' in menu) when multiple sources support a claim\n"
+            "- Use sentiment from document metadata (Negative/Neutral/Positive)\n"
+            "- Include verification status: Verified, Unverified, or Contradicted\n"
             "- Citations prove your claims are grounded in retrieved documents\n\n"
             "FORMATTING REQUIREMENTS:\n"
             "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
@@ -472,10 +522,11 @@ RIGHT: [Src: pia.gov.ph | Cred: 0.95]  ← Domain from list above
             '- summary: "string narrative with \\n\\n between paragraphs and [Src: ...] citations" (use double quotes!)\n'
             "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n\n"
             "Example CORRECT format:\n"
-            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Cred: 0.87 | Sent: Negative].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Cred: 0.95 | Sent: Neutral].", "insights": []}\n\n'
+            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Sent: Negative | Unverified].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Sent: Neutral | Verified].", "insights": []}\n\n'
             "Example WRONG format (DO NOT USE):\n"
             "{'summary': `text with backticks`, 'insights': []}  <- INVALID!\n"
             '{"summary": "Traffic increased.", "insights": []}  <- MISSING CITATIONS!\n'
+            '{"summary": "Traffic increased [1].", "insights": []}  <- NUMBERED CITATION (use full format)!\n'
         )
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
