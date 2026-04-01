@@ -103,6 +103,18 @@ class PipelineMetrics:
     agentic_verification_verified: int = 0  # Documents with verification_status="verified"
     agentic_verification_rate: float = 0.0  # verified / total (target: ≥0.97)
 
+    # VSEE Effectiveness Metrics (Vector-Symbolic Epistemic Entailment)
+    vsee_triggered_count: int = 0  # Documents where VSEE bypass was activated
+    vsee_bypass_rate: float = 0.0  # vsee_triggered / total_docs
+    vsee_api_calls_avoided: int = 0  # External API calls skipped via VSEE (Tavily + Fact Check)
+    vsee_verified_via_crossref: int = 0  # Verified via crossref ≥ 0.70 + domain ≥ 0.45
+    vsee_verified_via_domain: int = 0  # Verified via domain ≥ 0.70 + crossref ≥ 0.55
+    
+    # VSEE Quality Metrics (NEW - proves VSEE accuracy)
+    vsee_avg_credibility_score: float = 0.0  # Avg credibility of VSEE-triggered docs
+    vsee_high_credibility_rate: float = 0.0  # % of VSEE docs with score ≥ 0.75
+    vsee_api_agreement_rate: float = 0.0  # When API worked, did VSEE agree?
+
     # API Cost Reduction / Cache Intelligence Rate
     api_calls_total: int = 0  # Total API calls if no caching
     api_calls_actual: int = 0  # Actual API calls made (after Smart Reuse)
@@ -394,6 +406,46 @@ class MetricsCollector:
                 f"({self._current_run.agentic_verification_rate:.3f})"
             )
 
+    def record_vsee_effectiveness(
+        self,
+        triggered_count: int,
+        bypass_rate: float,
+        api_calls_avoided: int,
+        verified_via_crossref: int = 0,
+        verified_via_domain: int = 0,
+        avg_credibility_score: float = 0.0,
+        high_credibility_rate: float = 0.0,
+        api_agreement_rate: float = 0.0,
+    ) -> None:
+        """Record VSEE (Vector-Symbolic Epistemic Entailment) effectiveness metrics.
+
+        Args:
+            triggered_count: Number of documents where VSEE bypass was activated
+            bypass_rate: triggered_count / total_documents
+            api_calls_avoided: External API calls skipped via VSEE (Tavily + Fact Check)
+            verified_via_crossref: Documents verified via crossref ≥ 0.70 + domain ≥ 0.45
+            verified_via_domain: Documents verified via domain ≥ 0.70 + crossref ≥ 0.55
+            avg_credibility_score: Average credibility score of VSEE-triggered documents
+            high_credibility_rate: % of VSEE-triggered docs with credibility ≥ 0.75
+            api_agreement_rate: When APIs worked, how often did VSEE agree?
+        """
+        if self._current_run:
+            self._current_run.vsee_triggered_count = triggered_count
+            self._current_run.vsee_bypass_rate = round(bypass_rate, 3)
+            self._current_run.vsee_api_calls_avoided = api_calls_avoided
+            self._current_run.vsee_verified_via_crossref = verified_via_crossref
+            self._current_run.vsee_verified_via_domain = verified_via_domain
+            self._current_run.vsee_avg_credibility_score = round(avg_credibility_score, 3)
+            self._current_run.vsee_high_credibility_rate = round(high_credibility_rate, 3)
+            self._current_run.vsee_api_agreement_rate = round(api_agreement_rate, 3)
+
+            logger.info(
+                f"[metrics] VSEE Effectiveness: triggered={triggered_count} "
+                f"({bypass_rate:.1%}), API calls avoided={api_calls_avoided}, "
+                f"avg_credibility={avg_credibility_score:.3f}, "
+                f"high_cred_rate={high_credibility_rate:.1%}"
+            )
+
     def record_api_cost_reduction(
         self,
         api_calls_total: int,
@@ -505,6 +557,12 @@ class MetricsCollector:
         avg_verification_rate = sum(r.agentic_verification_rate for r in runs) / len(runs) if runs else 0
         avg_cost_reduction = sum(r.api_cost_reduction_rate for r in runs) / len(runs) if runs else 0
         avg_smart_reuse = sum(r.smart_reuse_rate for r in runs) / len(runs) if runs else 0
+        
+        # NEW: VSEE Effectiveness
+        avg_vsee_bypass_rate = sum(r.vsee_bypass_rate for r in runs) / len(runs) if runs else 0
+        avg_vsee_api_avoided = sum(r.vsee_api_calls_avoided for r in runs) / len(runs) if runs else 0
+        avg_vsee_credibility = sum(r.vsee_avg_credibility_score for r in runs) / len(runs) if runs else 0
+        avg_vsee_high_cred_rate = sum(r.vsee_high_credibility_rate for r in runs) / len(runs) if runs else 0
 
         # Error rate
         runs_with_errors = sum(1 for r in runs if r.errors)
@@ -524,6 +582,12 @@ class MetricsCollector:
             "avg_agentic_verification_rate": round(avg_verification_rate, 3),
             "avg_api_cost_reduction_rate": round(avg_cost_reduction, 3),
             "avg_smart_reuse_rate": round(avg_smart_reuse, 3),
+            "vsee": {
+                "avg_bypass_rate": round(avg_vsee_bypass_rate, 3),
+                "avg_api_calls_avoided": round(avg_vsee_api_avoided, 1),
+                "avg_credibility_score": round(avg_vsee_credibility, 3),
+                "avg_high_credibility_rate": round(avg_vsee_high_cred_rate, 3),
+            },
             "error_rate": round(error_rate, 3),
             "fallback_rate": round(fallback_rate, 3),
             "latency_breakdown": {

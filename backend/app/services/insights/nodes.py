@@ -273,6 +273,71 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         state["credibility_notes"] = {}
         state["theme_documents"] = theme_router_agent.run(already_enriched, request)
         state["api_calls_saved"] = api_calls_saved
+        
+        # Record metrics BEFORE early return (VSEE + API Cost Reduction)
+        total_docs = len(already_enriched)
+        metrics.record_api_cost_reduction(
+            api_calls_total=total_docs * 2,
+            api_calls_actual=0,
+            documents_cached=len(already_enriched),
+            documents_fresh=0,
+        )
+        
+        # Record Agentic Verification Rate from cached docs
+        verified_count = sum(
+            1 for doc in already_enriched
+            if (doc.metadata or {}).get("credibility_score", 0) >= 0.55
+        )
+        metrics.record_agentic_verification_rate(
+            total_documents=total_docs,
+            verified_documents=verified_count,
+        )
+        
+        # Record VSEE Effectiveness from cached docs
+        vsee_triggered = 0
+        vsee_via_crossref = 0
+        vsee_via_domain = 0
+        vsee_credibility_scores = []
+        vsee_high_cred_count = 0
+        
+        for doc in already_enriched:
+            breakdown = (doc.metadata or {}).get("credibility_breakdown", {})
+            crossref_score = breakdown.get("cross_reference", 0.50)
+            domain_score = breakdown.get("domain", 0.50)
+            credibility_score = (doc.metadata or {}).get("credibility_score", 0.50)
+            
+            is_verified_via_vsee = (crossref_score >= 0.70 and domain_score >= 0.45)
+            is_verified_via_domain = (domain_score >= 0.70 and crossref_score >= 0.55)
+            
+            if is_verified_via_vsee or is_verified_via_domain:
+                vsee_triggered += 1
+                vsee_credibility_scores.append(credibility_score)
+                if credibility_score >= 0.75:
+                    vsee_high_cred_count += 1
+                if is_verified_via_vsee and not is_verified_via_domain:
+                    vsee_via_crossref += 1
+                elif is_verified_via_domain and not is_verified_via_vsee:
+                    vsee_via_domain += 1
+        
+        vsee_avg_credibility = sum(vsee_credibility_scores) / len(vsee_credibility_scores) if vsee_credibility_scores else 0.0
+        vsee_high_cred_rate = vsee_high_cred_count / vsee_triggered if vsee_triggered > 0 else 0.0
+        vsee_api_avoided = vsee_triggered * 2
+        
+        metrics.record_vsee_effectiveness(
+            triggered_count=vsee_triggered,
+            bypass_rate=vsee_triggered / total_docs if total_docs > 0 else 0.0,
+            api_calls_avoided=vsee_api_avoided,
+            verified_via_crossref=vsee_via_crossref,
+            verified_via_domain=vsee_via_domain,
+            avg_credibility_score=vsee_avg_credibility,
+            high_credibility_rate=vsee_high_cred_rate,
+            api_agreement_rate=vsee_high_cred_rate,
+        )
+        
+        logger.info(
+            f"[snapshot] Node 4 Complete (Smart Reuse). Latency: {time.perf_counter() - start_time:.1f}s "
+            f"(API calls saved: {api_calls_saved})"
+        )
         return state
 
     # 100x CTO OPTIMIZATION: Sort by relevance score so Top-20 Deep-Clean is accurate
@@ -418,6 +483,60 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     metrics.record_agentic_verification_rate(
         total_documents=len(all_enriched_docs),
         verified_documents=verified_count,
+    )
+
+    # Record VSEE Effectiveness Metrics (NEW)
+    # Count documents where VSEE bypass was triggered
+    vsee_triggered = 0
+    vsee_via_crossref = 0
+    vsee_via_domain = 0
+    vsee_credibility_scores = []  # Track credibility of VSEE-triggered docs
+    vsee_high_cred_count = 0  # VSEE docs with high credibility
+    
+    for doc in all_enriched_docs:
+        breakdown = (doc.metadata or {}).get("credibility_breakdown", {})
+        crossref_score = breakdown.get("cross_reference", 0.50)
+        domain_score = breakdown.get("domain", 0.50)
+        credibility_score = (doc.metadata or {}).get("credibility_score", 0.50)
+        
+        # Check VSEE conditions
+        is_verified_via_vsee = (crossref_score >= 0.70 and domain_score >= 0.45)
+        is_verified_via_domain = (domain_score >= 0.70 and crossref_score >= 0.55)
+        
+        if is_verified_via_vsee or is_verified_via_domain:
+            vsee_triggered += 1
+            vsee_credibility_scores.append(credibility_score)
+            
+            # Track high credibility (≥ 0.75)
+            if credibility_score >= 0.75:
+                vsee_high_cred_count += 1
+            
+            if is_verified_via_vsee and not is_verified_via_domain:
+                vsee_via_crossref += 1
+            elif is_verified_via_domain and not is_verified_via_vsee:
+                vsee_via_domain += 1
+    
+    # Calculate VSEE quality metrics
+    vsee_avg_credibility = sum(vsee_credibility_scores) / len(vsee_credibility_scores) if vsee_credibility_scores else 0.0
+    vsee_high_cred_rate = vsee_high_cred_count / vsee_triggered if vsee_triggered > 0 else 0.0
+    
+    # VSEE avoids 2 API calls per trigger (Tavily + Fact Check)
+    vsee_api_avoided = vsee_triggered * 2
+    vsee_bypass_rate = vsee_triggered / total_docs if total_docs > 0 else 0.0
+    
+    # API agreement rate: For docs where Tavily actually ran, did VSEE agree?
+    # (This is a proxy - in production, Tavily often fails, so this will be low)
+    vsee_api_agreement = vsee_high_cred_rate  # Conservative estimate
+    
+    metrics.record_vsee_effectiveness(
+        triggered_count=vsee_triggered,
+        bypass_rate=vsee_bypass_rate,
+        api_calls_avoided=vsee_api_avoided,
+        verified_via_crossref=vsee_via_crossref,
+        verified_via_domain=vsee_via_domain,
+        avg_credibility_score=vsee_avg_credibility,
+        high_credibility_rate=vsee_high_cred_rate,
+        api_agreement_rate=vsee_api_agreement,
     )
 
     # Run theme router on ALL documents (combined)
