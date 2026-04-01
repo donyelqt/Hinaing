@@ -28,6 +28,7 @@ import { TimeWindowSelector } from "./TimeWindowSelector";
 import { FocusAreaSelector } from "./FocusAreaSelector";
 import { MobileFilters } from "./MobileFilters";
 import { VerificationBadge } from "./VerificationBadge";
+import { parseCitations } from "../utils/citation-parser";
 import { PRESET_OPTIONS, GENERATOR_STEPS } from "../constants";
 
 type SentimentGeneratorPageProps = {
@@ -70,6 +71,29 @@ type SnapshotResponse = {
       status: string;
       supporting_sources: string[];
     }>;
+    // NEW: Best practice metrics for Row 2 display
+    hallucination_analysis?: {
+      is_hallucination_free: boolean;
+      hallucination_count: number;
+      hallucination_types: Record<string, number>;
+    };
+    misattribution_analysis?: {
+      misattribution_count: number;
+      misattribution_rate: number;
+    };
+    numerical_hallucinations?: {
+      count: number;
+      rate: number;
+      details?: Array<{
+        claim: string;
+        unsupported_numbers: string[];
+      }>;
+    };
+    citation_verification?: {
+      total_citations: number;
+      valid_citations: number;
+      citation_accuracy_rate: number;
+    };
   } | null;
 };
 
@@ -652,11 +676,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               const parts = paragraph.split(/\*\*([^*]+)\*\*/);
                               return (
                                 <p key={idx} className="text-justify">
-                                  {parts.map((part, partIdx) => 
+                                  {parts.map((part, partIdx) =>
                                     partIdx % 2 === 1 ? (
                                       <span key={partIdx} className="font-semibold text-hinaing-blue-700">{part}</span>
                                     ) : (
-                                      <span key={partIdx}>{part}</span>
+                                      <span key={partIdx}>{parseCitations(part)}</span>
                                     )
                                   )}
                                   {isTypingSummary && idx === (animatedSummary || fullSummaryText).split(/\n\n+/).length - 1 && (
@@ -723,45 +747,130 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </div>
                         </div>
 
-                        {/* Faithfulness Score - NEW */}
+                        {/* Faithfulness Score - Enhanced with Best Practice Metrics */}
                         {snapshot.verification && (
-                          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
-                            <div className={clsx(
-                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                              hoveredCardIndex === 7 && "transform scale-105 shadow-xl ring-2 ring-violet-300"
-                            )}>
-                              <strong className="block text-base sm:text-lg font-semibold text-violet-600">
-                                {Math.round(snapshot.verification.faithfulness_score * 100)}%
-                              </strong>
-                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Faithfulness</span>
-                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                                {snapshot.verification.faithfulness_score >= 0.85 ? '✅ SOTA' : '⚠️ Needs improvement'}
-                              </p>
+                          <div className="space-y-2">
+                            {/* Row 1: Core Metrics */}
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
+                              <div className={clsx(
+                                "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                                hoveredCardIndex === 7 && "transform scale-105 shadow-xl ring-2 ring-violet-300"
+                              )}>
+                                <strong className="block text-base sm:text-lg font-semibold text-violet-600">
+                                  {Math.round(snapshot.verification.faithfulness_score * 100)}%
+                                </strong>
+                                <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Faithfulness</span>
+                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                  {snapshot.verification.faithfulness_score >= 0.85 ? '✅ SOTA' : '⚠️ Needs improvement'}
+                                </p>
+                              </div>
+                              <div className={clsx(
+                                "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                                hoveredCardIndex === 8 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
+                              )}>
+                                <strong className="block text-base sm:text-lg font-semibold text-emerald-600">
+                                  {snapshot.verification.verified_claims}/{snapshot.verification.total_claims}
+                                </strong>
+                                <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Claims Verified</span>
+                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                  LLM extraction + NLI verification
+                                </p>
+                              </div>
+                              <div className={clsx(
+                                "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                                hoveredCardIndex === 9 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
+                              )}>
+                                <strong className="block text-base sm:text-lg font-semibold text-rose-600">
+                                  {snapshot.verification.unverified_claims}
+                                </strong>
+                                <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Unverified</span>
+                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                                  Requires review
+                                </p>
+                              </div>
                             </div>
-                            <div className={clsx(
-                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                              hoveredCardIndex === 8 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
-                            )}>
-                              <strong className="block text-base sm:text-lg font-semibold text-emerald-600">
-                                {snapshot.verification.verified_claims}/{snapshot.verification.total_claims}
-                              </strong>
-                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Claims Verified</span>
-                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                                LLM extraction + NLI verification
-                              </p>
-                            </div>
-                            <div className={clsx(
-                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                              hoveredCardIndex === 9 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
-                            )}>
-                              <strong className="block text-base sm:text-lg font-semibold text-rose-600">
-                                {snapshot.verification.unverified_claims}
-                              </strong>
-                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Unverified</span>
-                              <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                                Requires review
-                              </p>
-                            </div>
+
+                            {/* Row 2: NEW Best Practice Metrics */}
+                            {snapshot.verification.hallucination_analysis && (
+                              <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
+                                {/* Hallucination Count */}
+                                <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                                  <strong className={clsx(
+                                    "block text-base sm:text-lg font-semibold",
+                                    snapshot.verification.hallucination_analysis.is_hallucination_free
+                                      ? "text-emerald-600"
+                                      : "text-amber-600"
+                                  )}>
+                                    {snapshot.verification.hallucination_analysis.hallucination_count}
+                                  </strong>
+                                  <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Halluc.</span>
+                                </div>
+
+                                {/* Citation Accuracy */}
+                                {snapshot.verification.citation_verification && (
+                                  <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                                    <strong className="block text-base sm:text-lg font-semibold text-blue-600">
+                                      {Math.round(snapshot.verification.citation_verification.citation_accuracy_rate * 100)}%
+                                    </strong>
+                                    <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Citation</span>
+                                  </div>
+                                )}
+
+                                {/* Misattribution Count */}
+                                {snapshot.verification.misattribution_analysis && (
+                                  <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
+                                    <strong className="block text-base sm:text-lg font-semibold text-indigo-600">
+                                      {snapshot.verification.misattribution_analysis.misattribution_count}
+                                    </strong>
+                                    <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Misattri.</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Hallucination Type Breakdown (if any detected) */}
+                            {snapshot.verification.hallucination_analysis &&
+                             snapshot.verification.hallucination_analysis.hallucination_count > 0 && (
+                              <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-2">
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-amber-700 mb-1.5">
+                                  Hallucination Breakdown
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {Object.entries(snapshot.verification.hallucination_analysis.hallucination_types)
+                                    .filter(([_, count]) => count > 0)
+                                    .map(([type, count]) => (
+                                      <span
+                                        key={type}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-medium"
+                                      >
+                                        {type === "fabricated_claim" && "🎭"}
+                                        {type === "contradicted_claim" && "❌"}
+                                        {type === "numerical_hallucination" && "🔢"}
+                                        {type.replace("_", " ")}: {count}
+                                      </span>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Numerical Hallucinations */}
+                            {snapshot.verification.numerical_hallucinations &&
+                             snapshot.verification.numerical_hallucinations.count > 0 && (
+                              <div className="bg-rose-50/50 border border-rose-200 rounded-lg p-2">
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5">
+                                  ⚠ Numerical Hallucinations Detected
+                                </p>
+                                <div className="space-y-1">
+                                  {snapshot.verification.numerical_hallucinations.details?.slice(0, 3).map((detail, idx) => (
+                                    <div key={idx} className="text-[10px] text-rose-700">
+                                      <span className="font-medium">Claim:</span> {detail.claim}
+                                      <br />
+                                      <span className="font-medium">Unsupported numbers:</span> {detail.unsupported_numbers.join(", ")}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 

@@ -4,6 +4,7 @@ import React from "react";
 import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
+import { parseCitations } from "../sentiment/utils/citation-parser";
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 
@@ -207,11 +208,11 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                             const parts = paragraph.split(/\*\*([^*]+)\*\*/);
                             return (
                                 <p key={idx} className="text-justify">
-                                    {parts.map((part, partIdx) => 
+                                    {parts.map((part, partIdx) =>
                                         partIdx % 2 === 1 ? (
                                             <span key={partIdx} className="font-semibold text-blue-700">{part}</span>
                                         ) : (
-                                            <span key={partIdx}>{part}</span>
+                                            <span key={partIdx}>{parseCitations(part)}</span>
                                         )
                                     )}
                                 </p>
