@@ -14,7 +14,7 @@ export function parseCitations(text: string): (string | React.JSX.Element)[] {
   // Regex to match citation format: [Src: domain.com | Sent: SENTIMENT | Status]
   const citationRegex = /\[Src:\s*([^\]|]+)\s*\|\s*Sent:\s*([^\]|]+)\s*\|\s*([^\]]+)\]/g;
 
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | React.JSX.Element)[] = [];
   let lastIndex = 0;
   let match;
 
