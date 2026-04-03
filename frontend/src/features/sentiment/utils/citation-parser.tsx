@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 /**
  * Parse and render citations with blue styling.
  *
@@ -8,7 +10,7 @@
  * @param text - The paragraph text potentially containing citations
  * @returns Array of JSX elements (strings and styled citation spans)
  */
-export function parseCitations(text: string): (string | JSX.Element)[] {
+export function parseCitations(text: string): (string | React.JSX.Element)[] {
   // Regex to match citation format: [Src: domain.com | Sent: SENTIMENT | Status]
   const citationRegex = /\[Src:\s*([^\]|]+)\s*\|\s*Sent:\s*([^\]|]+)\s*\|\s*([^\]]+)\]/g;
 
