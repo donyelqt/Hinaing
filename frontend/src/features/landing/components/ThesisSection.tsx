@@ -33,7 +33,7 @@ export function ThesisSection() {
             <br />
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto">
-            A Neuro-Symbolic Metacognitive 7-Node Agentic Graph Framework for Epistemic Truth Discovery in Civic Social Listening
+            A Neuro-Symbolic Metacognitive 7-Node Graph Framework Orchestrating 19 Agents for Epistemic Truth Discovery in Civic Social Listening
           </p>
         </div>
 
