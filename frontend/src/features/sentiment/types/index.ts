@@ -28,6 +28,8 @@ export type SentimentState = {
   showMobileFilters: boolean;
 };
 
+export type AblationPreset = 'full' | 'ablated';
+
 export type SentimentActions = {
   setPlatforms: (updater: (prev: string[]) => string[]) => void;
   setTimeWindow: (value: string) => void;
@@ -38,6 +40,7 @@ export type SentimentActions = {
   setShowMobileFilters: (value: boolean) => void;
   toggleSelection: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   applyPreset: (presetId: string) => void;
+  setAblationPreset: (preset: AblationPreset) => void;
 };
 
 // Faithfulness Verification Types (NEW - Best Practice)

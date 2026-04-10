@@ -31,22 +31,22 @@ export function parseCitations(text: string): (string | React.JSX.Element)[] {
     parts.push(
       <span
         key={`citation-${match.index}`}
-        className="inline-flex items-baseline gap-1 text-hinaing-blue-600 font-semibold whitespace-nowrap break-all sm:whitespace-normal sm:break-normal hover:text-hinaing-blue-700 hover:bg-hinaing-blue-50 rounded px-0.5 py-0.5 transition-colors cursor-pointer"
+        className="inline-flex flex-col sm:flex-row sm:flex-wrap items-start gap-x-0.5 sm:gap-x-1 gap-y-0 text-hinaing-blue-600 font-semibold max-w-full align-baseline hover:text-hinaing-blue-700 hover:bg-hinaing-blue-50 rounded px-1 py-0.5 transition-colors cursor-pointer"
         title={`Source: ${domain.trim()} | Sentiment: ${sentiment.trim()} | ${status.trim()}`}
       >
-        <span className="text-[10px] sm:text-xs">[Src:</span>
-        <span className="text-[10px] sm:text-xs font-medium">{domain.trim()}</span>
-        <span className="text-[10px] sm:text-xs">| Sent:</span>
-        <span className="text-[10px] sm:text-xs font-medium">{sentiment.trim()}</span>
-        <span className="text-[10px] sm:text-xs">|</span>
-        <span className={`text-[10px] sm:text-xs font-semibold ${
+        <span className="text-[8px] sm:text-[10px] leading-tight">[Src:</span>
+        <span className="text-[8px] sm:text-[10px] font-medium leading-tight">{domain.trim()}</span>
+        <span className="text-[8px] sm:text-[10px] leading-tight">| Sent:</span>
+        <span className="text-[8px] sm:text-[10px] font-medium leading-tight">{sentiment.trim()}</span>
+        <span className="text-[8px] sm:text-[10px] leading-tight">|</span>
+        <span className={`text-[8px] sm:text-[10px] font-semibold leading-tight whitespace-nowrap ${
           status.trim().toLowerCase() === 'verified' ? 'text-emerald-600' :
           status.trim().toLowerCase() === 'contradicted' ? 'text-rose-600' :
           'text-amber-600'
         }`}>
           {status.trim()}
         </span>
-        <span className="text-[10px] sm:text-xs">]</span>
+        <span className="text-[8px] sm:text-[10px] leading-tight">]</span>
       </span>
     );
 

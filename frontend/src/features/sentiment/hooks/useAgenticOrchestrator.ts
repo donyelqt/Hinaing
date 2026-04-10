@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS, PRESET_OPTIONS } from '../constants';
-import type { SentimentState, SentimentActions } from '../types';
+import type { SentimentState, SentimentActions, AblationPreset } from '../types';
 
 export type ValidationErrors = {
   platforms?: string;
@@ -33,6 +33,9 @@ export function useAgenticOrchestrator() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  
+  // ABLATION STUDY: Binary toggle for quick comparison
+  const [ablationPreset, setAblationPreset] = useState<AblationPreset>('full');
 
   // Computed values
   const platformSummary = useMemo(
@@ -144,6 +147,7 @@ export function useAgenticOrchestrator() {
     setShowMobileFilters,
     toggleSelection,
     applyPreset,
+    setAblationPreset,
   };
 
   const computed = {
@@ -152,6 +156,7 @@ export function useAgenticOrchestrator() {
     selectedWindowLabel,
     focusSummaryLabel,
     platformSummaryLabel,
+    ablationPreset,
   };
 
   const validation = {

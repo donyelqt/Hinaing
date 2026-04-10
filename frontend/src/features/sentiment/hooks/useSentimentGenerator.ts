@@ -144,6 +144,7 @@ export function useSentimentGenerator() {
     setShowMobileFilters,
     toggleSelection,
     applyPreset,
+    setAblationPreset: () => {}, // No-op for this hook
   };
 
   const computed = {
