@@ -41,6 +41,8 @@ priority = "explicit"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
 ruff = "^0.6.9"
+deepeval = "^2.0.0"
+ragas = "^0.4.3"
 
 [build-system]
 requires = ["poetry-core"]
