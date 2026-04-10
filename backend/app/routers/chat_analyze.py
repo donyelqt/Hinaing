@@ -76,10 +76,13 @@ class ChatAnalyzeRequest(BaseModel):
     platforms: list[str] = Field(default=["web"], description="Platforms to search")
     time_window: str = Field(default="24h", description="Time window for search")
     mode: str = Field(default="auto", description="Analysis mode: auto, full, sentiment, or epistemic")
-    
+
     # NEW: System mode toggle (AgenticHinaing vs Evaluation)
     system_mode: str = Field(default="agentic_hinaing", description="System mode: agentic_hinaing (intelligent routing) or evaluation (manual baseline selection)")
     eval_mode: str | None = Field(default=None, description="Evaluation mode: llm_only, rag, or agentic_rag (only used when system_mode='evaluation')")
+
+    # ABLATION STUDY: Binary toggle for empirical validation
+    ablation_preset: str = Field(default="full", description="Ablation study toggle: 'full' or 'ablated'")
 
 
 class ChatProgress(BaseModel):
@@ -292,7 +295,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
             if eval_mode == "llm_only":
                 # Baseline 1: Single LLM (no retrieval)
                 from ..services.llm.groq_provider import get_groq_provider
-                llm = get_groq_provider("groq/compound")
+                llm = get_groq_provider("llama-3.1-8b-instant")
                 response = await llm.generate(
                     prompt=request.message,
                     system_prompt="Answer concisely based on your training data.",
@@ -658,6 +661,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         platforms=request.platforms,
         time_window=time_window,
         mode=request.mode,
+        ablation_preset=request.ablation_preset,
     )
     
     # Queue for progress updates from the pipeline
@@ -851,12 +855,13 @@ async def chat_analyze(request: ChatAnalyzeRequest):
 async def chat_analyze_sync(request: ChatAnalyzeRequest):
     """Non-streaming version for simpler clients."""
     focus_areas, time_window = parse_user_intent(request.message)
-    
+
     snapshot_request = SnapshotRequest(
         focus_areas=focus_areas,
         platforms=request.platforms,
         time_window=time_window,
         mode=request.mode,
+        ablation_preset=request.ablation_preset,
     )
     
     try:
@@ -1045,10 +1050,10 @@ async def start_analysis(request: ChatAnalyzeRequest):
             sources = []
             response_text = ""
             docs_fresh = 1
-            
+
             if eval_mode == "llm_only":
                 # Baseline 1: Single LLM (no retrieval)
-                llm = get_groq_provider("groq/compound")
+                llm = get_groq_provider("llama-3.1-8b-instant")
                 response = await llm.generate(
                     prompt=request.message,
                     system_prompt="Answer concisely based on your training data.",
@@ -1057,7 +1062,7 @@ async def start_analysis(request: ChatAnalyzeRequest):
                 )
                 response_text = response
                 docs_fresh = 0
-                
+
             elif eval_mode == "rag":
                 # Baseline 2: Simple RAG (retrieval only)
                 search_client = LangSearchClient()
@@ -1068,9 +1073,9 @@ async def start_analysis(request: ChatAnalyzeRequest):
                 )
                 sources = [{"title": r.title, "url": r.url, "snippet": r.snippet} for r in search_results[:5]]
                 docs_fresh = len(search_results)
-                
+
                 context = "\n\n".join([f"{r.title}: {r.snippet}" for r in search_results[:5]])
-                llm = get_groq_provider("groq/compound")
+                llm = get_groq_provider("llama-3.1-8b-instant")
                 response_text = await llm.generate(
                     prompt=f"Based on these search results:\n{context}\n\nQuestion: {request.message}",
                     system_prompt="Answer based only on the provided search results.",
@@ -1223,13 +1228,14 @@ async def start_analysis(request: ChatAnalyzeRequest):
     # For "analyze" intent, run as background task
     focus_areas, time_window = parse_user_intent(request.message)
     task_id = task_manager.create_task()
-    
+
     # Create snapshot request
     snapshot_request = SnapshotRequest(
         focus_areas=focus_areas,
         platforms=request.platforms,
         time_window=time_window,
         mode=request.mode,
+        ablation_preset=request.ablation_preset,
     )
     
     # Progress callback that updates task manager

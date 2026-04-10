@@ -31,6 +31,12 @@ class SnapshotRequest(BaseModel):
     mode: str = Field(default="full", description="Analysis mode: full, sentiment, or credibility")
     include_sentiment: bool = Field(default=True, description="Include sentiment analysis")
     include_credibility: bool = Field(default=True, description="Include credibility scoring")
+    
+    # ABLATION STUDY: Binary toggle for empirical validation
+    ablation_preset: str = Field(
+        default="full",
+        description="Ablation study toggle: 'full' (all novel contributions enabled) or 'ablated' (baseline without contributions)"
+    )
 
 
 class WebDocument(BaseModel):

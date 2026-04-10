@@ -6,48 +6,14 @@ from typing import List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import asyncio
 
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
 from ...core.config import get_settings
 from ..langsearch import LangSearchClient
-from ..agents.context_agent import ContextAugmentationAgent
 
 logger = logging.getLogger(__name__)
 
-
-def search_civic_data(query: str):
-    """Search for real-time civic information in Baguio City."""
-    pass
-
-
-def search_sentiment_data(query: str, sentiment_filter: str = None):
-    """Search for sentiment analysis data from previous analyses.
-    
-    Args:
-        query: Topic to search sentiment for (e.g., "tourism", "infrastructure")
-        sentiment_filter: Optional filter - "positive", "negative", or "neutral"
-    """
-    pass
-
-
-# Define tools map for Gemini (schema only)
-tools_map = {
-    'search_civic_data': search_civic_data,
-    'search_sentiment_data': search_sentiment_data
-}
-
-
-def _is_sentiment_query(message: str) -> bool:
-    """Detect if user is asking about sentiment/opinion data."""
-    sentiment_keywords = [
-        "sentiment", "opinion", "feel", "feeling", "mood", "perception",
-        "think about", "view on", "attitude", "reaction", "response to",
-        "positive", "negative", "what do people", "how do citizens",
-        "public opinion", "community sentiment", "latest sentiment"
-    ]
-    msg_lower = message.lower()
-    return any(kw in msg_lower for kw in sentiment_keywords)
+# Production safety limits
+MAX_MESSAGE_LENGTH = 2000  # Maximum input message length (chars)
+MAX_HISTORY_MESSAGES = 10  # Maximum conversation history to process
 
 
 async def run_chat_agent(
@@ -56,15 +22,39 @@ async def run_chat_agent(
     jurisdiction: str = "Baguio City",
     system_instruction: str | None = None
 ) -> Tuple[str, List[dict]]:
-    """Run the conversational loop with Hybrid Retrieval (Web + Memory) using Groq."""
+    """Run the conversational loop with Hybrid Retrieval (Web + Memory) using Groq.
+    
+    Production safety checks:
+    - Input length validation (max 2000 chars)
+    - History limit (max 10 messages)
+    """
     settings = get_settings()
     if not settings.groq_api_key:
         return "Error: Groq API key missing.", []
+    
+    # INPUT VALIDATION: Check message length (P0 security fix)
+    if not message or not message.strip():
+        return "Please provide a message.", []
+    
+    if len(message) > MAX_MESSAGE_LENGTH:
+        return (
+            f"Message too long ({len(message)} chars). "
+            f"Please limit your message to {MAX_MESSAGE_LENGTH} characters.",
+            []
+        )
+    
+    # HISTORY VALIDATION: Limit history to prevent context bloat
+    if history and len(history) > MAX_HISTORY_MESSAGES:
+        logger.warning(
+            f"[run_chat_agent] History truncated from {len(history)} to {MAX_HISTORY_MESSAGES} messages"
+        )
+        history = history[-MAX_HISTORY_MESSAGES:]
 
-    # Use groq/compound for accurate, grounded chat responses (UNLIMITED TPD, 70K TPM)
-    # Prevents hallucination by better following RAG instructions
+    # Use llama-3.1-8b-instant for fast, cheap chat responses
+    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
+    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
     from ..llm.groq_provider import get_groq_provider
-    llm = get_groq_provider("groq/compound")
+    llm = get_groq_provider("llama-3.1-8b-instant")
     
     # Default system instruction if none provided
     if system_instruction is None:
@@ -91,9 +81,6 @@ async def run_chat_agent(
             "7. **Be Helpful:** If the exact answer isn't found, share RELATED information that might be useful. Don't just say 'no results' - explain what WAS found and how it relates to the question."
         )
 
-    # Initialize Context Agent for Memory Recall
-    context_agent = ContextAugmentationAgent()
-    
     # Build conversation history context if provided
     history_context = ""
     if history and len(history) > 0:
@@ -129,45 +116,63 @@ If you need to search for information, indicate what you're searching for."""
     sources = []
     
     try:
-        # Detect if this is a greeting/small talk (skip search)
-        message_lower = message.lower().strip()
-        
-        # Very short acknowledgments (1-3 words, no question marks)
-        is_acknowledgment = (
-            len(message.split()) <= 3 and 
-            "?" not in message and
-            any(ack in message_lower for ack in [
-                "ok", "okay", "sure", "yes", "no", "yep", "nope", "alright", "got it",
-                "i see", "understood", "cool", "nice", "great", "awesome", "perfect"
-            ])
+        # AGENTIC INTENT DETECTION: LLM autonomously decides routing
+        # This is the "Agentic" part of our Agentic RAG architecture
+        intent_prompt = f"""You are Hinaing, a civic assistant for Baguio City.
+
+Classify this message into ONE category:
+
+**"direct"**: Answer from your knowledge (NO search needed)
+- Greetings: hello, hi, good morning
+- Small talk: how are you, thanks, bye
+- Identity questions: who are you, who made you, who developed you, who created you, what is hinaing, tell me about yourself, your developer, your creator
+
+**"search"**: Factual questions about Baguio City (NEEDS search)
+- Traffic, accidents, road conditions
+- Events, festivals, tourism
+- Infrastructure, construction, projects
+- Crime, safety, police
+- Economy, business, markets
+- Health, hospitals, services
+- Environment, weather, disasters
+
+User: {message}
+
+Respond with ONLY "direct" or "search".
+"""
+        intent_response = await llm.generate(
+            prompt=intent_prompt,
+            system_prompt="Classify messages. Respond with ONLY 'direct' or 'search'.",
+            temperature=0.0,  # Deterministic classification
+            max_tokens=10,
         )
+        intent = intent_response.strip().lower()
+
+        logger.info(f"[chat_agent] Agentic intent classification: '{intent}'")
         
-        # Standard greetings (English + Tagalog/Filipino)
-        is_greeting = any(greeting in message_lower for greeting in [
-            # English
-            "hello", "hi", "hey", "thanks", "thank you", "bye", "goodbye", 
-            "good morning", "good afternoon", "good evening",
-            # Tagalog/Filipino
-            "kamusta", "kumusta", "musta", "salamat", "maraming salamat",
-            "paalam", "magandang umaga", "magandang hapon", "magandang gabi"
-        ])
-        
-        # Detect identity/meta questions about the system (skip search)
-        is_identity_question = any(pattern in message_lower for pattern in [
-            "who are you", "what are you", "who made you", "who created you", "who built you",
-            "who developed you", "i am the developer", "i'm the developer", "i made you",
-            "what is hinaing", "what's hinaing", "tell me about yourself", "introduce yourself",
-            "what can you do", "what do you do", "how do you work", "explain yourself"
-        ])
-        
-        if is_acknowledgment or is_greeting or is_identity_question:
-            # Handle acknowledgments, greetings, and identity questions without search
-            if is_acknowledgment:
-                system_prompt = "You are a friendly civic assistant. Respond to acknowledgments naturally and briefly (6-7 sentences max)."
-            elif is_identity_question:
+        # Route based on LLM decision
+        if "direct" in intent:
+            # Greetings, identity, small talk - respond without search
+            system_prompt = (
+                "You are a friendly civic assistant for Baguio City. "
+                "Respond naturally and briefly. You can respond in English or Tagalog/Filipino as appropriate."
+            )
+            
+            # Check for identity/developer questions (safety net)
+            message_lower = message.lower()
+            is_identity_question = any(pattern in message_lower for pattern in [
+                "who are you", "what are you", "who made you", "who created you", "who built you",
+                "who developed you", "who designed you", "i am the developer", "i'm the developer",
+                "what is hinaing", "what's hinaing", "tell me about yourself", "introduce yourself",
+                "what can you do", "what do you do", "how do you work", "explain yourself",
+                "who is the developer", "who is developer", "developer of hinaing", "your developer",
+                "your creator", "who owns hinaing", "hinaing developer", "hinaing created"
+            ])
+            
+            if is_identity_question:
                 system_prompt = (
                     "You are **Hinaing**, an Agentic RAG system developed by the University of the Cordilleras (UC) Computer Science R&D Team. "
-                    "DO NOT call yourself 'Compound' - that's just your underlying model. Your product name is 'Hinaing'. "
+                    "DO NOT call yourself 'Compound' or 'Groq' - those are just your underlying infrastructure. Your product name is 'Hinaing'. "
                     "\n\n"
                     "R&D Team Members:\n"
                     "- Doniele Arys Antonio (Research Developer)\n"
@@ -190,9 +195,7 @@ If you need to search for information, indicate what you're searching for."""
                     "\n"
                     "Be friendly, concise, and always credit the UC Computer Science R&D Team when discussing your development."
                 )
-            else:
-                system_prompt = "You are a friendly civic assistant for Baguio City. Respond to greetings warmly and briefly. You can respond in English or Tagalog/Filipino as appropriate."
-            
+
             response = await llm.generate(
                 prompt=f"User says: {message}\n\nRespond naturally and briefly.",
                 system_prompt=system_prompt,
@@ -201,9 +204,7 @@ If you need to search for information, indicate what you're searching for."""
             )
             return response, []
         
-        # For ALL other queries: ALWAYS search first (LangSearch Web ONLY)
-        # Note: We don't use RAG here because it contains civic sentiment data,
-        # not general knowledge. RAG is for sentiment analysis, not Q&A.
+        # "search" intent: Proceed to LangSearch retrieval
         logger.info(f"[chat_agent] Performing web search for: {message}")
         
         search_client = LangSearchClient()
@@ -220,7 +221,7 @@ If you need to search for information, indicate what you're searching for."""
             web_docs = await search_client.search(
                 query=fresh_query,
                 time_window="30d",
-                limit=20
+                limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
             )
         except Exception as e:
             logger.warning(f"[chat_agent] Web search failed: {e}")
@@ -254,12 +255,13 @@ If you need to search for information, indicate what you're searching for."""
         
         # Generate response based on search results
         if combined_docs:
-            # Build context from search results
+            # Build context from search results (limit to 8 docs + truncate snippets to avoid 413 errors)
+            # Groq has a request size limit (~200KB-1MB) even though context window is 128K tokens
             context_text = "\n\n".join([
-                f"[{doc.metadata.get('source_type', 'WEB')}] {doc.title}\n{doc.snippet}"
-                for doc in combined_docs[:15]
+                f"[{doc.metadata.get('source_type', 'WEB')}] {doc.title}\n{str(doc.snippet)[:150]}..."
+                for doc in combined_docs[:8]
             ])
-            
+
             grounded_prompt = f"""Context: Jurisdiction is {jurisdiction}. User asks: {message}
 {history_context}
 Search Results (ONLY use information from these results):
@@ -283,14 +285,14 @@ FORMATTING FOR READABILITY:
 - Write like you're explaining to a friend
 
 Please provide a clear, conversational answer that's easy to read quickly."""
-            
+
             response = await llm.generate(
                 prompt=grounded_prompt,
                 system_prompt=system_instruction,
                 temperature=0.3,
                 max_tokens=2048,
             )
-            
+
             return response, sources
         else:
             # No search results found - be honest

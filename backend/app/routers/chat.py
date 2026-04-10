@@ -1,11 +1,14 @@
 """Chat endpoint for conversational insights."""
 from __future__ import annotations
 
+import logging
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException
 
 from ..services.agents.chat_agent import run_chat_agent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -36,4 +39,5 @@ async def chat_endpoint(payload: ChatRequest) -> ChatResponse:
         )
         return ChatResponse(response=response, sources=sources)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception(f"Chat endpoint error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(exc)}")
