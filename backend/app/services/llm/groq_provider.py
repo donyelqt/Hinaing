@@ -22,24 +22,24 @@ _GROQ_CONCURRENCY_LIMIT = asyncio.Semaphore(15)
 
 class GroqProvider(BaseLLMProvider):
     """Groq LLM provider with ultra-fast inference.
-    
+
     Performance characteristics:
     - Speed: 500-800 tokens/sec (10-15x faster than Gemini)
     - Time to First Token: 50-100ms (3-4x faster than Gemini)
     - Context Window: 128K tokens (sufficient for civic analysis)
     - Cost: $0.59/1M tokens (8x more expensive but worth it for speed)
-    
+
     Recommended models:
     - llama-3.3-70b-versatile: Best balance of speed and quality
     - llama-3.1-70b-versatile: Fallback option
     - mixtral-8x7b-32768: Budget option
-    - llama-3.1-8b-instant: Simple classification tasks
+    - llama-3.1-8b-instant: Simple classification tasks (FASTEST, cheapest)
     """
-    
+
     def __init__(
         self,
         *,
-        model: str = "llama-3.3-70b-versatile",
+        model: str = "llama-3.1-8b-instant",
         timeout: float = 30.0,
         max_retries: int = 3,
     ):
@@ -373,24 +373,24 @@ async def cleanup_groq_clients():
     _groq_providers.clear()
 
 
-def get_groq_provider(model: str = "llama-3.3-70b-versatile") -> GroqProvider:
+def get_groq_provider(model: str = "llama-3.1-8b-instant") -> GroqProvider:
     """Get or create Groq provider instance for specific model.
-    
+
     Each model gets its own provider instance to prevent state pollution.
-    
+
     Args:
         model: Groq model name
-        
+
     Returns:
         Configured Groq provider for the specified model
     """
     global _groq_providers
-    
+
     # Create new provider if not cached for this specific model
     if model not in _groq_providers:
         _groq_providers[model] = GroqProvider(model=model)
         logger.debug(f"[Groq] Created new provider instance for model: {model}")
-    
+
     return _groq_providers[model]
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
@@ -12,6 +13,7 @@ from ...schemas.snapshot import (
     SentimentBreakdown,
     SnapshotRequest,
     SnapshotResponse,
+    WebDocument,
 )
 from ..metrics import get_metrics_collector
 
@@ -54,15 +56,18 @@ graph.add_node("consolidate_memory", consolidate_memory)            # Node 5
 graph.add_node("theme_agents", theme_agents)                        # Node 6
 graph.add_node("build_snapshot", build_snapshot)                    # Node 7
 
-# Add Edges (Linear Flow)
+# Add Edges (Optimized: Node 5 and Node 6 run in parallel)
 graph.add_edge(START, "orchestrate_queries")
 graph.add_edge("orchestrate_queries", "fetch_documents")
 graph.add_edge("fetch_documents", "retrieve_internal_knowledge")
 graph.add_edge("retrieve_internal_knowledge", "label_sentiment_and_analyze")
+# BRANCH: Node 5 (Memory) and Node 6 (Themes) run in parallel
+# Both depend only on Node 4 output; neither reads the other's output
 graph.add_edge("label_sentiment_and_analyze", "consolidate_memory")
-graph.add_edge("consolidate_memory", "theme_agents")
+graph.add_edge("label_sentiment_and_analyze", "theme_agents")
+# MERGE: Node 7 waits for both Node 5 and Node 6 to complete
+graph.add_edge("consolidate_memory", "build_snapshot")
 graph.add_edge("theme_agents", "build_snapshot")
-graph.add_edge("build_snapshot", END)
 
 compiled_graph = graph.compile()
 
@@ -75,8 +80,16 @@ compiled_graph = graph.compile()
 async def generate_snapshot(
     request: SnapshotRequest,
     progress_callback=None,
+    pre_retrieved_documents: list[WebDocument] | None = None,
 ) -> SnapshotResponse:
-    """Generate a sentiment snapshot with detailed progress tracking."""
+    """Generate a sentiment snapshot with detailed progress tracking.
+    
+    Args:
+        request: Snapshot request configuration
+        progress_callback: Optional callback for progress updates
+        pre_retrieved_documents: Optional pre-retrieved documents (for evaluation mode).
+            When provided, bypasses Node 2 live retrieval and uses these documents directly.
+    """
 
     # Initialize Request Metadata
     metrics = get_metrics_collector()
@@ -84,10 +97,35 @@ async def generate_snapshot(
     
     # Determine execution path based on mode
     mode = request.mode.lower()
-    
+
     # Default: include both sentiment and credibility
     include_sentiment = True
     include_credibility = True
+
+    # ABLATION STUDY: Binary toggle - Full System vs Baseline (Ablated)
+    ablation_preset = getattr(request, 'ablation_preset', 'full').lower()
+    
+    if ablation_preset == "ablated":
+        # BASELINE: Disable all novel contributions (vanilla 7-node pipeline)
+        ablation_config = {
+            "cyclic_rag_enabled": False,
+            "vsee_enabled": False,
+            "parallel_enabled": False,
+            "temporal_enabled": False,
+            "smart_reuse_enabled": False,
+            "faithfulness_enabled": False,
+        }
+        logger.info("[ABLA] Ablation mode: BASELINE (all novel contributions disabled)")
+    else:
+        # FULL SYSTEM: All novel contributions enabled
+        ablation_config = {
+            "cyclic_rag_enabled": True,
+            "vsee_enabled": True,
+            "parallel_enabled": True,
+            "temporal_enabled": True,
+            "smart_reuse_enabled": True,
+            "faithfulness_enabled": True,
+        }
     
     if mode == "sentiment":
         # Full pipeline with sentiment + theme routing only (no credibility)
@@ -142,10 +180,15 @@ async def generate_snapshot(
         credibility_skipped=not include_credibility,
     )
     
+    # Record ablation configuration in metrics
+    if ablation_preset == "ablated":
+        metrics._current_run.ablation_config.update(ablation_config)
+    
     state: SnapshotState = {
         "request": request,
         "include_sentiment": include_sentiment,
         "include_credibility": include_credibility,
+        "ablation_config": ablation_config,  # Pass ablation settings to all nodes
     }
 
     try:
@@ -167,7 +210,15 @@ async def generate_snapshot(
             if progress_callback:
                 await progress_callback("retrieval", progress_stages[1][1], progress_stages[1][2])
             metrics.start_timer("external_retrieval")
-            state = await fetch_documents(state)
+            
+            # EVALUATION MODE: Use pre-retrieved documents instead of live retrieval
+            if pre_retrieved_documents is not None:
+                logger.info(f"[snapshot] EVALUATION MODE: Using {len(pre_retrieved_documents)} pre-retrieved documents (bypassing Node 2 live retrieval)")
+                state["external_documents"] = pre_retrieved_documents
+                state["documents"] = pre_retrieved_documents
+            else:
+                # PRODUCTION MODE: Full live retrieval
+                state = await fetch_documents(state)
             metrics.stop_timer("external_retrieval")
 
         # NODE 3: Internal Retrieval (always executed)
@@ -213,31 +264,54 @@ async def generate_snapshot(
             theme_docs = state.get("theme_documents", {})
             metrics.record_theme_metrics({k: len(v) for k, v in theme_docs.items()})
 
-        # NODE 5: Memory Consolidation
-        if 5 in execute_nodes:
-            if progress_callback:
-                await progress_callback("memory", progress_stages[4][1], progress_stages[4][2])
-            metrics.start_timer("memory_consolidation")
-            state = await consolidate_memory(state)
-            metrics.stop_timer("memory_consolidation")
+        # NODES 5 & 6: Memory Consolidation + Theme Agents (PARALLEL)
+        # Both nodes depend only on Node 4 output; neither reads the other's output.
+        # Running them in parallel saves ~20s (the duration of the slower node).
+        if 5 in execute_nodes or 6 in execute_nodes:
+            async def run_node5():
+                """Execute Node 5: Memory Consolidation."""
+                if progress_callback:
+                    await progress_callback("memory", progress_stages[4][1], progress_stages[4][2])
+                metrics.start_timer("memory_consolidation")
+                result_state = await consolidate_memory(state)
+                metrics.stop_timer("memory_consolidation")
 
-            # Metrics: RAG
-            rag_stored = state.get("rag_chunks_stored", 0)
-            relevance_scores = state.get("rag_relevance_scores", [])
-            avg_relevance = sum(relevance_scores) / max(len(relevance_scores), 1)
-            metrics.record_rag_metrics(
-                chunks_retrieved=len(state.get("internal_documents", [])),
-                avg_relevance=avg_relevance,
-                chunks_stored=rag_stored
-            )
+                # Metrics: RAG
+                rag_stored = result_state.get("rag_chunks_stored", 0)
+                relevance_scores = result_state.get("rag_relevance_scores", [])
+                avg_relevance = sum(relevance_scores) / max(len(relevance_scores), 1)
+                metrics.record_rag_metrics(
+                    chunks_retrieved=len(result_state.get("internal_documents", [])),
+                    avg_relevance=avg_relevance,
+                    chunks_stored=rag_stored
+                )
+                return result_state
 
-        # NODE 6: Theme Agents
-        if 6 in execute_nodes:
-            if progress_callback:
-                await progress_callback("themes", progress_stages[5][1], progress_stages[5][2])
-            metrics.start_timer("theme_agents")
-            state = theme_agents(state)
-            metrics.stop_timer("theme_agents")
+            def run_node6():
+                """Execute Node 6: Theme Agents."""
+                if progress_callback:
+                    # Progress callback needs to be awaited, so we skip it in sync context
+                    pass
+                metrics.start_timer("theme_agents")
+                result_state = theme_agents(state)
+                metrics.stop_timer("theme_agents")
+                return result_state
+
+            if 5 in execute_nodes and 6 in execute_nodes:
+                # PARALLEL: Run both nodes concurrently
+                # theme_agents is sync, so wrap it in asyncio.to_thread
+                node5_task = asyncio.create_task(run_node5())
+                node6_task = asyncio.create_task(asyncio.to_thread(run_node6))
+                results = await asyncio.gather(node5_task, node6_task)
+
+                # Merge state updates: both nodes write different keys, so combine them
+                state5, state6 = results
+                state.update(state5)  # Node 5 writes: rag_chunks_stored, etc.
+                state.update(state6)  # Node 6 writes: theme_insights
+            elif 5 in execute_nodes:
+                state = await run_node5()
+            else:  # 6 in execute_nodes only
+                state = run_node6()
 
         # NODE 7: Build Snapshot
         if 7 in execute_nodes:

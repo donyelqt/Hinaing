@@ -105,12 +105,15 @@ class SemanticThemeRouterAgent:
         documents: list[WebDocument],
         request: SnapshotRequest
     ) -> dict[str, list[WebDocument]]:
-        """Route documents to themes using semantic similarity.
+        """Route documents to themes using metadata-first strategy with semantic fallback.
 
-        OPTIMIZED EXECUTION:
-        - Uses GLOBAL_EXECUTOR for parallel document processing
-        - Sequential fallback for small batches (< 20 docs)
-        - Parallel processing for large batches (>= 20 docs)
+        ROUTING STRATEGY (in priority order):
+        1. METADATA-FIRST: Use _focus_area from retrieval agent (ground truth)
+        2. SEMANTIC FALLBACK: Cosine similarity for docs without metadata (memory recall, etc.)
+        3. KEYWORD FALLBACK: Substring match as last resort
+
+        This preserves the retrieval agent's intentional topic diversity instead of
+        re-classifying documents with a noisy similarity classifier.
 
         Args:
             documents: List of documents to route
@@ -141,18 +144,80 @@ class SemanticThemeRouterAgent:
             logger.warning("[SemanticThemeRouter] No active themes, returning empty routing")
             return theme_docs
 
-        # Compute theme embeddings (cached after first call)
-        theme_embeddings = self._compute_theme_embeddings()
+        # Build reverse map: focus_area -> theme_key
+        focus_to_theme = {}
+        for key, meta in self.theme_groups.items():
+            for fv in meta.get("focus_values", set()):
+                focus_to_theme[fv.lower()] = key
 
-        # Check if we should use parallel processing
-        use_parallel = len(documents) >= 20  # Parallel threshold: 20 documents
-        
-        if use_parallel:
-            logger.info(f"[SemanticThemeRouter] Using PARALLEL processing for {len(documents)} documents")
-            return self._run_parallel(documents, theme_embeddings, active_themes)
-        else:
-            logger.info(f"[SemanticThemeRouter] Using SEQUENTIAL processing for {len(documents)} documents")
-            return self._run_sequential(documents, theme_embeddings, active_themes)
+        # PHASE 1: Route documents using _focus_area metadata (ground truth)
+        metadata_routed = 0
+        docs_needing_semantic = []
+
+        for doc in documents:
+            doc_focus = (doc.metadata or {}).get("_focus_area")
+            if doc_focus:
+                theme_key = focus_to_theme.get(doc_focus.lower())
+                if theme_key and theme_key in active_themes:
+                    theme_docs[theme_key].append(doc)
+                    metadata_routed += 1
+                    continue
+            # No usable metadata, needs semantic routing
+            docs_needing_semantic.append(doc)
+
+        # PHASE 2: Route remaining documents via semantic similarity + keyword fallback
+        semantic_routed = 0
+        keyword_routed = 0
+
+        if docs_needing_semantic:
+            logger.info(
+                f"[SemanticThemeRouter] {metadata_routed} docs routed via metadata, "
+                f"{len(docs_needing_semantic)} docs need semantic routing"
+            )
+
+            # Compute theme embeddings (cached after first call)
+            theme_embeddings = self._compute_theme_embeddings()
+
+            # Batch embed documents that need semantic routing
+            doc_texts = [
+                f"{doc.title}. {doc.snippet[:200]}"
+                for doc in docs_needing_semantic
+            ]
+            doc_embeddings = self.embedding_service.embed_batch(doc_texts)
+
+            for doc, doc_embedding in zip(docs_needing_semantic, doc_embeddings):
+                # Compute similarity to each active theme
+                best_theme = None
+                best_score = self._similarity_threshold
+
+                for theme_key in active_themes:
+                    theme_embedding = theme_embeddings[theme_key]
+                    similarity = self._cosine_similarity(doc_embedding, theme_embedding)
+
+                    if similarity > best_score:
+                        best_score = similarity
+                        best_theme = theme_key
+
+                # Route to best matching theme
+                if best_theme:
+                    theme_docs[best_theme].append(doc)
+                    semantic_routed += 1
+                else:
+                    # Fallback: Try keyword matching for any active theme
+                    for theme_key in active_themes:
+                        if self._keyword_match(doc, theme_key):
+                            theme_docs[theme_key].append(doc)
+                            keyword_routed += 1
+                            break
+
+        # Log routing stats
+        stats = {k: len(v) for k, v in theme_docs.items() if v}
+        logger.info(
+            f"[SemanticThemeRouter] HYBRID: metadata={metadata_routed}, "
+            f"semantic={semantic_routed}, keyword={keyword_routed}. Distribution: {stats}"
+        )
+
+        return theme_docs
 
     def _run_parallel(
         self,

@@ -52,11 +52,11 @@ def get_llm_provider(
         >>> llm = get_llm_provider(settings.llm_provider_query_orchestrator)
     """
     provider_str = provider.value if isinstance(provider, Enum) else provider
-    
+
     if provider_str == "groq":
         from .groq_provider import GroqProvider
         return GroqProvider(
-            model=model or "llama-3.3-70b-versatile",
+            model=model or "llama-3.1-8b-instant",
             **kwargs
         )
     elif provider_str == "gemini":
@@ -78,15 +78,15 @@ def get_llm_provider(
 
 def get_fast_llm(**kwargs) -> BaseLLMProvider:
     """Get fastest available LLM (Groq preferred).
-    
+
     Use for:
     - Query planning (Node 1)
     - Sentiment analysis (Node 4)
     - Credibility analysis (Node 4)
     - Theme agents (Node 6)
-    
+
     Returns:
-        Groq provider with Llama 3.3 70B (500+ tokens/sec)
+        Groq provider with Llama 3.1 8B (800+ tokens/sec, cheapest)
     """
     return get_llm_provider(LLMProvider.GROQ, **kwargs)
 
@@ -107,17 +107,17 @@ def get_quality_llm(**kwargs) -> BaseLLMProvider:
 
 def get_balanced_llm(**kwargs) -> BaseLLMProvider:
     """Get balanced speed/quality LLM.
-    
+
     Use for:
     - General-purpose tasks
     - When both speed and quality matter
-    
+
     Returns:
-        Groq provider with Llama 3.3 70B (best balance)
+        Groq provider with Llama 3.1 8B (best speed/cost ratio)
     """
     return get_llm_provider(
         LLMProvider.GROQ,
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         **kwargs
     )
 

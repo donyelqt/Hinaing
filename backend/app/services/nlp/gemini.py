@@ -92,6 +92,9 @@ class LLMNarrativeClient:
             # POST-PROCESSING: Filter invalid citations (safety net for LLM errors)
             if result[0]:  # If summary exists
                 result = self._filter_invalid_citations(result[0], result[1], documents)
+                # Auto-correct citation status mismatches to match document metadata
+                summary_corrected = self._correct_citation_status(result[0], documents)
+                result = (summary_corrected, result[1])
 
             return result
         
@@ -151,14 +154,14 @@ class LLMNarrativeClient:
         documents: list[dict[str, Any]],
     ) -> tuple[str, list[dict[str, Any]]]:
         """Filter out citations with domains not in retrieved document set.
-        
+
         This is a SAFETY NET for when LLM ignores domain constraints.
-        
+
         Args:
             summary: Generated summary with citations
             insights: Generated insights
             documents: Retrieved documents (source of truth for valid domains)
-        
+
         Returns:
             Tuple of (filtered_summary, insights)
         """
@@ -169,15 +172,15 @@ class LLMNarrativeClient:
             if url:
                 domain = str(url).replace('https://', '').replace('http://', '').split('/')[0].replace('www.', '')
                 valid_domains.add(domain)
-        
+
         # Find all citations in summary
         citation_pattern = re.compile(r'\[Src:\s*([^\|]+)\s*\|')
-        
+
         # Check each citation
         def is_valid_citation(match):
             domain = match.group(1).strip().lower()
             return domain in valid_domains or domain in [d.lower() for d in valid_domains]
-        
+
         # Log for debugging
         invalid_count = 0
         for match in citation_pattern.finditer(summary):
@@ -185,13 +188,84 @@ class LLMNarrativeClient:
             if domain not in [d.lower() for d in valid_domains]:
                 invalid_count += 1
                 logger.warning(f"[LLMNarrativeClient] Invalid citation filtered: {domain} (not in {len(valid_domains)} valid domains)")
-        
+
         if invalid_count > 0:
             logger.info(f"[LLMNarrativeClient] Filtered {invalid_count} invalid citations")
-        
+
         # Note: We don't remove invalid citations from summary (would break text)
         # But we log them for monitoring and future improvement
         return summary, insights
+
+    def _correct_citation_status(
+        self,
+        summary: str,
+        documents: list[dict[str, Any]],
+    ) -> str:
+        """Auto-correct citation verification status to match actual document metadata.
+
+        Maps internal status values (vsee_bypass) to user-facing values (verified)
+        so the CitationVerifier can match them correctly.
+        """
+        # Build domain -> user-facing status map
+        # Internal values: 'verified', 'vsee_bypass', 'unverified', 'contradicted'
+        # User-facing values: 'verified', 'unverified', 'contradicted'
+        STATUS_MAP = {
+            'verified': 'verified',
+            'vsee_bypass': 'verified',  # VSEE-verified docs should show as verified
+            'unverified': 'unverified',
+            'contradicted': 'contradicted',
+        }
+
+        domain_status: dict[str, str] = {}
+        for doc in documents:
+            url = doc.get('url', '')
+            if url:
+                domain = str(url).replace('https://', '').replace('http://', '').split('/')[0].replace('www.', '')
+                if domain not in domain_status:
+                    raw_status = doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
+                    domain_status[domain] = STATUS_MAP.get(raw_status, 'unverified')
+
+        # Match citation status in summary and correct mismatches
+        status_pattern = re.compile(
+            r'(\[Src:\s*[^\|]+\s*\|\s*Sent:\s*[^\|]+\s*\|\s*)(verified|unverified|contradicted|Verified|Unverified|Contradicted)(\])',
+            re.IGNORECASE
+        )
+
+        corrections = 0
+
+        def correct_match(match: re.Match) -> str:
+            nonlocal corrections
+            prefix = match.group(1)
+            generated_status = match.group(2).lower()
+            suffix = match.group(3)
+
+            # Extract domain from the citation
+            domain_match = re.search(r'\[Src:\s*([^\|]+)', match.group(0))
+            if not domain_match:
+                return match.group(0)
+
+            cited_domain = domain_match.group(1).strip().lower()
+
+            # Find actual status from document metadata
+            actual_status = None
+            for domain, status in domain_status.items():
+                if domain.lower() == cited_domain or cited_domain in domain.lower() or domain.lower() in cited_domain:
+                    actual_status = status
+                    break
+
+            if actual_status and generated_status != actual_status:
+                corrections += 1
+                logger.debug(f"[LLMNarrativeClient] Corrected: {cited_domain} '{generated_status}' → '{actual_status}'")
+                return f"{prefix}{actual_status}{suffix}"
+
+            return match.group(0)
+
+        corrected = status_pattern.sub(correct_match, summary)
+
+        if corrections > 0:
+            logger.info(f"[LLMNarrativeClient] Corrected {corrections} citation statuses")
+
+        return corrected
 
     def _convert_citation_numbers(
         self,
@@ -332,7 +406,50 @@ class LLMNarrativeClient:
             doc_lines.append(f"{idx}. [{sentiment.upper()} | Cred:{credibility:.2f}] {title}: {snippet}")
         
         docs_block = "\n".join(doc_lines) or "No documents available."
-        
+
+        # GEOGRAPHIC GROUNDING: Extract non-Baguio locations from documents to build a negative filter
+        # This prevents the LLM from attributing facts about other cities to Baguio
+        PHILIPPINE_CITIES_EXCEPT_BAGUIO = [
+            "Manila", "Quezon City", "Cebu", "Davao", "Makati", "Pasig", "Taguig",
+            "Mandaluyong", "Pasay", "Caloocan", "Zamboanga", "Antipolo", "Cagayan de Oro",
+            "Iloilo", "Bacolod", "General Santos", "Cabanatuan", "Lapu-Lapu", "Mandaue",
+            "Parañaque", "Las Piñas", "Muntinlupa", "Marikina", "Valenzuela", "Malabon",
+            "Navotas", "San Juan", "Pateros", "Taytay", "Cavite", "Laguna", "Batangas",
+            "Angeles", "Olongapo", "Tarlac", "Dagupan", "San Fernando", "Vigan",
+            "Laoag", "Tuguegarao", "Naga", "Legazpi", "Tacloban", "Butuan", "Iligan",
+            "Cotabato", "Puerto Princesa", "Dumaguete", "Tagbilaran", "Bohol", "Siquijor",
+            "Metro Manila", "NCR", "MM",
+        ]
+        wrong_location_mentions = []
+        for doc in documents:
+            title = (doc.get('title') or '').lower()
+            snippet = (doc.get('snippet') or '').lower()
+            for city in PHILIPPINE_CITIES_EXCEPT_BAGUIO:
+                city_lower = city.lower()
+                if city_lower in title or city_lower in snippet:
+                    wrong_location_mentions.append(city)
+                    break  # One match per doc is enough
+
+        # Build geographic constraint instruction
+        if wrong_location_mentions:
+            unique_wrong_locations = sorted(set(wrong_location_mentions))
+            geographic_constraint = (
+                f"\n\n⚠️ CRITICAL: GEOGRAPHIC CONSTRAINT ⚠️\n"
+                f"Your narrative MUST ONLY cover facts about BAGUIO CITY.\n"
+                f"DO NOT include, mention, or attribute to Baguio any facts about these other locations:\n"
+                f"  {', '.join(unique_wrong_locations)}\n"
+                f"If a document mentions facts about these cities, IGNORE those facts entirely.\n"
+                f"NEVER write sentences like 'Metro Manila crime rates rose...' — that is NOT about Baguio.\n"
+                f"Every claim in your narrative must be specifically about Baguio City.\n"
+            )
+        else:
+            geographic_constraint = (
+                f"\n\n⚠️ CRITICAL: GEOGRAPHIC CONSTRAINT ⚠️\n"
+                f"Your narrative MUST ONLY cover facts about BAGUIO CITY.\n"
+                f"DO NOT include facts about other cities (Manila, Cebu, Davao, etc.) as if they were about Baguio.\n"
+                f"Every claim must be specifically about Baguio City.\n"
+            )
+
         # Build domain-to-URL mapping for citation grounding
         domain_mapping = {}
         for doc in documents:
@@ -371,7 +488,10 @@ class LLMNarrativeClient:
                 doc_credibility = item.get('credibility', 0.0)
                 doc_verification_status = item.get('verification_status', 'unverified')
 
-                # Professional text label based on verification status
+                # Show RAW verification status (for CitationVerifier matching) + credibility label (for readability)
+                raw_status = doc_verification_status  # "verified", "unverified", "contradicted"
+
+                # Human-readable credibility label
                 if doc_verification_status == 'verified':
                     status_label = "Verified"  # Tavily or VSEE confirmed
                 elif doc_verification_status == 'contradicted':
@@ -383,8 +503,9 @@ class LLMNarrativeClient:
                 else:
                     status_label = "Unverified"  # Moderate sourcing
 
+                # Show raw status FIRST (LLM must copy this for citation verification)
                 menu_lines.append(
-                    f"[{item['idx']}] {item['url']} | {status_label} | Sent: {item['sentiment']}"
+                    f"[{item['idx']}] {item['url']} | {raw_status} | Sent: {item['sentiment']}"
                 )
             citation_menu_block = "\n".join(menu_lines) + "\n\n"
 
@@ -447,29 +568,27 @@ RIGHT: [Src: pia.gov.ph | Cred: 0.95]  ← Domain from list above
 ⚠️ CRITICAL: CITATION PRIORITIZATION ⚠️
 When multiple sources support the same claim, PRIORITIZE in this order:
 
-1. VERIFIED SOURCES: Choose these FIRST (verification_status: Verified)
+1. VERIFIED SOURCES: Choose these FIRST (verification_status: verified)
    - These are confirmed by Tavily web search OR VSEE internal consensus
    - VSEE verifies via: cross-reference ≥0.70 + domain trust ≥0.45
-   - Look for: "Verified" label in citation menu
-   - Example: [3] pia.gov.ph | Cred: 0.82 | Verified | Sent: Positive
+   - Look for: "verified" status in citation menu
+   - Example: [3] pia.gov.ph | verified | Sent: Positive
 
 2. HIGH CREDIBILITY: Choose if no verified sources available (Cred: ≥0.75)
    - These have strong domain trust + internal corroboration
-   - Look for: "High Credibility" label in citation menu
-   - Example: [5] inquirer.net | Cred: 0.78 | High Credibility | Sent: Neutral
+   - They show "unverified" status but have high credibility scores
+   - Example: [5] inquirer.net | unverified | Sent: Neutral (Cred: 0.78)
 
 3. LOW CREDIBILITY: AVOID unless no alternative (Cred: <0.55)
    - These lack external confirmation or internal consensus
-   - Look for: "Low Credibility" label in citation menu
-   - Example: [8] facebook.com | Cred: 0.42 | Low Credibility | Sent: Positive
+   - Example: [8] facebook.com | unverified | Sent: Positive (Cred: 0.42)
 
 4. CONTRADICTED: DO NOT CITE unless explicitly noting dispute
    - These are actively disputed by fact-checkers
-   - Look for: "Contradicted" label in citation menu
-   - Example: [12] unknown.com | Cred: 0.28 | Contradicted | Sent: Negative
+   - Example: [12] unknown.com | contradicted | Sent: Negative
 
 RULES:
-- ALWAYS prefer VERIFIED over HIGH CREDIBILITY
+- ALWAYS prefer VERIFIED over unverified high-credibility sources
 - AVOID LOW CREDIBILITY unless no other source supports the claim
 - NEVER cite CONTRADICTED sources without noting the dispute
 - When in doubt, choose sources with higher credibility scores
@@ -480,6 +599,7 @@ RULES:
             f"Summarize public chatter over the last {window} with emphasis on {focus}.\n\n"
             f"{citation_menu_block}"  # NEW: Citation menu for constrained generation
             f"{verification_instruction}"  # NEW: Verification prioritization
+            f"{geographic_constraint}\n\n"  # NEW: Geographic constraint (epistemic authority)
             f"=== SUPPORTING CONVERSATIONS ({len(documents)} documents) ===\n"
             f"{docs_block}\n"
             f"{insights_block}"
@@ -492,16 +612,17 @@ RULES:
             "3. Generate a comprehensive, engaging narrative summary with IN-LINE CITATIONS.\n\n"
             "CITATION FORMAT (CRITICAL - MUST FOLLOW EXACTLY):\n"
             "- Each sentence MUST end with a full citation in this EXACT format:\n"
-            "  [Src: domain.com | Sent: SENTIMENT | Verified/Unverified/Contradicted]\n"
-            "- Example: Vendors received P10,000 assistance [Src: pia.gov.ph | Sent: Positive | Verified].\n"
-            "- Use the citation menu above to select sources - COPY the domain EXACTLY as shown\n"
+            "  [Src: domain.com | Sent: SENTIMENT | verification_status]\n"
+            "- Example: Vendors received P10,000 assistance [Src: pia.gov.ph | Sent: Positive | verified].\n"
+            "- Use the citation menu above to select sources - COPY the domain AND verification status EXACTLY as shown\n"
+            "- CRITICAL: The verification status MUST be copied EXACTLY from the citation menu (verified/unverified/contradicted) - DO NOT translate or modify it\n"
             "- DO NOT use numbered citations like [1], [2], [3] - use FULL format ONLY\n"
             "- EVERY sentence MUST have exactly one citation. NO exceptions.\n"
             "- Each paragraph should have 2-4 citations minimum.\n"
             "- The conclusion paragraph MUST have at least 2 citations.\n"
-            "- Prioritize VERIFIED sources (marked 'Verified' in menu) when multiple sources support a claim\n"
+            "- Prioritize sources with 'verified' status when multiple sources support a claim\n"
             "- Use sentiment from document metadata (Negative/Neutral/Positive)\n"
-            "- Include verification status: Verified, Unverified, or Contradicted\n"
+            "- Include verification status EXACTLY as shown in the menu: verified, unverified, or contradicted\n"
             "- Citations prove your claims are grounded in retrieved documents\n\n"
             "FORMATTING REQUIREMENTS:\n"
             "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
@@ -522,7 +643,7 @@ RULES:
             '- summary: "string narrative with \\n\\n between paragraphs and [Src: ...] citations" (use double quotes!)\n'
             "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n\n"
             "Example CORRECT format:\n"
-            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Sent: Negative | Unverified].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Sent: Neutral | Verified].", "insights": []}\n\n'
+            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Sent: Negative | unverified].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Sent: Neutral | verified].", "insights": []}\n\n'
             "Example WRONG format (DO NOT USE):\n"
             "{'summary': `text with backticks`, 'insights': []}  <- INVALID!\n"
             '{"summary": "Traffic increased.", "insights": []}  <- MISSING CITATIONS!\n'

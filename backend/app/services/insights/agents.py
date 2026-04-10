@@ -387,15 +387,15 @@ class CredibilityAgent:
     
     use_enhanced: bool = True
 
-    async def run(self, documents: Sequence[WebDocument]) -> list[WebDocument]:
+    async def run(self, documents: Sequence[WebDocument], disable_vsee: bool = False) -> list[WebDocument]:
         """Score credibility and return enriched documents."""
         logger.info("[credibility_agent] scoring %d documents with 5 parallel sub-agents", len(documents))
-        
+
         if self.use_enhanced:
             try:
                 from ..agents.credibility_agent import get_credibility_agent
                 agent = get_credibility_agent()
-                return await agent.run(list(documents))
+                return await agent.run(list(documents), disable_vsee=disable_vsee)
             except Exception as exc:
                 logger.warning("[credibility_agent] Enhanced failed, using fallback: %s", exc)
                 import traceback

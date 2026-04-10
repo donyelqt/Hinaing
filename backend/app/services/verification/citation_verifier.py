@@ -27,10 +27,11 @@ class CitationVerifier:
     5. Cited document semantically supports the claim
     """
 
-    # NEW citation format: [Src: URL_OR_DOMAIN | Sent: SENTIMENT | Verified/Unverified/Contradicted]
+    # NEW citation format: [Src: URL_OR_DOMAIN | Sent: SENTIMENT | verified/unverified/contradicted]
     # Supports both full URLs and domain-only citations
+    # Accepts both lowercase and capitalized status values for robustness
     CITATION_PATTERN = re.compile(
-        r'\[Src:\s*([^\|]+)\s*\|\s*Sent:\s*([^\|]+)\s*\|\s*(Verified|Unverified|Contradicted)\]'
+        r'\[Src:\s*([^\|]+)\s*\|\s*Sent:\s*([^\|]+)\s*\|\s*(verified|unverified|contradicted|Verified|Unverified|Contradicted)\]'
     )
 
     # Production-grade thresholds (relaxed for LLM generation variance)
@@ -219,8 +220,20 @@ class CitationVerifier:
             sent_match = cited_sent == doc_sent
 
             # Check verification status match
-            # Map "Verified" → "verified", "Unverified" → "unverified", "Contradicted" → "contradicted"
-            status_match = cited_status == doc_status
+            # Normalize internal status values to user-facing equivalents:
+            #   vsee_bypass → verified (VSEE-verified docs count as verified)
+            #   rate_limited, skipped_limit, error → unverified (failed verification)
+            STATUS_NORMALIZATION = {
+                'vsee_bypass': 'verified',
+                'rate_limited': 'unverified',
+                'skipped_limit': 'unverified',
+                'disabled': 'unverified',
+                'no_claims': 'unverified',
+                'error': 'unverified',
+            }
+            normalized_doc_status = STATUS_NORMALIZATION.get(doc_status, doc_status)
+            normalized_cited_status = STATUS_NORMALIZATION.get(cited_status, cited_status)
+            status_match = normalized_cited_status == normalized_doc_status
 
             if sent_match and status_match:
                 metadata_matches.append(doc)
@@ -406,15 +419,25 @@ class CitationVerifier:
         ).lower().strip()
         citation_status = citation.get("verification_status", "").lower().strip()
         
-        # Normalize status labels (handle case differences)
+        # Normalize status labels (handle case differences + internal values)
+        STATUS_NORMALIZATION = {
+            'vsee_bypass': 'verified',
+            'rate_limited': 'unverified',
+            'skipped_limit': 'unverified',
+            'disabled': 'unverified',
+            'no_claims': 'unverified',
+            'error': 'unverified',
+        }
+        normalized_doc_status = STATUS_NORMALIZATION.get(doc_status, doc_status)
+
         status_map = {
             "verified": ["verified", "true"],
             "unverified": ["unverified", "false"],
             "contradicted": ["contradicted", "disputed"],
         }
-        
+
         verification_status_accurate = (
-            citation_status in status_map.get(doc_status, [doc_status])
+            citation_status in status_map.get(normalized_doc_status, [normalized_doc_status])
         )
 
         # Check sentiment match
