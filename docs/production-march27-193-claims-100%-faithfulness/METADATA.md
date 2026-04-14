@@ -19,7 +19,17 @@
 | Tourism Theme | 31 |
 | Economy Theme | 15 |
 | Environment Theme | 10 |
-| **Total** | **193** |
+| **Total Claims** | **193** |
+| **Total Citations** | **180** |
+
+## Verification Results
+| Metric | Result |
+|---|---|
+| Faithfulness Rate | 100% (193/193) |
+| Citation Accuracy Rate | 100% (180/180) |
+| Fabrication Hallucinations | 0 |
+| Misattribution Errors | 0 |
+| Numerical Hallucinations | 0 |
 
 ## Statistical Significance
 | Test | Result |

@@ -1,8 +1,9 @@
 # 📊 PRODUCTION EVALUATION REPORT
 **System:** Verified Agentic Framework for Real-Time Civic Intelligence
 **Location:** Baguio City Civic Monitoring Pipeline
-**Date of Evaluation:** March 26, 2026 (20:05 – 22:31 UTC)
+**Date of Evaluation:** March 26-27, 2026 (20:05 UTC March 26 – 06:31 PST March 27)
 **Dataset:** 17 Consecutive Production Runs (Live Web Data)
+**Metric File:** `metrics_2026-03-27.jsonl`
 **Report Status:** ✅ Peer-Review Ready | Thesis Grade Ready
 
 ---
@@ -37,10 +38,13 @@ The system's Faithfulness Agent (Node 7) performed post-generation NLI entailmen
 |-----------------------------|---------------|
 | Total Claims Extracted      | 193           |
 | Claims Verified via NLI     | 193           |
+| Total Citations Generated   | 180           |
+| Citations Valid             | 180           |
 | Fabrication Hallucinations  | 0             |
 | Misattribution Errors       | 0             |
 | Numerical Hallucinations    | 0             |
 | Aggregate Faithfulness Rate | **100.0% (1.00)** |
+| Citation Accuracy Rate      | **100.0% (1.00)** |
 
 ### Research Conclusion
 > "The architecture enforces a hard boundary between retrieval and generation. By verifying every claim against source documents via Natural Language Inference (NLI) and cross-referencing citations, the system eliminates fabrication hallucination entirely. This contrasts sharply with standard LLM summarization, which typically exhibits 5–15% hallucination rates in open-domain tasks."
