@@ -82,17 +82,7 @@ Civic data is inherently ambiguous. The ensemble sentiment agent and 5-signal cr
 
 ---
 
-## 5. SYSTEM LIMITATIONS & OBSERVED BEHAVIORS
-
-While production-ready, the evaluation identified specific areas for architectural refinement:
-
-1.  **Theme Routing Instability (Pre-Fix):** Early runs exhibited semantic routing skew (e.g., 61% of docs routed to health in run 1ae8671b). Status: Resolved via metadata-first routing patch.
-2.  **Latency Variance:** Runs with >60 fresh documents exceeded 190s due to sequential sentiment/credibility processing. Status: Parallel Node 5+6 optimization applied.
-3.  **VSEE Bypass Sensitivity:** VSEE triggered 0 times in runs with highly diverse, low-corroboration news cycles. Status: Expected conservative behavior; system correctly defaulted to full API verification rather than risking false bypass.
-
----
-
-## 6. RESEARCH & DEPLOYMENT READINESS
+## 5. RESEARCH & DEPLOYMENT READINESS
 
 | Evaluation Dimension     | Rating              | Evidence                                       |
 |--------------------------|---------------------|------------------------------------------------|
