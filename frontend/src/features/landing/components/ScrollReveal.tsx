@@ -17,6 +17,11 @@ export function ScrollReveal({ children, className, as: Component = "div", delay
   useEffect(() => {
     if (!ref.current) return;
 
+    // Dynamic threshold based on viewport height - critical fix for mobile
+    // On mobile (small viewports), use lower threshold because elements take more vertical space
+    const isMobile = window.innerHeight < 768;
+    const threshold = isMobile ? 0.02 : 0.15; // 2% for mobile, 15% for desktop
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -24,12 +29,30 @@ export function ScrollReveal({ children, className, as: Component = "div", delay
           observer.disconnect();
         }
       },
-      { threshold: 0.15 },
+      { 
+        threshold,
+        rootMargin: isMobile ? '100px' : '0px' // Extra root margin on mobile to trigger earlier
+      },
     );
 
     observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+
+    // Fail-safe timeout: Ensure sections render even if observer never triggers (edge cases)
+    const timeoutId = setTimeout(() => {
+      setIsVisible(prev => {
+        if (!prev) {
+          observer.disconnect();
+          return true;
+        }
+        return prev;
+      });
+    }, 2000 + delay); // Wait 2s plus delay before forcing render
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
+  }, [delay]);
 
   return (
     <Component
