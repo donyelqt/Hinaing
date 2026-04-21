@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime
 from typing import Any
 
@@ -103,10 +104,20 @@ class LangSearchClient:
             documents: list[WebDocument] = []
             for item in self._extract_web_results(data):
                 try:
+                    # SANITIZE at extraction time BEFORE reranking
+                    # Prevents indirect prompt injection and poisoned documents from getting high scores
+                    snippet = item.get("snippet") or item.get("summary") or ""
+                    dangerous_patterns = [
+                        r"<\|endoftext\|>", r"ignore.*previous", r"forget.*instructions",
+                        r"you are now", r"disregard.*rules", r"system prompt:"
+                    ]
+                    for pattern in dangerous_patterns:
+                        snippet = re.sub(pattern, "[SANITIZED]", snippet, flags=re.IGNORECASE)
+                    
                     documents.append(
                         WebDocument(
                             title=item.get("name") or item.get("title") or "Untitled result",
-                            snippet=item.get("snippet") or item.get("summary") or "",
+                            snippet=snippet,
                             url=item.get("url"),
                             published_at=self._parse_datetime(item.get("datePublished")),
                             sentiment=item.get("sentiment") or None,

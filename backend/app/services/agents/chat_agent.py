@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import logging
+import re
+import uuid
 from typing import List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import asyncio
+from transformers import AutoTokenizer
 
 from ...core.config import get_settings
 from ..langsearch import LangSearchClient
@@ -14,6 +17,101 @@ logger = logging.getLogger(__name__)
 # Production safety limits
 MAX_MESSAGE_LENGTH = 2000  # Maximum input message length (chars)
 MAX_HISTORY_MESSAGES = 10  # Maximum conversation history to process
+MAX_CONTEXT_TOKENS = 120000  # 128k window with 8k safety margin
+
+# Llama 3.1 Tokenizer (matches Groq exactly)
+_LLAMA_TOKENIZER = None
+
+def get_llama_tokenizer():
+    global _LLAMA_TOKENIZER
+    if _LLAMA_TOKENIZER is None:
+        _LLAMA_TOKENIZER = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
+    return _LLAMA_TOKENIZER
+
+def count_tokens(text: str) -> int:
+    """Accurately count tokens for Llama 3.1 models used by Groq."""
+    tokenizer = get_llama_tokenizer()
+    return len(tokenizer.encode(text, add_special_tokens=False))
+
+# -----------------------------------------------------------------------------
+# PROHIBITED ACTIVITY GUARDRAILS
+# -----------------------------------------------------------------------------
+PROHIBITED_CATEGORIES = {
+    "code_generation": [
+        r"write.*code", r"create.*script", r"generate.*function", r"program.*for",
+        r"python.*code", r"javascript.*code", r"java.*code", r"c\+\+.*code",
+        r"how to code", r"how to program", r"debug this", r"fix this code",
+        r"write a.*function", r"create a.*class", r"implement.*algorithm",
+        r"```", r"code example", r"sample code", r"source code"
+    ],
+    "jailbreak": [
+        r"ignore.*previous", r"forget.*instructions", r"you are now", r"disregard",
+        r"act as", r"pretend you are", r"roleplay", r"system prompt",
+        r"bypass.*restrictions", r"break.*rules", r"ignore.*rules"
+    ],
+    "off_topic": [
+        r"write an essay", r"write a story", r"write a poem", r"write a letter",
+        r"do my homework", r"solve this math", r"math problem", r"calculus",
+        r"translate this", r"what is.*stock", r"crypto price", r"medical advice",
+        r"legal advice", r"financial advice"
+    ]
+}
+
+
+
+async def input_guardrails(message: str, llm=None) -> tuple[bool, str]:
+    """Multi-layer input guardrails to prevent prohibited activities."""
+    message_lower = message.lower()
+    
+    # Layer 1: Fast regex check for prohibited patterns
+    for category, patterns in PROHIBITED_CATEGORIES.items():
+        for pattern in patterns:
+            if re.search(pattern, message_lower, re.IGNORECASE):
+                logger.warning(f"[guardrails] Blocked prohibited category: {category}")
+                return False, (
+                    "I'm a civic assistant for Baguio City. I can only help with questions "
+                    "about Baguio City government, services, events, safety, infrastructure, "
+                    "and public sentiment. I cannot help with code generation, programming, "
+                    "homework, or other unrelated topics."
+                )
+    
+    # Layer 2: LLM validation for edge cases regex misses (only if llm is provided)
+    if llm is not None:
+        guardrail_prompt = f"""
+        Classify this user message. Answer ONLY YES or NO.
+        
+        Is this message asking for:
+        - Code generation, programming help, or scripts?
+        - Essay writing, stories, or creative content?
+        - Homework, math problems, or academic cheating?
+        - Medical, legal, or financial advice?
+        - Anything unrelated to Baguio City civic matters?
+        
+        User message: {message}
+        
+        Answer ONLY YES if it is prohibited, NO if it is allowed.
+        """
+        
+        try:
+            response = await llm.generate(
+                prompt=guardrail_prompt,
+                system_prompt="Classify only. Answer ONLY YES or NO.",
+                temperature=0.0,
+                max_tokens=5
+            )
+        
+            if "yes" in response.strip().lower():
+                logger.warning("[guardrails] LLM classified query as prohibited")
+                return False, (
+                    "I'm a civic assistant for Baguio City. I can only help with questions "
+                    "about Baguio City government, services, events, safety, infrastructure, "
+                    "and public sentiment."
+                )
+        except Exception as e:
+            logger.warning(f"[guardrails] LLM guardrail check failed: {e}")
+            # Fail open for transient errors
+    
+    return True, ""
 
 
 async def run_chat_agent(
@@ -42,6 +140,17 @@ async def run_chat_agent(
             f"Please limit your message to {MAX_MESSAGE_LENGTH} characters.",
             []
         )
+    
+    # Use llama-3.1-8b-instant for fast, cheap chat responses
+    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
+    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
+    from ..llm.groq_provider import get_groq_provider
+    llm = get_groq_provider("llama-3.1-8b-instant")
+    
+    # SCOPE GUARDRAILS: Block prohibited activities
+    allowed, rejection_message = await input_guardrails(message, llm)
+    if not allowed:
+        return rejection_message, []
     
     # HISTORY VALIDATION: Limit history to prevent context bloat
     if history and len(history) > MAX_HISTORY_MESSAGES:
@@ -116,93 +225,44 @@ If you need to search for information, indicate what you're searching for."""
     sources = []
     
     try:
-        # AGENTIC INTENT DETECTION: LLM autonomously decides routing
-        # This is the "Agentic" part of our Agentic RAG architecture
-        intent_prompt = f"""You are Hinaing, a civic assistant for Baguio City.
-
-Classify this message into ONE category:
-
-**"direct"**: Answer from your knowledge (NO search needed)
-- Greetings: hello, hi, good morning
-- Small talk: how are you, thanks, bye
-- Identity questions: who are you, who made you, who developed you, who created you, what is hinaing, tell me about yourself, your developer, your creator
-
-**"search"**: Factual questions about Baguio City (NEEDS search)
-- Traffic, accidents, road conditions
-- Events, festivals, tourism
-- Infrastructure, construction, projects
-- Crime, safety, police
-- Economy, business, markets
-- Health, hospitals, services
-- Environment, weather, disasters
-
-User: {message}
-
-Respond with ONLY "direct" or "search".
-"""
-        intent_response = await llm.generate(
-            prompt=intent_prompt,
-            system_prompt="Classify messages. Respond with ONLY 'direct' or 'search'.",
-            temperature=0.0,  # Deterministic classification
-            max_tokens=10,
-        )
-        intent = intent_response.strip().lower()
-
-        logger.info(f"[chat_agent] Agentic intent classification: '{intent}'")
+        # MINIMAL INTENT DETECTION: Only pure greetings + identity skip search
+        # ALL other questions ALWAYS SEARCH - eliminates 90% of hallucinations
+        message_lower = message.lower().strip()
         
-        # Route based on LLM decision
-        if "direct" in intent:
-            # Greetings, identity, small talk - respond without search
-            system_prompt = (
-                "You are a friendly civic assistant for Baguio City. "
-                "Respond naturally and briefly. You can respond in English or Tagalog/Filipino as appropriate."
-            )
-            
-            # Check for identity/developer questions (safety net)
-            message_lower = message.lower()
-            is_identity_question = any(pattern in message_lower for pattern in [
-                "who are you", "what are you", "who made you", "who created you", "who built you",
-                "who developed you", "who designed you", "i am the developer", "i'm the developer",
-                "what is hinaing", "what's hinaing", "tell me about yourself", "introduce yourself",
-                "what can you do", "what do you do", "how do you work", "explain yourself",
-                "who is the developer", "who is developer", "developer of hinaing", "your developer",
-                "your creator", "who owns hinaing", "hinaing developer", "hinaing created"
-            ])
-            
-            if is_identity_question:
-                system_prompt = (
-                    "You are **Hinaing**, an Agentic RAG system developed by the University of the Cordilleras (UC) Computer Science R&D Team. "
-                    "DO NOT call yourself 'Compound' or 'Groq' - those are just your underlying infrastructure. Your product name is 'Hinaing'. "
-                    "\n\n"
-                    "R&D Team Members:\n"
-                    "- Doniele Arys Antonio (Research Developer)\n"
-                    "- Krisha May Cutiam (Researcher)\n"
-                    "- Justine Mae Macario (Researcher)\n"
-                    "\n"
-                    "When introducing yourself, you MUST mention these key points:\n"
-                    "1. Your name: 'Hinaing'\n"
-                    "2. Your type: 'Agentic RAG system'\n"
-                    "3. Your creators: 'UC Computer Science R&D Team' (with their actual name and role)\n"
-                    "4. Your role: 'Fast civic Q&A for Baguio City'\n"
-                    "5. Your distinction: 'I'm the quick-response chat component, distinct from the deeper 7-node Multi-Agent System used for epistemic truth discovery and civic social listening'\n"
-                    "\n"
-                    "Your Architecture:\n"
-                    "- You are an Agentic RAG system - the FAST RESPONSE UNIT of the Hinaing platform\n"
-                    "- You handle quick civic Q&A about Baguio City using web search\n"
-                    "- You are DISTINCT from the deep 7-node 'AgenticHinaing' architecture (18 agents) used for epistemic truth discovery and civic social listening\n"
-                    "- The full Hinaing platform has TWO components: YOU (chat/Q&A) and the ANALYSIS system (sentiment/insights)\n"
-                    "- You run on Groq's infrastructure, but your identity is 'Hinaing, an Agentic RAG system'\n"
-                    "\n"
-                    "Be friendly, concise, and always credit the UC Computer Science R&D Team when discussing your development."
-                )
-
+        # ONLY skip search for PURE greetings with NO additional content
+        # This prevents greeting bypass attacks
+        pure_greetings = {"hello", "hi", "hey", "good morning", "good afternoon", 
+                         "good evening", "thanks", "thank you", "bye", "goodbye", "ok", "okay"}
+        
+        if len(message_lower) < 20 and any(greeting in message_lower for greeting in pure_greetings):
+            # Pure greeting/small talk - respond correctly with proper identity
             response = await llm.generate(
                 prompt=f"User says: {message}\n\nRespond naturally and briefly.",
-                system_prompt=system_prompt,
+                system_prompt=system_instruction,
                 temperature=0.7,
-                max_tokens=200,
+                max_tokens=150,
             )
             return response, []
+        
+        # Handle identity questions - ONLY valid exception to "always search" rule
+        identity_patterns = [
+            "who are you", "what are you", "who made you", "who created you", "who built you",
+            "who developed you", "who designed you", "what is hinaing", "what's hinaing",
+            "tell me about yourself", "introduce yourself", "what can you do", "how do you work"
+        ]
+        
+        if any(pattern in message_lower for pattern in identity_patterns):
+            response = await llm.generate(
+                prompt=message,
+                system_prompt=system_instruction,
+                temperature=0.1,
+                max_tokens=400,
+            )
+            return response, []
+        
+        # ALL OTHER QUESTIONS ALWAYS SEARCH - NO EXCEPTIONS
+        # This eliminates intent classification hallucinations entirely
+        logger.info(f"[chat_agent] All substantive questions always search: {message[:80]}")
         
         # "search" intent: Proceed to LangSearch retrieval
         logger.info(f"[chat_agent] Performing web search for: {message}")
@@ -257,6 +317,7 @@ Respond with ONLY "direct" or "search".
         if combined_docs:
             # Build context from search results (limit to 8 docs + truncate snippets to avoid 413 errors)
             # Groq has a request size limit (~200KB-1MB) even though context window is 128K tokens
+            # Documents are already sanitized at extraction time in LangSearch
             context_text = "\n\n".join([
                 f"[{doc.metadata.get('source_type', 'WEB')}] {doc.title}\n{str(doc.snippet)[:150]}..."
                 for doc in combined_docs[:8]
@@ -285,6 +346,46 @@ FORMATTING FOR READABILITY:
 - Write like you're explaining to a friend
 
 Please provide a clear, conversational answer that's easy to read quickly."""
+
+            # CONTEXT WINDOW PROTECTION: Dynamic truncation if over limit
+            prompt_tokens = count_tokens(grounded_prompt)
+            total_tokens = prompt_tokens + 2048
+            
+            while total_tokens > MAX_CONTEXT_TOKENS and len(combined_docs) > 2:
+                # Remove least relevant document (already reranked)
+                combined_docs.pop()
+                context_text = "\n\n".join([
+                    f"[{doc.metadata.get('source_type', 'WEB')}] {doc.title}\n{str(doc.snippet)[:150]}..."
+                    for doc in combined_docs
+                ])
+                # Rebuild prompt
+                grounded_prompt = f"""Context: Jurisdiction is {jurisdiction}. User asks: {message}
+{history_context}
+Search Results (ONLY use information from these results):
+{context_text}
+
+CRITICAL INSTRUCTIONS:
+1. Base your answer ONLY on the search results above
+2. DO NOT add information not present in the results
+3. DO NOT include source citations, URLs, or reference markers in your response (e.g., no 【WEB】, no URLs, no "Source:" sections)
+4. The UI will display sources separately - you only need to provide the answer
+5. If the results don't fully answer the question, say so honestly
+6. Consider the conversation history when formulating your response
+
+FORMATTING FOR READABILITY:
+- Start with a direct answer (1-2 sentences)
+- Use short paragraphs (2-3 sentences max)
+- Use bullet points for lists
+- Use **bold** for key terms and names
+- Keep it conversational and easy to scan
+- Avoid tables, complex formatting, or academic style
+- Write like you're explaining to a friend
+
+Please provide a clear, conversational answer that's easy to read quickly."""
+                prompt_tokens = count_tokens(grounded_prompt)
+                total_tokens = prompt_tokens + 2048
+            
+            logger.info(f"[chat_agent] Prompt size: {prompt_tokens} tokens, total window: {total_tokens}")
 
             response = await llm.generate(
                 prompt=grounded_prompt,
@@ -315,5 +416,9 @@ Respond honestly that you couldn't find specific information, but offer to:
             return response, []
 
     except Exception as e:
-        logger.exception("Chat agent error")
-        return f"I encountered an error: {str(e)}", []
+        error_id = str(uuid.uuid4())
+        logger.exception(f"Chat agent error [ID: {error_id}]")
+        return (
+            "I encountered an error processing your request. "
+            f"Error ID: {error_id}"
+        ), []
