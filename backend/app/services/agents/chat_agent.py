@@ -33,11 +33,14 @@ def count_tokens(text: str) -> int:
 # -----------------------------------------------------------------------------
 PROHIBITED_CATEGORIES = {
     "code_generation": [
-        r"write.*code", r"create.*script", r"generate.*function", r"program.*for",
-        r"python.*code", r"javascript.*code", r"java.*code", r"c\+\+.*code",
-        r"how to code", r"how to program", r"debug this", r"fix this code",
-        r"write a.*function", r"create a.*class", r"implement.*algorithm",
-        r"```", r"code example", r"sample code", r"source code"
+        r"write.*code", r"create.*script", r"generate.*code", r"generate.*function", 
+        r"program.*for", r"python.*code", r"javascript.*code", r"java.*code", 
+        r"c\+\+.*code", r"how to code", r"how to program", r"debug this", 
+        r"fix this code", r"write a.*function", r"create a.*class", 
+        r"implement.*algorithm", r"```", r"code example", r"sample code", 
+        r"source code", r"code for", r"script for", r"can you code",
+        r"example of", r"show me.*how", r"what would.*look like", r"provide an example",
+        r"example script", r"example function", r"sample script", r"how would you"
     ],
     "jailbreak": [
         r"ignore.*previous", r"forget.*instructions", r"you are now", r"disregard",
@@ -56,13 +59,61 @@ PROHIBITED_CATEGORIES = {
 
 async def input_guardrails(message: str, llm=None) -> tuple[bool, str]:
     """Multi-layer input guardrails to prevent prohibited activities."""
+
+async def output_guardrails(response: str, llm) -> tuple[bool, str]:
+    """Production-grade output validation. Runs before ANY response is returned to user.
+    Catches context poisoning, indirect injection, and hallucinated off-topic content.
+    """
+    
+    check_prompt = f"""
+    CLASSIFY THIS RESPONSE. ANSWER ONLY YES OR NO.
+    
+    Response (first 500 chars): {response[:500]}
+    
+    Does this response contain ANY of the following:
+    1. Code, scripts, programming examples, or technical implementation details
+    2. Medical diagnosis, treatment recommendations, or health advice
+    3. Legal advice, legal opinions, or legal interpretation
+    4. Financial advice, investment recommendations, or trading signals
+    5. Any content not related to Baguio City civic matters, government, services, events, safety, infrastructure, or public sentiment
+    
+    Answer ONLY YES if prohibited, NO if allowed.
+    """
+    
+    try:
+        result = await llm.generate(
+            prompt=check_prompt,
+            system_prompt="Classify only. Answer ONLY YES or NO. Do not explain.",
+            temperature=0.0,
+            max_tokens=3
+        )
+        
+        result_lower = result.strip().lower()
+        if "yes" in result_lower:
+            logger.warning("[output_guardrails] Blocked prohibited output")
+            return False, "I can only provide information about Baguio City civic matters."
+            
+    except Exception as e:
+        logger.error(f"[output_guardrails] Validation failed: {e}")
+        # FAIL CLOSED - never return unvalidated output
+        return False, "I encountered an error processing your request."
+    
+    return True, response
     message_lower = message.lower()
     
     # Layer 1: Fast regex check for prohibited patterns
     for category, patterns in PROHIBITED_CATEGORIES.items():
         for pattern in patterns:
             if re.search(pattern, message_lower, re.IGNORECASE):
-                logger.warning(f"[guardrails] Blocked prohibited category: {category}")
+                logger.warning(
+                    "[guardrails] Blocked prohibited category",
+                    extra={
+                        "category": category,
+                        "pattern": pattern,
+                        "input_preview": message[:100],
+                        "blocked": True
+                    }
+                )
                 return False, (
                     "I'm a civic assistant for Baguio City. I can only help with questions "
                     "about Baguio City government, services, events, safety, infrastructure, "
@@ -73,18 +124,22 @@ async def input_guardrails(message: str, llm=None) -> tuple[bool, str]:
     # Layer 2: LLM validation for edge cases regex misses (only if llm is provided)
     if llm is not None:
         guardrail_prompt = f"""
-        Classify this user message. Answer ONLY YES or NO.
-        
-        Is this message asking for:
-        - Code generation, programming help, or scripts?
-        - Essay writing, stories, or creative content?
-        - Homework, math problems, or academic cheating?
-        - Medical, legal, or financial advice?
-        - Anything unrelated to Baguio City civic matters?
+        CLASSIFICATION TASK:
         
         User message: {message}
         
-        Answer ONLY YES if it is prohibited, NO if it is allowed.
+        Answer ONLY YES or NO.
+        
+        YES = PROHIBITED if message asks for:
+        - Code generation, programming, scripts, functions, debug help
+        - Essay writing, stories, poems, creative content
+        - Homework, math problems, academic work
+        - Medical diagnosis, legal advice, financial recommendations
+        - ANYTHING NOT related to Baguio City civic matters, government, services, events, safety, infrastructure, or public sentiment
+        
+        NO = ALLOWED if message is about Baguio City civic matters.
+        
+        Answer ONLY YES or NO.
         """
         
         try:
@@ -103,8 +158,10 @@ async def input_guardrails(message: str, llm=None) -> tuple[bool, str]:
                     "and public sentiment."
                 )
         except Exception as e:
-            logger.warning(f"[guardrails] LLM guardrail check failed: {e}")
-            # Fail open for transient errors
+            logger.error(f"[guardrails] LLM guardrail check failed: {e}")
+            # FAIL CLOSED - production standard for security boundaries
+            # Never allow unvetted queries through if guardrails fail
+            return False, "I'm sorry, I cannot process that request right now."
     
     return True, ""
 
@@ -142,23 +199,16 @@ async def run_chat_agent(
     from ..llm.groq_provider import get_groq_provider
     llm = get_groq_provider("llama-3.1-8b-instant")
     
-    # SCOPE GUARDRAILS: Block prohibited activities
-    allowed, rejection_message = await input_guardrails(message, llm)
-    if not allowed:
-        return rejection_message, []
-    
-    # HISTORY VALIDATION: Limit history to prevent context bloat
-    if history and len(history) > MAX_HISTORY_MESSAGES:
-        logger.warning(
-            f"[run_chat_agent] History truncated from {len(history)} to {MAX_HISTORY_MESSAGES} messages"
-        )
-        history = history[-MAX_HISTORY_MESSAGES:]
-
     # Use llama-3.1-8b-instant for fast, cheap chat responses
     # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
     # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
     from ..llm.groq_provider import get_groq_provider
     llm = get_groq_provider("llama-3.1-8b-instant")
+    
+    # SCOPE GUARDRAILS: Block prohibited activities - RUNS AFTER LLM INITIALIZATION
+    allowed, rejection_message = await input_guardrails(message, llm)
+    if not allowed:
+        return rejection_message, []
     
     # Default system instruction if none provided
     if system_instruction is None:
@@ -224,12 +274,15 @@ If you need to search for information, indicate what you're searching for."""
         # ALL other questions ALWAYS SEARCH - eliminates 90% of hallucinations
         message_lower = message.lower().strip()
         
-        # ONLY skip search for PURE greetings with NO additional content
-        # This prevents greeting bypass attacks
+        # ONLY skip search for EXACT pure greetings with NO additional content
+        # 100% un-bypassable - no partial matches allowed
         pure_greetings = {"hello", "hi", "hey", "good morning", "good afternoon", 
                          "good evening", "thanks", "thank you", "bye", "goodbye", "ok", "okay"}
         
-        if len(message_lower) < 20 and any(greeting in message_lower for greeting in pure_greetings):
+        # Only EXACT matches. No additional content, no punctuation, no modifiers.
+        is_pure_greeting = message_lower.strip() in pure_greetings
+        
+        if is_pure_greeting:
             # Pure greeting/small talk - respond correctly with proper identity
             response = await llm.generate(
                 prompt=f"User says: {message}\n\nRespond naturally and briefly.",
@@ -237,7 +290,10 @@ If you need to search for information, indicate what you're searching for."""
                 temperature=0.7,
                 max_tokens=150,
             )
-            return response, []
+            
+            # ALL responses go through output guardrails - NO EXCEPTIONS
+            allowed, final_response = await output_guardrails(response, llm)
+            return final_response, []
         
         # Handle identity questions - ONLY valid exception to "always search" rule
         identity_patterns = [
@@ -253,7 +309,10 @@ If you need to search for information, indicate what you're searching for."""
                 temperature=0.1,
                 max_tokens=400,
             )
-            return response, []
+            
+            # ALL responses go through output guardrails - NO EXCEPTIONS
+            allowed, final_response = await output_guardrails(response, llm)
+            return final_response, []
         
         # ALL OTHER QUESTIONS ALWAYS SEARCH - NO EXCEPTIONS
         # This eliminates intent classification hallucinations entirely
@@ -388,8 +447,10 @@ Please provide a clear, conversational answer that's easy to read quickly."""
                 temperature=0.3,
                 max_tokens=2048,
             )
-
-            return response, sources
+            
+            # ALL responses go through output guardrails - NO EXCEPTIONS
+            allowed, final_response = await output_guardrails(response, llm)
+            return final_response, sources
         else:
             # No search results found - be honest
             no_results_prompt = f"""User asks: {message}
@@ -408,7 +469,9 @@ Respond honestly that you couldn't find specific information, but offer to:
                 max_tokens=1024,
             )
             
-            return response, []
+            # ALL responses go through output guardrails - NO EXCEPTIONS
+            allowed, final_response = await output_guardrails(response, llm)
+            return final_response, []
 
     except Exception as e:
         error_id = str(uuid.uuid4())
