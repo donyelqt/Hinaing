@@ -59,8 +59,8 @@ export function PartnerBadges() {
 
   return (
     <section className="bg-slate-50/80 border-t border-slate-200/50">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-6 text-xs text-slate-500 sm:px-6 xl:px-8">
-        <div className="flex items-center gap-4">
+      <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center sm:justify-between gap-6 px-4 py-6 text-xs text-slate-500 sm:px-6 xl:px-8">
+        <div className="flex items-center gap-4 w-full sm:w-auto">
           <div
             ref={containerRef}
             className="relative h-28 w-28 overflow-hidden rounded-full border border-slate-200 bg-white flex-shrink-0 shadow-sm"
@@ -99,7 +99,7 @@ export function PartnerBadges() {
             {/* Animated border effect */}
             <div className="absolute inset-0 rounded-full border border-transparent bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-cyan-500/20 [mask-composite:intersect] [mask:radial-gradient(ellipse_at_center,white_70%,transparent_90%)] animate-spin-slow" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Autonomous, Self-Learning & Multi-Signal Verification</p>
             <p className="text-sm font-medium text-slate-700 leading-snug">
               Sentiment monitoring system — thesis research project for Baguio City.
@@ -107,25 +107,25 @@ export function PartnerBadges() {
           </div>
         </div>
         {/* TRL 7 Validation Badge - Medal Design */}
-        <div className="hidden sm:flex flex-col items-center">
+        <div className="flex flex-col items-center w-full sm:w-auto">
           {/* Medal Badge Container */}
           <div className="group relative">
             {/* Outer glow effect - Vibrant blue */}
             <div className="absolute -inset-1 rounded-2xl bg-blue-500/40 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             
             {/* Main Badge - Vibrant blue background */}
-            <div className="relative flex items-center gap-3 rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-[2px] shadow-xl shadow-blue-600/30">
+            <div className="relative flex items-center gap-2 sm:gap-3 rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-[2px] shadow-xl shadow-blue-600/30 w-full sm:w-auto">
               {/* Inner content - lighter blue */}
-              <div className="flex items-center gap-3 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-700 px-4 py-3">
+              <div className="flex items-center gap-2 sm:gap-3 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-700 px-3 sm:px-4 py-2 sm:py-3 w-full sm:w-auto">
                 {/* Shield Icon with white/cyan accent */}
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-lg bg-cyan-300/40 blur-md" />
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg shadow-blue-900/20">
-                    <Shield className="h-5 w-5 text-blue-600 fill-blue-100" />
+                  <div className="relative flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-lg bg-white shadow-lg shadow-blue-900/20">
+                    <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600 fill-blue-100" />
                   </div>
                   {/* Small check badge overlay */}
-                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 border-2 border-blue-600 shadow-sm">
-                    <CheckCircle className="h-3 w-3 text-white" />
+                  <div className="absolute -bottom-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 border-2 border-blue-600 shadow-sm">
+                    <CheckCircle className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-white" />
                   </div>
                 </div>
                 
@@ -141,8 +141,8 @@ export function PartnerBadges() {
                   </span>
                 </div>
                 
-                {/* Award Icon */}
-                <div className="flex-shrink-0 pl-2 border-l border-blue-400/50">
+                {/* Award Icon - Hide on mobile */}
+                <div className="hidden sm:flex flex-shrink-0 pl-2 border-l border-blue-400/50">
                   <Award className="h-5 w-5 text-cyan-300" />
                 </div>
               </div>
