@@ -14,3 +14,22 @@ docs/
 frontend/
 .env
 *.env
+.env.local
+.env.*.local
+
+# Docker Compose (not needed for single-container build)
+docker-compose*.yml
+docker-compose*.yaml
+
+# Root-level files (not needed in backend container)
+../docker-compose*.yml
+../docker-compose*.yaml
+../.env*
+../frontend/
+../docs/
+../plans/
+../.agent/
+../ship.ps1
+../README.md
+../QWEN.md
+../LICENSE
