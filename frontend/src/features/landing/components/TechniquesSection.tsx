@@ -247,7 +247,7 @@ export function TechniquesSection() {
               <div className="flex justify-center gap-4">
                 <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 flex-1 max-w-[245px]">
                   <div className="text-2xl font-bold text-slate-600">0%</div>
-                  <div className="text-xs text-slate-500 mt-1">Hallucination (Production)</div>
+                  <div className="text-xs text-slate-500 mt-1">Fabrication Hallucination (Production)</div>
                 </div>
                 <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200 flex-1 max-w-[245px]">
                   <div className="text-2xl font-bold text-indigo-600">97%</div>
