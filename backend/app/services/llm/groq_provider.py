@@ -22,6 +22,9 @@ _GROQ_CONCURRENCY_LIMIT = asyncio.Semaphore(15)
 
 class GroqProvider(BaseLLMProvider):
     """Groq LLM provider with ultra-fast inference.
+    
+    THREAD SAFETY: All public methods are thread-safe.
+    The generate() method uses an async semaphore for concurrency control.
 
     Performance characteristics:
     - Speed: 500-800 tokens/sec (10-15x faster than Gemini)
@@ -153,7 +156,8 @@ class GroqProvider(BaseLLMProvider):
                         f"with {self._model}"
                     )
                 
-                return content or ""
+                # Guarantee non-Null return value
+                return content if content is not None else ""
                 
             except Exception as e:
                 logger.error(f"[Groq] Generation failed: {e}")
@@ -354,6 +358,7 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
 
 # Cache of provider instances per model (prevents singleton pollution)
 _groq_providers: dict[str, GroqProvider] = {}
+_provider_lock = __import__('threading').Lock()
 
 
 async def cleanup_groq_clients():
@@ -377,6 +382,7 @@ def get_groq_provider(model: str = "llama-3.1-8b-instant") -> GroqProvider:
     """Get or create Groq provider instance for specific model.
 
     Each model gets its own provider instance to prevent state pollution.
+    Thread-safe: Uses double-checked locking pattern with atomic check
 
     Args:
         model: Groq model name
@@ -385,11 +391,15 @@ def get_groq_provider(model: str = "llama-3.1-8b-instant") -> GroqProvider:
         Configured Groq provider for the specified model
     """
     global _groq_providers
-
-    # Create new provider if not cached for this specific model
+    
+    # Thread-safe double-checked locking
     if model not in _groq_providers:
-        _groq_providers[model] = GroqProvider(model=model)
-        logger.debug(f"[Groq] Created new provider instance for model: {model}")
+        with _provider_lock:
+            # Check again inside lock to prevent race conditions
+            if model not in _groq_providers:
+                provider = GroqProvider(model=model)
+                _groq_providers[model] = provider
+                logger.debug(f"[Groq] Created new provider instance for model: {model}")
 
     return _groq_providers[model]
 

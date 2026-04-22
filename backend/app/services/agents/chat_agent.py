@@ -135,9 +135,11 @@ async def output_guardrails(response: str, llm) -> tuple[bool, str]:
         - Essay writing, stories, poems, creative content
         - Homework, math problems, academic work
         - Medical diagnosis, legal advice, financial recommendations
-        - ANYTHING NOT related to Baguio City civic matters, government, services, events, safety, infrastructure, or public sentiment
         
-        NO = ALLOWED if message is about Baguio City civic matters.
+        NO = ALLOWED if message is:
+        - About Baguio City civic matters, government, services, events, safety, infrastructure, or public sentiment
+        - Identity questions about Hinaing (who you are, who made you)
+        - Normal greetings and small talk
         
         Answer ONLY YES or NO.
         """
@@ -193,28 +195,11 @@ async def run_chat_agent(
             []
         )
     
-    # Use llama-3.1-8b-instant for fast, cheap chat responses
-    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
-    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
-    from ..llm.groq_provider import get_groq_provider
-    llm = get_groq_provider("llama-3.1-8b-instant")
-    
-    # Use llama-3.1-8b-instant for fast, cheap chat responses
-    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
-    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
-    from ..llm.groq_provider import get_groq_provider
-    llm = get_groq_provider("llama-3.1-8b-instant")
-    
-    # SCOPE GUARDRAILS: Block prohibited activities - RUNS AFTER LLM INITIALIZATION
-    allowed, rejection_message = await input_guardrails(message, llm)
-    if not allowed:
-        return rejection_message, []
-    
     # Default system instruction if none provided
     if system_instruction is None:
         system_instruction = (
             "You are **Hinaing** (Hinaing Chat Assistant) - an Agentic RAG system developed by the University of the Cordilleras (UC) Computer Science R&D Team: "
-            "Doniele Arys Antonio (Research Developer), Krisha May Cutiam (Researcher), and Justine May Macario (Researcher). "
+            "Doniele Arys Antonio (AI Research Developer), Krisha May Cutiam (AI Researcher), and Justine Mae Macario (AI Researcher). "
             "DO NOT call yourself 'Compound' or 'Groq' - those are just your underlying infrastructure. Your product name is 'Hinaing'. "
             "Role: You are a specialized Fast Response Unit for civic Q&A about Baguio City. "
             "Architecture: You are the **Agentic RAG Control Group**. You are distinct from the deep 7-node 'Sense-Making' architecture. "
@@ -229,12 +214,72 @@ async def run_chat_agent(
             "1. **Greetings & Small Talk:** Do NOT search. For 'hello', 'hi', 'hey', 'thanks', 'bye', etc., respond naturally without calling any tools. "
             "2. **Civic Questions:** Use `search_civic_data` for substantive civic questions about Baguio (crimes, disasters, infrastructure, events, policies, etc.). "
             "3. **Sentiment Questions:** Use `search_sentiment_data` when users ask about public opinion, sentiment, how people feel, or mood about a topic. This searches previously analyzed sentiment data. "
-            "4. **Identity Questions:** Do NOT search. State clearly: 'I am Hinaing, an Agentic RAG system developed by the UC Computer Science R&D Team.' Explain that the 'Analysis' feature of Hinaing is a **separate Multi-Agent System (7-Node and 18 Agents)** which you can discuss but are not part of. "
+            "4. **Identity Questions:** Do NOT search. ALWAYS MENTION ALL 3 DEVELOPERS WITH THEIR ACTUAL ROLES: "
+            "'Doniele Arys Antonio (AI Research Developer), Krisha May Cutiam (AI Researcher), and Justine Mae Macario (AI Researcher)'. "
+            "State clearly: 'I am Hinaing, an Agentic RAG system developed by Doniele Arys Antonio (AI Research Developer), Krisha May Cutiam (AI Researcher), and Justine Mae Macario (AI Researcher) from the UC Computer Science R&D Team.' "
+            "Explain that the 'Analysis' feature of Hinaing is a **separate Multi-Agent System (7-Node and 18 Agents)** which you can discuss but are not part of. "
             "5. Don't guess. Use tools only for factual civic queries or sentiment lookups. "
             "6. **Prioritize Recent Info:** When presenting search results, prioritize and highlight the MOST RECENT information. Note publication dates when available. "
             "7. **Be Helpful:** If the exact answer isn't found, share RELATED information that might be useful. Don't just say 'no results' - explain what WAS found and how it relates to the question."
         )
-
+    
+    # Use llama-3.1-8b-instant for fast, cheap chat responses
+    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
+    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
+    from ..llm.groq_provider import get_groq_provider
+    llm = get_groq_provider("llama-3.1-8b-instant")
+    
+    # Safety check: Ensure LLM was properly initialized
+    if llm is None or not hasattr(llm, 'generate'):
+        logger.error("[chat_agent] LLM provider initialization returned None")
+        return "Service temporarily unavailable. Please try again later.", []
+    
+    # ✅ CRITICAL: Intent detection runs BEFORE ANYTHING ELSE
+    # THIS RUNS BEFORE GUARDRAILS, BEFORE SEARCH, BEFORE EVERYTHING
+    message_lower = message.lower().strip()
+    
+    # ONLY skip search for EXACT pure greetings with NO additional content
+    # 100% un-bypassable - no partial matches allowed
+    pure_greetings = {"hello", "hi", "hey", "good morning", "good afternoon", 
+                     "good evening", "thanks", "thank you", "bye", "goodbye", "ok", "okay"}
+    
+    # Only EXACT matches. No additional content, no punctuation, no modifiers.
+    is_pure_greeting = message_lower.strip() in pure_greetings
+    
+    if is_pure_greeting:
+        # Pure greeting/small talk - respond correctly with proper identity
+        response = await llm.generate(
+            prompt=f"User says: {message}\n\nRespond naturally and briefly.",
+            system_prompt=system_instruction,
+            temperature=0.7,
+            max_tokens=150,
+        )
+        
+        # ALL responses go through output guardrails - NO EXCEPTIONS
+        allowed, final_response = await output_guardrails(response, llm)
+        return final_response, []
+    
+    # Handle identity questions - ONLY valid exception to "always search" rule
+    # ✅ FIX: Use fuzzy matching for verb conjugations (develop/developed/make/made)
+    identity_patterns = [
+        "who are you", "what are you", "who made you", "who created you", "who built you",
+        "who develop you", "who developed you", "who designed you", "who make you",
+        "what is hinaing", "what's hinaing", "who is hinaing",
+        "tell me about yourself", "introduce yourself", "what can you do", "how do you work"
+    ]
+    
+    if any(pattern in message_lower for pattern in identity_patterns):
+        response = await llm.generate(
+            prompt=f"{message}\n\nALWAYS include all 3 developers with their exact roles: Doniele Arys Antonio (AI Research Developer), Krisha May Cutiam (AI Researcher), & Justine Mae Macario (AI Researcher).",
+            system_prompt=system_instruction,
+            temperature=0.1,
+            max_tokens=400,
+        )
+        
+        # ALL responses go through output guardrails - NO EXCEPTIONS
+        allowed, final_response = await output_guardrails(response, llm)
+        return final_response, []
+    
     # Build conversation history context if provided
     history_context = ""
     if history and len(history) > 0:
@@ -260,60 +305,9 @@ async def run_chat_agent(
         if history_lines:
             history_context = "\n\nConversation History:\n" + "\n".join(history_lines) + "\n"
     
-    # Build conversation prompt
-    conversation_prompt = f"""Context: Jurisdiction is {jurisdiction}. User asks: {message}
-{history_context}
-Please structure your answer clearly. Use **bolding** for key terms, lists for concerns, and short paragraphs.
-
-If you need to search for information, indicate what you're searching for."""
-
     sources = []
     
     try:
-        # MINIMAL INTENT DETECTION: Only pure greetings + identity skip search
-        # ALL other questions ALWAYS SEARCH - eliminates 90% of hallucinations
-        message_lower = message.lower().strip()
-        
-        # ONLY skip search for EXACT pure greetings with NO additional content
-        # 100% un-bypassable - no partial matches allowed
-        pure_greetings = {"hello", "hi", "hey", "good morning", "good afternoon", 
-                         "good evening", "thanks", "thank you", "bye", "goodbye", "ok", "okay"}
-        
-        # Only EXACT matches. No additional content, no punctuation, no modifiers.
-        is_pure_greeting = message_lower.strip() in pure_greetings
-        
-        if is_pure_greeting:
-            # Pure greeting/small talk - respond correctly with proper identity
-            response = await llm.generate(
-                prompt=f"User says: {message}\n\nRespond naturally and briefly.",
-                system_prompt=system_instruction,
-                temperature=0.7,
-                max_tokens=150,
-            )
-            
-            # ALL responses go through output guardrails - NO EXCEPTIONS
-            allowed, final_response = await output_guardrails(response, llm)
-            return final_response, []
-        
-        # Handle identity questions - ONLY valid exception to "always search" rule
-        identity_patterns = [
-            "who are you", "what are you", "who made you", "who created you", "who built you",
-            "who developed you", "who designed you", "what is hinaing", "what's hinaing",
-            "tell me about yourself", "introduce yourself", "what can you do", "how do you work"
-        ]
-        
-        if any(pattern in message_lower for pattern in identity_patterns):
-            response = await llm.generate(
-                prompt=message,
-                system_prompt=system_instruction,
-                temperature=0.1,
-                max_tokens=400,
-            )
-            
-            # ALL responses go through output guardrails - NO EXCEPTIONS
-            allowed, final_response = await output_guardrails(response, llm)
-            return final_response, []
-        
         # ALL OTHER QUESTIONS ALWAYS SEARCH - NO EXCEPTIONS
         # This eliminates intent classification hallucinations entirely
         logger.info(f"[chat_agent] All substantive questions always search: {message[:80]}")
