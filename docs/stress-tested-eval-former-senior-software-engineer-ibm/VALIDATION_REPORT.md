@@ -1,7 +1,7 @@
 # AgenticHinaing Stress Testing Validation Report
 
 **Expert Validator**: Richard P Jakelski  
-**Title**: Technologist, Senior Developer at Avaron (Former IBM Senior Software Engineer)  
+**Title**: Technologist, Senior Developer at Avaron (Former USA IBM Senior Software Engineer)  
 **Date**: April 16, 2026  
 **Credentials**: 18 years industry experience, 5 years practical AI/ML implementations
 
@@ -44,7 +44,7 @@ The evaluation framework draws from recent agentic evaluation research:
 | Section | Weight | Raw Score (0-5) | Weighted Score | Status |
 |---------|--------|-----------------|----------------|--------|
 | **Objective Quality And Civic Usefulness** | 18 | 4.62 | 16.62 | ✅ Strong |
-| **Trajectory And Tool Correctness** | 18 | 5.00 | 18.00 | ✅ **SOTA** |
+| **Trajectory And Tool Correctness** | 18 | 5.00 | 18.00 | ✅ **Excellent** |t** |
 | **State, Memory, And Cache Behavior** | 13 | 3.93 | 10.23 | ⚠️ Good |
 | **Groundedness And Self-Verification** | 14 | 3.19 | 8.94 | ⚠️ Adequate |
 | **Temporal And Hyperlocal Constraint Handling** | 9 | 2.86 | 5.14 | ⚠️ Adequate |
@@ -59,10 +59,10 @@ The evaluation framework draws from recent agentic evaluation research:
 
 ### Strengths
 
-1. **Tool-Use Trajectory: 90.0/100 (BEATS SOTA)**
+1. **Tool-Use Trajectory: 18.00/18 (Perfect Score - 100%)**
    - Perfect trajectory execution across 46 scenarios
    - Correct tool selection and dependency ordering
-   - Reference: TRAJECT-Bench SOTA = 88.0
+   - All scenarios followed correct tool trajectory 88.0
 
 2. **Faithfulness: 100% (829/829 claims)**
    - Zero hallucinations across 70 production runs
@@ -146,11 +146,11 @@ The evaluation framework draws from recent agentic evaluation research:
 
 ### Interpretation
 The system achieves 100% faithfulness through:
-1. **Constrained Generation**: EAE format (Evidence → Analysis → Evaluation)
-2. **Quality LLM**: Llama-4-Scout-17B with strong instruction-following
-3. **Verified Sources**: Theme Agents pre-filter to verified documents
-4. **Rich Context**: Theme-specific insights reduce fabrication need
-5. **Post-Generation Verification**: DeBERTa NLI (diagnostic, not prescriptive)
+1. **Constrained Generation**: EAE/Epistemic Authority Encoding format (Evidence → Analysis → Evaluation)
+2. **Quality LLM**: Gemini 2.5 Flash for narrative generation with strong instruction-following
+3. **Claim Extraction**: Llama-4-Scout-17B extracts claims from AI-generated narrative
+4. **NLI Verification**: DeBERTa-v3 verifies extracted claims against source documents
+5. **Verified Sources**: Theme Agents pre-filter to verified documents
 
 **No rejection mechanism exists** - faithfulness is achieved through quality generation, not post-filtering.
 
@@ -225,17 +225,17 @@ The system achieves 100% faithfulness through:
 
 ---
 
-## Comparison to State-of-the-Art
+## Comparison to Benchmarks
 
-| Metric | Hinaing | SOTA | Status |
-|--------|---------|------|--------|
-| Tool-Use Trajectory | 90.0 | 88.0 | ✅ **BEATS SOTA** |
+| Metric | Hinaing | Benchmark | Status |
+|--------|---------|-----------|--------|
+| Tool-Use Trajectory | 18.00/18 (100%) | - | ✅ **Perfect Score** |
 | Overall Score | 80.51 | 85.0 | ⚠️ Within 5% |
-| Faithfulness | 100% | 85% | ✅ **BEATS SOTA** |
+| Faithfulness | 100% | 85% | ✅ **Exceeds Benchmark** |
 | Adversarial Robustness | 55.2 | 75.0 | ❌ 26% below |
 | Groundedness (Judge) | 63.8 | 85.0 | ❌ Below |
 
-**Assessment**: System is competitive with SOTA, with 2 metrics beating SOTA and 1 metric within 5%. Adversarial robustness requires improvement.
+**Assessment**: System is competitive with benchmarks, with 2 metrics exceeding benchmarks and 1 metric within 5%. Adversarial robustness requires improvement.s improvement.
 
 ---
 
@@ -244,7 +244,7 @@ The system achieves 100% faithfulness through:
 **Level**: L5 (Senior Engineer) with L6 (Staff Engineer) trajectory
 
 **Justification**:
-- Tool-use trajectory beats SOTA (L6 indicator)
+- Tool-use trajectory perfect score (L6 indicator)
 - 100% faithfulness at production scale (L6 indicator)
 - 3 critical production blockers (prevents L6)
 - Overall score 80.51/100 (competitive, not exceptional)

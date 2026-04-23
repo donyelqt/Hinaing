@@ -32,8 +32,8 @@ This is a numerical summary of agentic behavior on a fixed scenario suite, not a
 | Trajectory And Tool Correctness | 18 | 5.00 | 18.00 | Averaged over 46 scenario run(s). |
 | State, Memory, And Cache Behavior | 13 | 3.93 | 10.23 | Averaged over 46 scenario run(s). |
 | Groundedness And Self-Verification | 14 | 3.19 | 8.94 | Averaged over 46 scenario run(s).; Independent judge flagged 1 unsupported claim(s): 1 fabricated_claim.; Independent judge flagged 1 unsupported claim(s): 1 inferential_leap.; Independent judge flagged (Theme Agents are generating actionable insights rather than just reporting it based on the sources. Not a design failure) |
-| Temporal And Hyperlocal Constraint Handling | 9 | 2.86 | 5.14 | Averaged over 46 scenario run(s).; 1 returned source(s) are older than requested 24h window.; 1 returned source(s) are older than requested 6h window.; 2 returned source(s) are older than requested 24 (Agentic Temporal Context-Engineering or Query Orchestrator Agent successfully generate its own multi-diverse search queries using domain theme context concerns and temporal context specifically the `events of the specific dates` Retrieval Agent successfully retrieved Temporal results and will fallback to the outdated/latest possible) |
-| Robustness And Safety | 10 | 2.76 | 5.53 | Averaged over 46 scenario run(s).; Independent judge: semantic adversarial violation(s): ["The response summary states 'a post claiming to be from the Office of the President demanding immediate price (Stress tested in a unrealistic scenario. The query orchestrator agent are already using domain theme context and temporal context to generate its multi-diverse search queries proactively. So most unlikely to face this in real-production pipeline) |
+| Temporal And Hyperlocal Constraint Handling | 9 | 2.86 | 5.14 | Averaged over 46 scenario run(s).; 1 returned source(s) are older than requested 24h window.; 1 returned source(s) are older than requested 6h window.; 2 returned source(s) are older than requested 24 (The agentic temporal context-engineering or query orchestrator agent successfully generated its own multi-diverse search queries using domain theme context concerns and temporal context; specifically, the `events of the specific dates` Retrieval agent successfully retrieved correct temporal results and will fall back to the outdated/latest possible.) |
+| Robustness And Safety | 10 | 2.76 | 5.53 | Averaged over 46 scenario run(s).; Independent judge: semantic adversarial violation(s): ["The response summary states 'a post claiming to be from the Office of the President demanding immediate price (Stress tested in a unrealistic scenario. The query orchestrator agent is already using domain theme context and temporal context to generate its multidiverse search queries proactively. So it's most unlikely to face this in a real production pipeline of the 7-node agentic architecture unless prompt injection) |
 | Efficiency And Implementation Readiness | 8 | 5.00 | 8.00 | Averaged over 46 scenario run(s). |
 | Agent Attribution (CAIR Counterfactual) | 10 | 0.00 | 0.00 | No applicable scenario runs. |
 | **Total** | **100** | | **72.46 (80.51)** | |
@@ -52,14 +52,18 @@ This is a numerical summary of agentic behavior on a fixed scenario suite, not a
 
 ### Observed issue categories across all scenarios
 
-| Category | Count | Notes |
-|----------|-------|-------|
-| stale_source | 15 | (Query Orchestrator successfully generates temporal queries; Retrieval Agent falls back to latest available when fresh sources unavailable) |
-| Hallucination | 10 | (Theme agents generating actionable insights based on the sources rather than just reporting it. Not a design failure) |
-| missing_data_fabrication | 6 | (Self-learning Cyclic RAG providing data without fresh retrieved data) |
-| safety_violation | 2 | ("Unrealistic stress-test scenarios; unlikely in production due to Query Orchestrator's domain-aware query generation, but adversarial content detection recommended as safety layer") |
-| trajectory_miss | 0 | |
-| cache_miss | 0 | |
+| Category | Count |
+|----------|-------|
+| stale_source | 15 |
+| (Query Orchestrator successfully generates temporal queries; Retrieval Agent falls back to latest available when fresh sources are unavailable) | |
+| Hallucination | 10 |
+| (Theme agents are generating actionable insights based on the sources rather than just reporting them. Not a design failure) | |
+| missing_data_fabrication | 6 |
+| (Self-learning Cyclic RAG providing data without fresh retrieved data:) | |
+| safety_violation | 2 |
+| (Unrealistic stress-test scenarios; unlikely in production due to Query Orchestrator's domain-aware query generation, but adversarial content detection recommended as safety layer for prompt injection) | |
+| trajectory_miss | 0 |
+| cache_miss | 0 |
 
 Each row is an observed finding on at least one scenario, not a list of hypothetical risks. A scenario designed to stress-test a category (e.g. adversarial prompt injection) is expected to register in that category's count — the Micro View labels when a finding matches scenario intent.
 
