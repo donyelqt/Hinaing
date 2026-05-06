@@ -1,4 +1,4 @@
-# AgenticHinaing Docs
+# AgenticHinaing Documentation
 
 > **Thesis Title (Final):** AgenticHinaing: A Self-Learning Temporal-Aware Multi-Agent Framework for Truth Discovery in Civic Social Listening
 >
