@@ -488,14 +488,14 @@ The framework was externally validated using the AgenticHinaing Evaluation Frame
 
 | Section | Weight | Raw Score (0–5) | Weighted Score |
 |---------|-------:|----------------:|---------------:|
-| Objective Quality And Civic Usefulness | 18 | 4.62 | 16.62 |
-| Trajectory And Tool Correctness | 18 | 5.00 | 18.00 |
-| State, Memory, And Cache Behavior | 13 | 3.93 | 10.23 |
-| Groundedness And Self-Verification | 14 | 3.19 | 8.94 |
-| Temporal And Hyperlocal Constraint Handling | 9 | 2.86 | 5.14 |
-| Robustness And Safety | 10 | 2.76 | 5.53 |
-| Efficiency And Implementation Readiness | 8 | 5.00 | 8.00 |
-| Agent Attribution (CAIR Counterfactual) | 10 | — | 0.00 |
+| Objective Quality And Civic Usefulness | 18 | 4.62 (92.4%) | 16.62 |
+| Trajectory And Tool Correctness | 18 | 5.00 (100.0%) | 18.00 |
+| State, Memory, And Cache Behavior | 13 | 3.93 (78.6%) | 10.23 |
+| Groundedness And Self-Verification | 14 | 3.19 (63.8%) | 8.94 |
+| Temporal And Hyperlocal Constraint Handling | 9 | 2.86 (57.2%) | 5.14 |
+| Robustness And Safety | 10 | 2.76 (55.2%) | 5.53 |
+| Efficiency And Implementation Readiness | 8 | 5.00 (100.0%) | 8.00 |
+| Agent Attribution (CAIR Counterfactual) | 10 | — (0.0%) | 0.00 |
 | **Total** | **100** | | **72.46 (80.51 effective)** |
 
 The validator's 16.62/18.00 score on the Objective Quality And Civic Usefulness dimension confirms that Theme Agents produce actionable, civic-relevant insights. The validator noted that Theme Agents generate actionable recommendations rather than extractive-only reporting—a by-design feature of the architecture.
