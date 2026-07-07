@@ -131,6 +131,205 @@ The framework further integrates robust analysis and verification components to 
 
 **Execution Coordination.** The 19-agent topology executes through two coordination patterns. In **Node 4**, the `SentimentAgent`, `CredibilityAgent`, and `ThemeRouterAgent` run concurrently via `asyncio.gather`, overlapping I/O-bound operations (network APIs and embedding inference) to reduce wall-clock latency. In **Nodes 5 and 6**, the `ContextAugmentationAgent` (consolidation) and the six Theme Sub-Agents run in parallel via `ThreadPoolExecutor`, bypassing Python's GIL for CPU-bound chunking, embedding, and LLM inference. This hybrid execution model was selected because it matches the workload profile of each node: I/O-bound nodes benefit from event-loop concurrency, while CPU-bound nodes benefit from true multi-core parallelism. The total agent count of 19 arises from the need to cover seven execution stages, six civic themes, five orthogonal credibility signals, and one post-generation verification stage—each requiring a dedicated functional unit to maintain clean separation of concerns and independent ablation.
 
+The AUML class diagrams below document the AOSE design model for each agent group, preserving exact attributes and relationships from the system architecture.
+
+**Figure 7**
+Core Pipeline Agents AUML
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#1e1e1e',
+  'classLabelBoxBorderColor': '#e0e0e0',
+  'classLabelFontSize': '14px'
+ }}}%%
+classDiagram
+    class QueryOrchestratorAgent {
+        <<dataclass>>
+        +llm: ChatGoogleGenerativeAI
+        +tools: List[Tool]
+        +max_queries: int = 12
+        +max_iterations: int = 6
+        +_executor: AgentExecutor
+        +run(request: SnapshotRequest) QueryPlan
+        +_get_llm() ChatGoogleGenerativeAI
+        +_get_tools() List[Tool]
+        +_build_executor() AgentExecutor
+        +_store_queries_as_concerns()
+        "ReAct agent with 3 tools for autonomous query synthesis"
+    }
+    QueryOrchestratorAgent "uses" o--> ChatGoogleGenerativeAI
+    QueryOrchestratorAgent "uses" o--> "3" Tool
+    QueryOrchestratorAgent "uses" o--> ConcernsMemory
+
+    class RetrievalAgent {
+        <<dataclass>>
+        +sources: List[DataSource]
+        +run(request, query_plan) List~WebDocument~
+        "Multi-source ingestion"
+    }
+    RetrievalAgent "uses" o--> "3" DataSource
+
+    class ContextAugmentationAgent {
+        <<dataclass>>
+        +vector_store: VectorStore
+        +chunker: SemanticChunker
+        +retrieve_knowledge() List~WebDocument~
+        +consolidate_memory() int
+        "Memory recall + consolidation"
+    }
+    ContextAugmentationAgent "uses" o--> VectorStore
+    ContextAugmentationAgent "uses" o--> EmbeddingService
+
+    class ThemeRouterAgent {
+        <<dataclass>>
+        +theme_groups: Dict
+        +run(documents, request) Dict~str, List~WebDocument~
+        "Content classification"
+    }
+    ThemeRouterAgent "uses" o--> EmbeddingService
+
+    class CoordinatorAgent {
+        <<dataclass>>
+        +client: GeminiClient
+        +is_available: bool
+        +run(window, focus_areas, documents, theme_insights) Tuple
+        "Narrative synthesis"
+    }
+    CoordinatorAgent "uses" o--> GeminiClient
+```
+
+**Figure 8**
+SentimentAgent AUML
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#1e1e1e',
+  'classLabelBoxBorderColor': '#e0e0e0',
+  'classLabelFontSize': '14px'
+ }}}%%
+classDiagram
+    class SentimentAgent {
+        <<dataclass>>
+        +roberta_model: RoBERTa
+        +gemini_model: GenerativeModel
+        +run(documents) List~WebDocument~
+        "Ensemble sentiment analysis"
+    }
+    SentimentAgent "uses" o--> RoBERTa
+    SentimentAgent "uses" o--> GenerativeModel
+```
+
+**Figure 9**
+CredibilityAgent and Sub-Agents AUML
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#1e1e1e',
+  'classLabelBoxBorderColor': '#e0e0e0',
+  'classLabelFontSize': '14px'
+ }}}%%
+classDiagram
+    class CredibilityAgent {
+        <<dataclass>>
+        +tavily_api_key: String
+        +fact_check_api_key: String
+        +run(documents) List~WebDocument~
+        "Multi-signal verification"
+    }
+    CredibilityAgent "coordinates" o--> "5" CredibilitySubAgent
+    CredibilityAgent "uses" o--> TavilyAPI
+    CredibilityAgent "uses" o--> GoogleFactCheckAPI
+
+    class CredibilitySubAgent {
+        <<interface>>
+        +run(document) float
+    }
+    CredibilitySubAgent <|-- DomainTrustAgent
+    CredibilitySubAgent <|-- CrossReferenceAgent
+    CredibilitySubAgent <|-- FactCheckAgent
+    CredibilitySubAgent <|-- LLMAnalysisAgent
+    CredibilitySubAgent <|-- TavilyAgent
+```
+
+**Figure 10**
+Theme Sub-Agents AUML
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#1e1e1e',
+  'primaryTextColor': '#e0e0e0',
+  'secondaryColor': '#2d2d2d',
+  'tertiaryColor': '#383838',
+  'primaryFontSize': '14px',
+  'secondaryFontSize': '12px',
+  'classLabelBoxBackgroundColor': '#1e1e1e',
+  'classLabelBoxBorderColor': '#e0e0e0',
+  'classLabelFontSize': '14px'
+ }}}%%
+classDiagram
+    class ThemeAgent {
+        <<interface>>
+        +theme_label: String
+        +run(documents) List~Insight~
+    }
+
+    class InfrastructureAgent {
+        <<dataclass>>
+        +theme_label: String = "infrastructure"
+        +run(documents) List~Insight~
+    }
+    class HealthAgent {
+        <<dataclass>>
+        +theme_label: String = "health"
+        +run(documents) List~Insight~
+    }
+    class SafetyAgent {
+        <<dataclass>>
+        +theme_label: String = "safety"
+        +run(documents) List~Insight~
+    }
+    class TourismAgent {
+        <<dataclass>>
+        +theme_label: String = "tourism"
+        +run(documents) List~Insight~
+    }
+    class EconomyAgent {
+        <<dataclass>>
+        +theme_label: String = "economy"
+        +run(documents) List~Insight~
+    }
+    class EnvironmentAgent {
+        <<dataclass>>
+        +theme_label: String = "environment"
+        +run(documents) List~Insight~
+    }
+
+    ThemeAgent <|-- InfrastructureAgent
+    ThemeAgent <|-- HealthAgent
+    ThemeAgent <|-- SafetyAgent
+    ThemeAgent <|-- TourismAgent
+    ThemeAgent <|-- EconomyAgent
+    ThemeAgent <|-- EnvironmentAgent
+```
+
 #### 4.2.2 Self-Learning Cyclic RAG Infrastructure
 
 The persistence layer is built on BGE-large-en-v1.5 embeddings stored in Qdrant Cloud. These 1024-dimensional vectors provide the mathematical substrate for both long-term memory recall and the Smart Reuse optimization. When Node 3 retrieves internal documents, the system checks each document's metadata for existing `sentiment` and `credibility_score` attributes. Documents that already carry these attributes are routed around Node 4's expensive analysis operations and merged directly with freshly analyzed documents. The result is a system that becomes more efficient over time: as the Qdrant collection grows, the cache hit rate increases, reducing per-query API cost and latency.
