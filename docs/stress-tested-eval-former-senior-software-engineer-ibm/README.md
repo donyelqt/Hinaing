@@ -214,7 +214,7 @@ For questions about this evaluation, contact:
 **Email**: [Contact through Avaron]  
 **LinkedIn**: [Professional profile]
 
-**System Developer**: Donielr Arys Antonio  
+**System Developer**: Doniele Arys Antonio  
 **Institution**: [Your University]  
 **Thesis**: Multi-Agent Civic Sentiment Analysis with Agentic Query Orchestration
 
