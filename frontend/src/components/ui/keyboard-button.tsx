@@ -59,14 +59,14 @@ export function KeyboardButton({
     },
   };
 
-  // Variant-specific classes
+  // Variant-specific classes — premium 135deg #3348b8→#5b3cc8, solid dark bottom for 3D
   const variantClasses = {
     primary: {
-      shadow: "bg-violet-400/60",
-      keycap: "from-violet-400 via-blue-500 to-cyan-500 text-white border-violet-500/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.1)]",
-      gloss: "from-white/40",
+      shadow: "bg-[#1e1b4b]",
+      keycap: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-[#3348b8]/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.08)]",
+      gloss: "from-white/30",
       icon: "text-white/90",
-      badge: "text-white/80 border-white/30 bg-white/10",
+      badge: "text-white/80 border-white/20 bg-white/10",
     },
     secondary: {
       shadow: "bg-slate-300",
