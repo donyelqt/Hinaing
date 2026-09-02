@@ -25,7 +25,7 @@ function HLogo({ className }: { className?: string }) {
     return (
         <span
             className={clsx(
-                "flex items-center justify-center rounded-full bg-gradient-to-tr from-hinaing-blue-500 via-hinaing-blue-600 to-violet-500 font-semibold tracking-tight text-white shadow-subtle shrink-0",
+                "flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] font-semibold tracking-tight text-white shadow-subtle shrink-0",
                 className
             )}
         >
@@ -405,5 +405,6 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
         </>
     );
 }
+
 
 

@@ -95,7 +95,7 @@ function HLogo({ className }: { className?: string }) {
     return (
         <span
             className={clsx(
-                "flex items-center justify-center rounded-full bg-gradient-to-tr from-hinaing-blue-500 via-hinaing-blue-600 to-violet-500 font-semibold tracking-tight text-white shadow-subtle shrink-0",
+                "flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] font-semibold tracking-tight text-white shadow-subtle shrink-0",
                 className
             )}
         >
@@ -568,12 +568,14 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
                 {greeting}, Baguio.
             </h2>
-            <p className="text-sm sm:text-base text-slate-500 text-center mb-1.5 sm:mb-2 max-w-md px-2">
-                I <span className="font-semibold text-blue-600">intelligently route</span> your questions to the right system.
+            <p className="text-sm sm:text-base text-slate-600 text-center mb-2 max-w-md px-2 text-pretty">
+                I <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text font-semibold text-transparent">intelligently route</span> your questions to the right system.
             </p>
-            <p className="text-[10px] sm:text-xs text-slate-400 text-center mb-5 sm:mb-8 max-w-md">
-                Civic social listening and epistemic truth discovery → 7-agent pipeline and 11 sub-agents | Q&A → Fast search
-            </p>
+            <div className="flex flex-wrap items-center justify-center gap-1.5 mb-5 sm:mb-8 max-w-md">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">Civic listening <span className="text-slate-300">→</span> 7-agent + 11 sub</span>
+                <span className="text-slate-300 text-xs">·</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">Q&A <span className="text-slate-300">→</span> Fast search</span>
+            </div>
 
             {/* Analysis Suggestions */}
             <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">📊 Run Epistemic Truth Discovery & Civic Social Listening</p>
@@ -1217,6 +1219,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         </>
     );
 }
+
 
 
 
