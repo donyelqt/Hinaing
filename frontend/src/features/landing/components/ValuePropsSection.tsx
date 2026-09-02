@@ -27,7 +27,7 @@ export function ValuePropsSection() {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 xl:px-8">
         <div className="mb-12 max-w-2xl mx-auto text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            What Hinaing gives your team
+            What Hinaing <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text text-transparent">gives your team</span>
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Instead of scrolling through endless comment threads, you get a concise view of what people are actually
@@ -43,17 +43,17 @@ export function ValuePropsSection() {
             return (
               <Card
                 key={item.title}
-                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/50 hover:rotate-0 hover:scale-[1.02] ${style.tilt} max-w-[22rem] w-full mx-auto`}
+                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-4 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-[#5b3cc8]/40 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:rotate-0 hover:scale-[1.02] ${style.tilt} max-w-[22rem] w-full mx-auto`}
               >
                 {/* Gradient Gloss Effect upon Hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                 <div className="flex flex-col py-4 px-2">
-                  <div className={`relative z-10 mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:border-violet-200 group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-cyan-500 group-hover:text-white group-hover:scale-110 group-hover:rotate-6 ${style.color}`}>
+                  <div className={`relative z-10 mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:border-[#5b3cc8]/40 group-hover:bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] group-hover:text-white group-hover:scale-110 group-hover:rotate-6 ${style.color}`}>
                     <Icon className="h-10 w-10" aria-hidden="true" />
                   </div>
 
-                  <h3 className="relative z-10 text-xl font-bold text-slate-900 mb-2 group-hover:text-violet-700 transition-all px-1">
+                  <h3 className="relative z-10 text-xl font-bold text-slate-900 mb-2 group-hover:text-[#3348b8] transition-all px-1">
                     {item.title}
                   </h3>
                   <p className="relative z-10 text-lg leading-relaxed text-slate-600 px-1">
@@ -68,3 +68,7 @@ export function ValuePropsSection() {
     </section>
   );
 }
+
+
+
+

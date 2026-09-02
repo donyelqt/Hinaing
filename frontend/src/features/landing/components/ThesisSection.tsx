@@ -22,12 +22,12 @@ export function ThesisSection() {
         {/* Header Section */}
         <div className="mb-20 max-w-3xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center justify-center -space-x-px rounded-md border border-violet-100 bg-white p-1 shadow-sm">
-            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">
+            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-[#3348b8]">
               Academic Research
             </span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#3348b8] to-[#5b3cc8]">
               AgenticHinaing
             </span>
             <br />
@@ -44,10 +44,10 @@ export function ThesisSection() {
           <div className="space-y-6">
 
             {/* Research Focus Card */}
-            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-violet-200/50 hover:-translate-y-1 transition-all duration-300">
+            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors duration-300">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-[#3348b8] group-hover:bg-violet-600 group-hover:text-white transition-colors duration-300">
                   <GraduationCap className="h-6 w-6" />
                 </div>
                 <div className="space-y-2">
@@ -60,7 +60,7 @@ export function ThesisSection() {
             </Card>
 
             {/* Novelty Card */}
-            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-emerald-200/50 hover:-translate-y-1 transition-all duration-300">
+            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
@@ -76,7 +76,7 @@ export function ThesisSection() {
             </Card>
 
             {/* Contributions List */}
-            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-200/50 hover:-translate-y-1 transition-all duration-300">
+            <Card className="group relative overflow-hidden p-6 bg-white/60 backdrop-blur-sm border border-slate-200 shadow-sm hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative space-y-4">
                 <div className="flex items-center gap-3 mb-2">
@@ -88,7 +88,7 @@ export function ThesisSection() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   {contributions.map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors">
+                    <div key={idx} className="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100 hover:border-[#5b3cc8]/40 hover:bg-blue-50/30 transition-colors">
                       <item.icon className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs font-bold text-slate-800">{item.label}</p>
@@ -109,7 +109,7 @@ export function ThesisSection() {
 
               <div className="relative z-10 w-full max-w-md space-y-8">
                 <div className="text-center space-y-2">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 text-white shadow-lg mb-4 transform rotate-3 hover:rotate-6 transition-transform duration-300">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#3348b8] to-[#5b3cc8] text-white shadow-lg mb-4 transform rotate-3 hover:rotate-6 transition-transform duration-300">
                     <BookOpen className="h-8 w-8" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-900">Thesis Architecture</h3>
@@ -119,7 +119,7 @@ export function ThesisSection() {
                 {/* Flow Chart Visualization */}
                 <div className="flex flex-col items-center space-y-4">
                   {/* Node 1: Orchestrator */}
-                  <div className="w-full p-3 rounded-lg border border-violet-200 bg-violet-50 text-center shadow-sm relative group cursor-default hover:border-violet-400 transition-colors">
+                  <div className="w-full p-3 rounded-lg border border-violet-200 bg-violet-50 text-center shadow-sm relative group cursor-default hover:border-[#5b3cc8]/40 transition-colors">
                     <span className="text-xs font-bold text-violet-700 uppercase tracking-wide">1. Query Orchestrator</span>
                     <div className="absolute left-1/2 -bottom-4 w-px h-4 bg-slate-300 transform -translate-x-1/2"></div>
                     <div className="absolute left-1/2 -bottom-4 text-slate-400 transform -translate-x-1/2 translate-y-1"><ArrowDown className="h-3 w-3" /></div>
@@ -127,10 +127,10 @@ export function ThesisSection() {
 
                   {/* Node 2: Retrieval & Context */}
                   <div className="grid grid-cols-2 gap-4 w-full">
-                    <div className="p-3 rounded-lg border border-blue-200 bg-blue-50 text-center shadow-sm relative hover:border-blue-400 transition-colors">
+                    <div className="p-3 rounded-lg border border-blue-200 bg-blue-50 text-center shadow-sm relative hover:border-[#5b3cc8]/40 transition-colors">
                       <span className="text-[10px] font-bold text-blue-700 uppercase">Retrieval</span>
                     </div>
-                    <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-center shadow-sm relative hover:border-amber-400 transition-colors">
+                    <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-center shadow-sm relative hover:border-[#5b3cc8]/40 transition-colors">
                       <span className="text-[10px] font-bold text-amber-700 uppercase">Context</span>
                     </div>
                   </div>
@@ -158,7 +158,7 @@ export function ThesisSection() {
                   <div className="h-4 w-px bg-slate-300"></div>
 
                   {/* Node 4: Synthesis */}
-                  <div className="w-full p-3 rounded-lg border border-cyan-200 bg-cyan-50 text-center shadow-sm relative hover:border-cyan-400 transition-colors">
+                  <div className="w-full p-3 rounded-lg border border-cyan-200 bg-cyan-50 text-center shadow-sm relative hover:border-[#5b3cc8]/40 transition-colors">
                     <span className="text-xs font-bold text-cyan-700 uppercase tracking-wide">Synthesis, Reporting & Faithfulness</span>
                   </div>
 
@@ -181,7 +181,7 @@ export function ThesisSection() {
           <p className="text-sm text-slate-600 mb-4 font-medium">
             Advancing the field of Automated Social Listening
           </p>
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 backdrop-blur px-5 py-2 text-xs font-mono font-semibold text-violet-600 shadow-sm hover:shadow-md hover:scale-105 transition-all cursor-default">
+          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 backdrop-blur px-5 py-2 text-xs font-mono font-semibold text-[#3348b8] shadow-sm hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:scale-105 transition-all cursor-default">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -193,3 +193,6 @@ export function ThesisSection() {
     </section>
   );
 }
+
+
+
