@@ -18,15 +18,12 @@ export function LandingHeader() {
           className="inline-flex items-center gap-2.5"
           aria-label="Hinaing home"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-hinaing-blue-500 via-hinaing-blue-600 to-violet-500 text-[11px] font-semibold tracking-tight text-white shadow-subtle">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-[11px] font-semibold tracking-tight text-white shadow-sm">
             H
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="bg-gradient-to-r from-hinaing-blue-700 to-violet-500 bg-clip-text text-base font-semibold tracking-tight text-transparent sm:text-lg">
+            <span className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
               Hinaing
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] bg-gradient-to-r from-hinaing-blue-600 to-violet-500 bg-clip-text text-transparent">
-              Beta
             </span>
           </div>
         </Link>
@@ -125,3 +122,4 @@ export function LandingHeader() {
     </header>
   );
 }
+
