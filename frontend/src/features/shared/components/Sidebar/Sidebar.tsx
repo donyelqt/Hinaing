@@ -97,7 +97,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('sentiment')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors group ${activePage === 'sentiment'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
+              ? 'bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
@@ -194,7 +194,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('dashboard')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'dashboard'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
+              ? 'bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
@@ -212,7 +212,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('chat')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
+              ? 'bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
@@ -230,7 +230,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('analyze')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'analyze'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
+              ? 'bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
@@ -248,7 +248,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('reports')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'reports'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
+              ? 'bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
@@ -278,7 +278,7 @@ export function Sidebar({
           </button>
 
           <div
-            className="rounded-xl bg-gradient-to-r from-hinaing-blue-500/10 via-hinaing-blue-400/10 to-violet-500/10 p-4 text-xs text-hinaing-blue-800 sm:text-sm"
+            className="rounded-xl bg-[linear-gradient(135deg,rgba(51,72,184,0.08)_0%,rgba(91,60,200,0.08)_100%)] border border-slate-200/60 p-4 text-xs text-slate-700 sm:text-sm"
             role="note"
           >
             Keep track of emerging concerns from Web, Facebook, and Reddit to support rapid response planning for Baguio communities.
@@ -288,4 +288,5 @@ export function Sidebar({
     </>
   );
 }
+
 
