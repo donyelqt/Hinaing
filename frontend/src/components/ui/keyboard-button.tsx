@@ -59,11 +59,11 @@ export function KeyboardButton({
     },
   };
 
-  // Variant-specific classes — premium 135deg #3348b8→#5b3cc8, solid dark bottom for 3D
+  // Variant-specific classes — premium gradient main + black edges for real keyboard
   const variantClasses = {
     primary: {
-      shadow: "bg-[#1e1b4b]",
-      keycap: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-[#3348b8]/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.08)]",
+      shadow: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] opacity-90",
+      keycap: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.15)]",
       gloss: "from-white/30",
       icon: "text-white/90",
       badge: "text-white/80 border-white/20 bg-white/10",
@@ -164,3 +164,4 @@ export function KeyboardButton({
     </button>
   );
 }
+
