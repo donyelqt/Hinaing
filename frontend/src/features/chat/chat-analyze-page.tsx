@@ -562,7 +562,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
             <div className="mb-5 sm:mb-8 relative">
                 <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
-                <HLogo className="h-12 w-12 sm:h-16 sm:w-16 text-xl sm:text-2xl relative z-10 shadow-xl" />
+                <HLogo className="h-12 w-12 sm:h-16 sm:w-16 text-xl sm:text-2xl relative z-10 shadow-none" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
@@ -582,7 +582,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                     <button
                         key={`analysis-${i}`}
                         onClick={() => onPromptSelect(prompt)}
-                        className="text-left p-3 sm:p-4 rounded-xl border border-violet-200 bg-violet-50/50 hover:border-violet-400 hover:shadow-md active:scale-[0.98] transition-all group"
+                        className="text-left p-3 sm:p-4 rounded-xl border border-violet-200 bg-violet-50/50 hover:border-violet-400 hover:shadow-none active:scale-[0.98] transition-all group"
                     >
                         <p className="text-xs sm:text-sm font-medium text-violet-700 group-hover:text-violet-900 transition-colors">
                             {prompt}
@@ -598,7 +598,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                     <button
                         key={`simple-${i}`}
                         onClick={() => onPromptSelect(prompt)}
-                        className="text-left p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:border-emerald-400 hover:shadow-md active:scale-[0.98] transition-all group"
+                        className="text-left p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:border-emerald-400 hover:shadow-none active:scale-[0.98] transition-all group"
                     >
                         <p className="text-xs sm:text-sm font-medium text-emerald-700 group-hover:text-emerald-900 transition-colors">
                             {prompt}
@@ -625,10 +625,10 @@ function MessageBubble({ msg }: { msg: Message }) {
 
             <div
                 className={clsx(
-                    "flex flex-col gap-2 rounded-2xl p-3 sm:p-4 text-sm shadow-sm transition-all overflow-hidden",
+                    "flex flex-col gap-2 rounded-2xl p-3 sm:p-4 text-sm shadow-none transition-all overflow-hidden",
                     isUser
                         ? "bg-slate-900 text-slate-50 rounded-tr-none ml-8 sm:ml-12 max-w-[85%] sm:max-w-[75%]"
-                        : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-8 sm:mr-12 max-w-[85%] sm:max-w-[75%] shadow-sm"
+                        : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-8 sm:mr-12 max-w-[85%] sm:max-w-[75%] shadow-none"
                 )}
             >
                 {/* Progress Bar for Streaming */}
@@ -1047,7 +1047,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
             <button
                 type="button"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-2.5 sm:p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+                className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-2.5 sm:p-3 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
                 aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
                 aria-expanded={isSidebarOpen}
             >
@@ -1073,7 +1073,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     <main className="order-1 flex w-full min-w-0 flex-col lg:order-2 flex-1 lg:h-full h-full relative">
 
                         {/* Chat Container */}
-                        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm sm:rounded-3xl border-0 sm:border border-slate-200/60 shadow-sm overflow-hidden relative">
+                        <div className="flex flex-col h-full bg-white/50 backdrop-blur-sm sm:rounded-3xl border-0 sm:border border-slate-200/60 shadow-none overflow-hidden relative">
 
                             {/* Scrollable Messages */}
                             <div 
@@ -1151,7 +1151,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             type="button"
                                             onClick={() => setSystemMode(systemMode === 'agentic_hinaing' ? 'evaluation' : 'agentic_hinaing')}
                                             className={clsx(
-                                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold transition-all shadow-sm",
+                                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold transition-all shadow-none",
                                                 systemMode === 'agentic_hinaing'
                                                     ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white"
                                                     : "bg-gradient-to-r from-amber-500 to-amber-600 text-white"
@@ -1185,7 +1185,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                                 className={clsx(
                                                     "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
                                                     input.trim() && !isLoading && backendStatus && !backendError
-                                                        ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+                                                        ? "bg-blue-600 text-white shadow-none hover:bg-blue-700"
                                                         : "bg-slate-100 text-slate-600 cursor-not-allowed"
                                                 )}
                                             >
@@ -1217,3 +1217,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         </>
     );
 }
+
+
+
+

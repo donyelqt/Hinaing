@@ -96,7 +96,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
       <button
         type="button"
         onClick={() => setIsSidebarOpen((prev) => !prev)}
-        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
         aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
         aria-expanded={isSidebarOpen}
       >
@@ -126,11 +126,11 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
             </div>
             
             <div className="flex gap-3">
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 bg-grid-pattern">
                 <Filter className="h-4 w-4" />
                 Filter
               </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 bg-grid-pattern">
                 <Calendar className="h-4 w-4" />
                 Date Range
               </button>
@@ -139,7 +139,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
 
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="p-6">
+            <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-hinaing-blue-500/10 p-3">
                   <FileText className="h-6 w-6 text-hinaing-blue-600" />
@@ -151,7 +151,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
               </div>
             </Card>
             
-            <Card className="p-6">
+            <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-green-500/10 p-3">
                   <Download className="h-6 w-6 text-green-600" />
@@ -163,7 +163,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
               </div>
             </Card>
             
-            <Card className="p-6">
+            <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-amber-500/10 p-3">
                   <Archive className="h-6 w-6 text-amber-600" />
@@ -175,7 +175,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
               </div>
             </Card>
             
-            <Card className="p-6">
+            <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
               <div className="flex items-center gap-4">
                 <div className="rounded-full bg-purple-500/10 p-3">
                   <Eye className="h-6 w-6 text-purple-600" />
@@ -189,7 +189,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
           </div>
 
           {/* Search and Actions */}
-          <Card className="p-6">
+          <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -206,8 +206,8 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
             </div>
           </Card>
 
-          {/* Reports List */}
-          <Card className="overflow-hidden">
+          {/* Reports List — flat premium, no shadow */}
+          <Card className="overflow-hidden border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
             <div className="p-6 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">Recent Reports</h2>
             </div>
@@ -297,7 +297,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
               ))}
             </div>
             
-            <div className="p-6 border-t border-slate-200 bg-slate-50">
+            <div className="p-6 border-t border-slate-200 bg-slate-50 bg-grid-pattern">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-600">
                   Showing {SAMPLE_REPORTS.length} of {SAMPLE_REPORTS.length} reports
@@ -314,3 +314,5 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
     </div>
   );
 }
+
+
