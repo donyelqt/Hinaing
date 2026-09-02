@@ -31,10 +31,10 @@ export function FocusAreaSelector({ focusAreas, onToggle, setFocusAreas, error }
               onClick={() => onToggle(option.value, setFocusAreas)}
               aria-pressed={isActive}
               className={clsx(
-                "rounded-xl border px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
+                "rounded-xl border px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5b3cc8] focus-visible:ring-offset-2 touch-manipulation",
                 isActive
-                  ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-500 hover:border-violet-300",
+                  ? "border-transparent bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-[#5b3cc8]/40 hover:bg-[linear-gradient(135deg,rgba(51,72,184,0.04)_0%,rgba(91,60,200,0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgba(51,72,184,0.12)]",
               )}
               aria-label={`${isActive ? 'Remove' : 'Add'} ${option.label} focus area`}
             >
