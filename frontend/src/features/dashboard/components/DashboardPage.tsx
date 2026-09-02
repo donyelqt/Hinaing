@@ -30,7 +30,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
       <button
         type="button"
         onClick={() => setIsSidebarOpen((prev) => !prev)}
-        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 shadow-lg ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
+        className="fixed top-4 right-4 z-50 inline-flex items-center justify-center rounded-full bg-white p-3 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 active:scale-95 transition-all lg:hidden"
         aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
         aria-expanded={isSidebarOpen}
       >
@@ -61,7 +61,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
             
             {/* Quick Stats */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-blue-500/10 p-3">
                     <BarChart3 className="h-6 w-6 text-blue-600" />
@@ -73,7 +73,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                 </div>
               </Card>
               
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-green-500/10 p-3">
                     <TrendingUp className="h-6 w-6 text-green-600" />
@@ -85,7 +85,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                 </div>
               </Card>
               
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-amber-500/10 p-3">
                     <Activity className="h-6 w-6 text-amber-600" />
@@ -97,7 +97,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                 </div>
               </Card>
               
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-purple-500/10 p-3">
                     <Users className="h-6 w-6 text-purple-600" />
@@ -115,18 +115,18 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
           <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
             {/* Main Chart Area */}
             <div className="space-y-6">
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900">Sentiment Trends</h2>
                     <p className="text-sm text-slate-600">Last 7 days across all platforms</p>
                   </div>
                   <div className="flex gap-2">
-                    <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 bg-grid-pattern">
                       <Calendar className="h-4 w-4" />
                       7 days
                     </button>
-                    <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 bg-grid-pattern">
                       <Filter className="h-4 w-4" />
                       Filter
                     </button>
@@ -144,10 +144,10 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
               </Card>
 
               {/* Recent Activity */}
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h3>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50 bg-grid-pattern">
                     <div className="rounded-full bg-blue-500/10 p-2 mt-1">
                       <Activity className="h-4 w-4 text-blue-600" />
                     </div>
@@ -158,7 +158,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50 bg-grid-pattern">
                     <div className="rounded-full bg-amber-500/10 p-2 mt-1">
                       <AlertCircle className="h-4 w-4 text-amber-600" />
                     </div>
@@ -169,7 +169,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50">
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-slate-50 bg-grid-pattern">
                     <div className="rounded-full bg-green-500/10 p-2 mt-1">
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
@@ -186,7 +186,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
             {/* Sidebar Content */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <button className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
@@ -205,7 +205,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
               </Card>
 
               {/* Top Issues */}
-              <Card className="p-6">
+              <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Top Issues Today</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -244,3 +244,5 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
     </div>
   );
 }
+
+
