@@ -21,10 +21,10 @@ export function FAQSection() {
               className="group rounded-3xl border border-slate-100 bg-slate-50/50 open:bg-white open:shadow-lg open:shadow-slate-200/50 open:border-violet-100 transition-all duration-300"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6 text-left [&::-webkit-details-marker]:hidden">
-                <span className="text-base font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
+                <span className="text-base font-bold text-slate-900 group-hover:text-[#3348b8] transition-colors">
                   {item.question}
                 </span>
-                <span className="shrink-0 rounded-full border border-slate-200 bg-white p-2 text-slate-400 transition-all group-hover:border-violet-200 group-hover:text-violet-600 group-open:rotate-45 group-open:bg-violet-50 group-open:text-violet-600">
+                <span className="shrink-0 rounded-full border border-slate-200 bg-white p-2 text-slate-400 transition-all group-hover:border-[#5b3cc8]/40 group-hover:text-[#3348b8] group-open:rotate-45 group-open:bg-violet-50 group-open:text-[#3348b8]">
                   <Plus className="h-4 w-4 block group-open:hidden" />
                   <Minus className="h-4 w-4 hidden group-open:block" />
                 </span>
@@ -39,3 +39,6 @@ export function FAQSection() {
     </section>
   );
 }
+
+
+
