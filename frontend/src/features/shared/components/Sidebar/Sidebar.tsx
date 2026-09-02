@@ -52,12 +52,12 @@ export function Sidebar({
       <aside
         className={`
           fixed top-0 left-0 bottom-0 z-40 w-[85%] max-w-sm
-          flex flex-col bg-white border-r border-slate-200 p-6 shadow-xl
+          flex flex-col bg-white border-r border-slate-200 p-6
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:relative lg:z-auto lg:w-[20rem] lg:flex-shrink-0
           lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:sticky lg:top-8
-          lg:rounded-2xl lg:bg-white/80 lg:backdrop-blur-sm lg:border lg:border-slate-200/50 lg:shadow-sm
+          lg:rounded-2xl lg:bg-white lg:border lg:border-slate-200/60
         `}
         role="complementary"
         aria-label="Navigation sidebar"
@@ -97,7 +97,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('sentiment')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors group ${activePage === 'sentiment'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
@@ -194,7 +194,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('dashboard')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'dashboard'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
@@ -212,7 +212,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('chat')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
@@ -230,7 +230,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('analyze')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'analyze'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
@@ -248,7 +248,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('reports')}
             className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'reports'
-              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700 shadow-lg'
+              ? 'bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white border-2 border-hinaing-blue-700'
               : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
               }`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
@@ -288,3 +288,4 @@ export function Sidebar({
     </>
   );
 }
+

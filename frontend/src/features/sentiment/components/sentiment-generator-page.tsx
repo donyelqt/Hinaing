@@ -22,7 +22,6 @@ import { Sidebar } from "../../shared/components";
 import type { ActivePage } from "../../shared/types/navigation";
 import { useAgenticOrchestrator } from "../hooks/useAgenticOrchestrator";
 import { HeroSection } from "./HeroSection";
-import { StatsCards } from "./StatsCards";
 import { PlatformSelector } from "./PlatformSelector";
 import { TimeWindowSelector } from "./TimeWindowSelector";
 import { FocusAreaSelector } from "./FocusAreaSelector";
@@ -503,18 +502,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 focusSummary={computed.focusSummary}
                 focusSummaryLabel={computed.focusSummaryLabel}
               />
-              <StatsCards
-                selectedWindowLabel={computed.selectedWindowLabel}
-                platformSummary={computed.platformSummary}
-                platformSummaryLabel={computed.platformSummaryLabel}
-                focusSummary={computed.focusSummary}
-                focusSummaryLabel={computed.focusSummaryLabel}
-                includeAlerts={state.includeAlerts}
-              />
             </section>
 
-            <section className="grid gap-y-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-x-8" role="main" aria-label="Sentiment analysis configuration">
-              <Card className="space-y-8 border-x-0 border-y border-slate-200 shadow-sm p-5 md:border md:shadow-lg md:shadow-slate-200/50 md:p-8 md:rounded-3xl bg-white ring-0 md:ring-1 md:ring-slate-100" role="form" aria-labelledby="config-heading">
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,420px)] xl:gap-x-6 xl:items-stretch" role="main" aria-label="Sentiment analysis configuration">
+              <div className="flex h-full flex-col space-y-4 rounded-xl border border-slate-200/60 bg-white p-6" role="form" aria-labelledby="config-heading">
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -529,72 +520,45 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   </div>
                 </header>
 
-                {/* Configuration Sections */}
-                <div className="space-y-6">
-
-                  <div className="space-y-5 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
-                    <div className="space-y-5">
-                      <PlatformSelector
-                        platforms={state.platforms}
-                        onToggle={actions.toggleSelection}
-                        setPlatforms={actions.setPlatforms}
-                        error={validation.errors.platforms}
-                      />
+                {/* Premium Timeline — equal spacing p-6, gap-4 */}
+                <div className="relative">
+                  <div className="absolute left-[15px] top-3 bottom-6 w-px bg-gradient-to-b from-hinaing-blue-200 via-violet-200 to-slate-200 hidden sm:block" aria-hidden />
+                  <div className="space-y-4">
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">1</span></div>
+                      <div className="flex-1"><PlatformSelector platforms={state.platforms} onToggle={actions.toggleSelection} setPlatforms={actions.setPlatforms} error={validation.errors.platforms} /></div>
                     </div>
-                    <div className="space-y-5">
-                      <TimeWindowSelector
-                        timeWindow={state.timeWindow}
-                        setTimeWindow={actions.setTimeWindow}
-                        error={validation.errors.timeWindow}
-                      />
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">2</span></div>
+                      <div className="flex-1"><TimeWindowSelector timeWindow={state.timeWindow} setTimeWindow={actions.setTimeWindow} error={validation.errors.timeWindow} /></div>
                     </div>
-                  </div>
-
-                  <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,1fr)] lg:gap-5 lg:space-y-0">
-                    <FocusAreaSelector
-                      focusAreas={state.focusAreas}
-                      onToggle={actions.toggleSelection}
-                      setFocusAreas={actions.setFocusAreas}
-                      error={validation.errors.focusAreas}
-                    />
-
-                    {/* Analysis Mode Selection */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 4 · Analysis mode</span>
-                        <span className="text-[11px] text-slate-400">Choose analysis depth</span>
-                      </div>
-                      <div className="space-y-2">
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">3</span></div>
+                      <div className="flex-1"><FocusAreaSelector focusAreas={state.focusAreas} onToggle={actions.toggleSelection} setFocusAreas={actions.setFocusAreas} error={validation.errors.focusAreas} /></div>
+                    </div>
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis mode</span><span className="text-[11px] text-slate-400">Depth</span></div>
+                        <div className="grid gap-2 sm:grid-cols-3">
                         {[
-                            { value: 'full', label: 'Full Analysis Mode', description: 'Complete analysis with sentiment, credibility, and thematic insights' },
-                            { value: 'sentiment', label: 'Sentiment Only', description: 'Focused sentiment analysis only' },
-                            { value: 'credibility', label: 'Credibility Only', description: 'Focused fact-checking and verification' }
+                            { value: 'full', label: 'Full', desc: 'Sentiment + Credibility + Themes' },
+                            { value: 'sentiment', label: 'Sentiment', desc: 'Only sentiment' },
+                            { value: 'credibility', label: 'Credibility', desc: 'Only verification' }
                         ].map((option) => (
-                          <label key={option.value} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-hinaing-blue-500 focus:ring-offset-2"
-                              checked={mode === option.value}
-                              onChange={() => setMode(option.value as AnalysisMode)}
-                              value={option.value}
-                              name="analysis-mode"
-                            />
-                            <div>
-                              <span className="font-medium text-slate-800">{option.label}</span>
-                              <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
-                            </div>
+                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${mode===option.value ? 'border-transparent bg-gradient-to-br from-hinaing-blue-600 to-violet-500 text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
+                            <input type="radio" className="sr-only" checked={mode === option.value} onChange={() => setMode(option.value as AnalysisMode)} value={option.value} name="analysis-mode" />
+                            <span className={`text-sm font-semibold ${mode===option.value ? 'text-white' : 'text-slate-800'}`}>{option.label}</span>
+                            <span className={`text-xs ${mode===option.value ? 'text-white/80' : 'text-slate-500'}`}>{option.desc}</span>
                           </label>
                         ))}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Alert Preferences */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Step 5 · Alert preferences</span>
-                        <span className="text-[11px] text-slate-400">Ensure urgent notices reach you</span>
-                      </div>
-                      <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm cursor-pointer">
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
+                      <label className="flex flex-1 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 hover:bg-white">
                         <input
                           type="checkbox"
                           className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-hinaing-blue-500 focus:ring-offset-2"
@@ -634,15 +598,14 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       onClick={handleGenerate}
                       disabled={state.isGenerating || !backendStatus || !!backendError}
                     >
-                      {state.isGenerating ? 'Generating Report...' : !backendStatus || backendError ? 'Initializing...' : 'Generate Sentiment Report'}
+                       {state.isGenerating ? 'Generating Report...' : !backendStatus || backendError ? 'Initializing...' : 'Generate Sentiment Report'}
                     </KeyboardButton>
                   </div>
                 </div>
-              </Card>
+              </div>
 
-              {/* Live Preview - Sticky with internal scroll */}
-              <div className="xl:sticky xl:top-6 xl:self-start">
-                <Card className="mx-auto w-full max-w-md space-y-6 border-x-0 border-y border-slate-200 shadow-sm p-5 sm:mx-0 sm:max-w-none md:max-w-md md:border md:rounded-xl md:shadow-md md:p-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
+              {/* Live Preview — equal height, flat premium */}
+              <div className="flex h-full min-h-[900px] w-full max-w-md flex-col space-y-6 rounded-xl border border-slate-200/60 bg-white p-6 sm:mx-0 sm:max-w-none md:min-h-[920px] md:rounded-xl xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-xs text-slate-400">
@@ -653,7 +616,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   ) : null}
                 </header>
 
-                <div className="space-y-5">
+                <div className="flex flex-1 flex-col justify-center space-y-5 min-h-0">
                   {snapshot ? (
                     <>
                       <Card className={clsx(
@@ -1007,99 +970,29 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       </div>
                     </>
                   ) : (
-                    <>
-                      <Card className="space-y-4 border border-dashed border-slate-200 bg-white p-5 text-slate-500" role="status" aria-live="polite">
-                        <div className="flex items-center justify-between">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Overall Sentiment
-                          </span>
-                          {state.isGenerating ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-hinaing-blue-50 px-3 py-1 text-[11px] font-semibold text-hinaing-blue-700">
-                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                              Generating…
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="space-y-2">
-                          <div className={clsx("h-5 w-40 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
-                          <div className={clsx("h-4 w-72 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                          {['Negative', 'Neutral', 'Positive'].map((label) => (
-                            <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-3">
-                              <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
-                              <span className="text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-xs">
-                          {['Credibility', 'Verified', 'Misinfo Risk'].map((label) => (
-                            <div key={label} className="space-y-1 rounded-xl border border-slate-100 bg-white/80 p-2 sm:p-3">
-                              <div className={clsx("h-5 rounded", state.isGenerating ? "animate-pulse bg-slate-200" : "bg-slate-100")} aria-hidden="true" />
-                              <span className="text-[9px] sm:text-[11px] uppercase tracking-wide text-slate-400">{label}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          {state.isGenerating
-                            ? 'Analyzing fresh chatter across your selected channels. This card will update once calculations finish.'
-                            : 'We’ll populate this card with live sentiment once you run a report for the filters above.'}
-                        </p>
-                      </Card>
-
-                      <div className="space-y-4">
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Actionable Insights</h3>
-                            <span className="text-[11px] text-slate-400">
-                              {state.isGenerating ? 'Processing...' : 'Pending'}
-                            </span>
-                          </div>
-                          <p className="mt-3 text-xs text-slate-500">
-                            {state.isGenerating ? (
-                              <>Matching community chatter to <span className="font-semibold">{computed.focusSummaryLabel}</span> priorities…</>
-                            ) : (
-                              <>Insights will appear after generation</>
-                            )}
-                          </p>
-                          <div className="mt-4 grid gap-3 text-[13px] text-slate-500 sm:grid-cols-2">
-                            {['Infrastructure readiness', 'Community health', 'Incident response'].map((label) => (
-                              <div
-                                key={label}
-                                className={clsx(
-                                  "rounded-xl border border-slate-100 bg-white/80 p-3",
-                                  state.isGenerating && "animate-pulse",
-                                )}
-                              >
-                                <p className="text-xs font-semibold text-slate-400">{label}</p>
-                                <p className="mt-1 text-[12px]">
-                                  {state.isGenerating
-                                    ? 'Scanning...'
-                                    : 'Tap Generate'}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {state.includeAlerts ? (
-                          <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-5" role="alert">
-                            <div className="flex items-start gap-3">
-                              <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
-                              <div className="space-y-1">
-                                <h3 className="text-sm font-semibold text-amber-800">Alerts appear here</h3>
-                                <p className="text-xs text-amber-700">
-                                  Keep “Include urgent alerts” enabled and run a report—critical disruptions will be listed with direct citizen quotes and timestamps.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
+                    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center" role="status" aria-live="polite">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500">
+                        <span className="text-sm font-bold tracking-tight text-white">H</span>
                       </div>
-                    </>
+                      <div className="mt-3 flex items-center gap-1.5">
+                        <span className="text-sm font-bold tracking-tight text-slate-900">Hinaing</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Baguio</span>
+                      </div>
+                      <h3 className="mt-2 text-sm font-semibold text-slate-900">No briefing yet</h3>
+                      <p className="mt-1 max-w-[28ch] text-xs leading-relaxed text-slate-500">
+                        {state.isGenerating ? "Analyzing fresh chatter — this will populate once calculations finish." : "Select channels, window & focus above, then Generate."}
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-400">Example: Web · 48 hours · Infrastructure</p>
+                      {state.isGenerating ? (
+                        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200">
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Generating…
+                        </span>
+                      ) : (
+                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> 19 agents idle</span>
+                      )}
+                    </div>
                   )}
                 </div>
-              </Card>
               </div>
             </section>
           </main>
