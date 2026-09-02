@@ -97,7 +97,7 @@ export function PartnerBadges() {
             </div>
 
             {/* Animated border effect */}
-            <div className="absolute inset-0 rounded-full border border-transparent bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-cyan-500/20 [mask-composite:intersect] [mask:radial-gradient(ellipse_at_center,white_70%,transparent_90%)] animate-spin-slow" />
+            <div className="absolute inset-0 rounded-full border border-transparent bg-gradient-to-r from-[#3348b8]/20 via-[#3348b8]/20 to-[#5b3cc8]/20 [mask-composite:intersect] [mask:radial-gradient(ellipse_at_center,white_70%,transparent_90%)] animate-spin-slow" />
           </div>
           <div className="space-y-1 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Autonomous, Self-Learning & Multi-Signal Verification</p>
@@ -158,3 +158,4 @@ export function PartnerBadges() {
     </section>
   );
 }
+

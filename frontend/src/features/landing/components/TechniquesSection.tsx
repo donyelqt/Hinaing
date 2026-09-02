@@ -132,10 +132,10 @@ export function TechniquesSection() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 xl:px-8">
         <div className="mb-20 max-w-2xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center justify-center -space-x-px rounded-md border border-violet-100 bg-white p-1 shadow-sm">
-            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-violet-600">System Architecture</span>
+            <span className="px-3 py-1 text-[10px] font-mono font-medium uppercase tracking-widest text-[#3348b8]">System Architecture</span>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-cyan-500">Agentic AI Engineering</span> for Civic Intelligence
+            <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text text-transparent">Agentic AI Engineering</span> for Civic Intelligence
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed">
             Hinaing combines hierarchical multi-agent orchestration with temporal-aware context engineering to transform unstructured social media noise into structured, actionable civic intelligence.
@@ -168,14 +168,14 @@ export function TechniquesSection() {
             return (
               <Card
                 key={technique.id}
-                className={`group relative flex flex-col h-full overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-6 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-200/50 hover:rotate-0 hover:scale-[1.02] ${technique.tilt} ${shouldCenter ? 'lg:col-start-2 lg:col-span-2 lg:mx-auto lg:w-full' : ''}`}
+                className={`group relative flex flex-col h-full overflow-hidden rounded-2xl border border-slate-200 bg-white/60 p-6 shadow-sm backdrop-blur-sm transition-all duration-500 hover:z-20 hover:-translate-y-2 hover:border-[#5b3cc8]/40 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:rotate-0 hover:scale-[1.02] ${technique.tilt} ${shouldCenter ? 'lg:col-start-2 lg:col-span-2 lg:mx-auto lg:w-full' : ''}`}
               >
                 {/* Gradient Gloss Effect upon Hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                 {/* ID & Badge Tags */}
                 <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
-                  <span className="font-mono text-[10px] font-bold text-slate-300 group-hover:text-violet-500 transition-colors">
+                  <span className="font-mono text-[10px] font-bold text-slate-300 group-hover:text-[#3348b8] transition-colors">
                     {technique.id}
                   </span>
                   <div className="flex flex-col items-end gap-1">
@@ -192,14 +192,14 @@ export function TechniquesSection() {
                   </div>
                 </div>
 
-                <div className={`relative z-10 mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:border-violet-200 group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-cyan-500 group-hover:text-white group-hover:scale-110 group-hover:rotate-6 ${technique.color}`}>
+                <div className={`relative z-10 mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl border shadow-sm transition-all duration-300 group-hover:border-[#5b3cc8]/40 group-hover:bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] group-hover:text-white group-hover:scale-110 group-hover:rotate-6 ${technique.color}`}>
                   <Icon className="h-6 w-6" aria-hidden="true" />
                 </div>
 
-                <h3 className="relative z-10 text-base font-bold text-slate-900 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-violet-600 group-hover:to-cyan-600 transition-all">
+                <h3 className="relative z-10 text-base font-bold text-slate-900 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#3348b8] group-hover:to-[#5b3cc8] transition-all">
                   {technique.title}
                 </h3>
-                <p className="relative z-10 text-sm leading-relaxed text-slate-500 group-hover:text-slate-700">
+                <p className="relative z-10 text-sm leading-relaxed text-slate-500 group-hover:text-[#3348b8]">
                   {technique.description}
                 </p>
               </Card>
@@ -211,7 +211,7 @@ export function TechniquesSection() {
           {/* Key Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200">
-              <div className="text-2xl font-bold text-violet-600">98%</div>
+              <div className="text-2xl font-bold text-[#3348b8]">98%</div>
               <div className="text-xs text-slate-500 mt-1">Sentiment Accuracy</div>
             </div>
             <div className="text-center p-4 rounded-xl bg-white/60 backdrop-blur border border-slate-200">
@@ -259,7 +259,7 @@ export function TechniquesSection() {
 
           {/* System Status */}
           <div className="flex justify-center">
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 backdrop-blur px-4 py-1.5 text-[10px] font-mono font-semibold text-violet-600 shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 backdrop-blur px-4 py-1.5 text-[10px] font-mono font-semibold text-[#3348b8] shadow-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -272,3 +272,7 @@ export function TechniquesSection() {
     </section>
   );
 }
+
+
+
+
