@@ -187,7 +187,8 @@ class MetricsCollector:
         import os
         # Find project root (parent of backend/app)
         current_file = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file)))) # hinaing/
+        # Correct: hinaing/backend/data/metrics, not hinaing/backend/backend/data/metrics
         self._metrics_dir = Path(project_root) / "backend" / "data" / "metrics"
         self._metrics_dir.mkdir(parents=True, exist_ok=True)
         

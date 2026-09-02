@@ -46,7 +46,7 @@ async def export_metrics(date: str | None = None):
     
     Returns all metrics collected on that date for thesis analysis.
     """
-    metrics_dir = Path("backend/data/metrics")
+    from pathlib import Path as _P; metrics_dir = _P(__file__).resolve().parents[2] / "data" / "metrics"  # backend/data/metrics
     
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")

@@ -1,0 +1,38 @@
+# === Hinaing root ignores ===
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# data / generated metrics — NEVER commit raw runs
+backend/data/metrics/*.jsonl
+backend/backend/data/metrics/
+backend/logs/
+logs/
+*.jsonl
+!backend/benchmarks/data/*.json
+
+# telemetry
+backend/.deepeval_telemetry.txt
+*.log
+
+# vector db
+qdrant_data/
+backend/qdrant_data/
+
+# local agent scaffolding / IDE
+.agent/
+.kilo/
+.qwen/
+.vscode/
+nul
+
+# results / scratch
+backend/results/
+backend/scripts/data/
+backend/backend/
+
