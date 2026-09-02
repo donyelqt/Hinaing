@@ -509,10 +509,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm">
                         <Settings className="h-4 w-4" />
                       </div>
-                      <h2 id="config-heading" className="text-xl font-bold text-slate-900 md:text-2xl">Configuration</h2>
+                      <h2 id="config-heading" className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">Configuration</h2>
                     </div>
                     <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
                       Configure data sources and focus areas. The agent will gather the latest public posts, classify sentiment, and surface actionable intelligence.
@@ -522,22 +522,22 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
                 {/* Premium Timeline — equal spacing p-6, gap-4 */}
                 <div className="relative">
-                  <div className="absolute left-[15px] top-3 bottom-6 w-px bg-gradient-to-b from-hinaing-blue-200 via-violet-200 to-slate-200 hidden sm:block" aria-hidden />
+                  <div className="absolute left-[15px] top-3 bottom-6 w-px bg-gradient-to-b from-[#3348b8]/20 via-[#5b3cc8]/20 to-slate-200 hidden sm:block" aria-hidden />
                   <div className="space-y-4">
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">1</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">1</span></div>
                       <div className="flex-1"><PlatformSelector platforms={state.platforms} onToggle={actions.toggleSelection} setPlatforms={actions.setPlatforms} error={validation.errors.platforms} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">2</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">2</span></div>
                       <div className="flex-1"><TimeWindowSelector timeWindow={state.timeWindow} setTimeWindow={actions.setTimeWindow} error={validation.errors.timeWindow} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">3</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">3</span></div>
                       <div className="flex-1"><FocusAreaSelector focusAreas={state.focusAreas} onToggle={actions.toggleSelection} setFocusAreas={actions.setFocusAreas} error={validation.errors.focusAreas} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis mode</span><span className="text-[11px] text-slate-400">Depth</span></div>
                         <div className="grid gap-2 sm:grid-cols-3">
@@ -546,7 +546,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             { value: 'sentiment', label: 'Sentiment', desc: 'Only sentiment' },
                             { value: 'credibility', label: 'Credibility', desc: 'Only verification' }
                         ].map((option) => (
-                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${mode===option.value ? 'border-transparent bg-gradient-to-br from-hinaing-blue-600 to-violet-500 text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
+                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${mode===option.value ? 'border-transparent bg-gradient-to-br from-[#3348b8] to-[#5b3cc8] text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
                             <input type="radio" className="sr-only" checked={mode === option.value} onChange={() => setMode(option.value as AnalysisMode)} value={option.value} name="analysis-mode" />
                             <span className={`text-sm font-semibold ${mode===option.value ? 'text-white' : 'text-slate-800'}`}>{option.label}</span>
                             <span className={`text-xs ${mode===option.value ? 'text-white/80' : 'text-slate-500'}`}>{option.desc}</span>
@@ -557,7 +557,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </div>
 
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
                       <label className="flex flex-1 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 hover:bg-white">
                         <input
                           type="checkbox"
@@ -971,7 +971,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </>
                   ) : (
                     <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center" role="status" aria-live="polite">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)]">
                         <span className="text-sm font-bold tracking-tight text-white">H</span>
                       </div>
                       <div className="mt-3 flex items-center gap-1.5">
@@ -1018,3 +1018,4 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
     </>
   );
 }
+

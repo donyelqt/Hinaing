@@ -35,12 +35,12 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
               aria-disabled={isDisabled}
               aria-describedby={isDisabled ? `${option.value}-coming-soon` : undefined}
               className={clsx(
-                "flex flex-col rounded-xl border min-h-[44px] px-4 py-3 text-left touch-manipulation transition-[transform,box-shadow,border-color] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
+                "flex flex-col rounded-xl border min-h-[44px] px-4 py-3 text-left touch-manipulation transition-[transform,box-shadow,border-color] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5b3cc8] focus-visible:ring-offset-2",
                 isDisabled
                   ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
                   : isActive
-                    ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm hover:brightness-[1.03] active:scale-[0.99]"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:shadow-sm active:scale-[0.99]",
+                    ? "border-transparent bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white shadow-sm hover:brightness-[1.04] active:scale-[0.99]"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-[#5b3cc8]/40 hover:bg-[linear-gradient(135deg,rgba(51,72,184,0.04)_0%,rgba(91,60,200,0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgba(51,72,184,0.12)] active:scale-[0.99]",
               )}
               aria-label={`${isDisabled ? 'Unavailable' : isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
             >
