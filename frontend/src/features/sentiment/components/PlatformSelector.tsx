@@ -10,18 +10,18 @@ type PlatformSelectorProps = {
 
 export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: PlatformSelectorProps) {
   return (
-    <div className="space-y-3">
+    <fieldset className="space-y-3 border-0 p-0 m-0">
       <div className="flex items-center justify-between">
-        <span className={clsx(
+        <legend className={clsx(
           "text-xs font-semibold uppercase tracking-wide",
           error ? "text-rose-500" : "text-slate-400"
-        )}>Step 1 · Select channels</span>
-        <span className="text-[11px] text-slate-400">Choose where the agent listens</span>
+        )}>Step 1 · Select channels</legend>
+        <span id="channels-hint" className="text-[11px] text-slate-400">Choose where the agent listens</span>
       </div>
       {error && (
-        <p className="text-xs text-rose-500 font-medium">{error}</p>
+        <p id="channels-error" role="alert" aria-live="polite" className="text-xs text-rose-500 font-medium">{error}</p>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div role="group" aria-labelledby="channels-hint" aria-describedby={error ? "channels-error" : undefined} className="grid gap-3 sm:grid-cols-2">
         {PLATFORM_OPTIONS.map((option) => {
           const isActive = platforms.includes(option.value);
           const isDisabled = option.value === "facebook" || option.value === "reddit";
@@ -33,19 +33,21 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
               disabled={isDisabled}
               aria-pressed={isActive}
               aria-disabled={isDisabled}
+              aria-describedby={isDisabled ? `${option.value}-coming-soon` : undefined}
               className={clsx(
-                "flex flex-col rounded-xl border px-4 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2",
+                "flex flex-col rounded-xl border min-h-[44px] px-4 py-3 text-left touch-manipulation transition-[transform,box-shadow,border-color] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2",
                 isDisabled
                   ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
                   : isActive
-                    ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-violet-300",
+                    ? "border-transparent bg-gradient-to-r from-hinaing-blue-600 via-hinaing-blue-500 to-violet-500 text-white shadow-sm hover:brightness-[1.03] active:scale-[0.99]"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:shadow-sm active:scale-[0.99]",
               )}
               aria-label={`${isDisabled ? 'Unavailable' : isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
             >
               <span className="font-medium">{option.label}</span>
-              {option.hint ? (
+              {option.hint || isDisabled ? (
                 <small
+                  id={isDisabled ? `${option.value}-coming-soon` : undefined}
                   className={clsx(
                     "text-xs",
                     isDisabled ? "text-slate-400" : isActive ? "text-white/80" : "text-slate-500",
@@ -58,6 +60,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
           );
         })}
       </div>
-    </div>
+    </fieldset>
   );
 }
+
