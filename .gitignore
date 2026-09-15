@@ -9,13 +9,13 @@ venv/
 .pytest_cache/
 
 # data / generated metrics
-backend/data/metrics/*.jsonl
 backend/backend/data/metrics/
 backend/backend/
 backend/logs/
 logs/
 *.jsonl
 !backend/benchmarks/data/*.json
+!backend/data/metrics/*.jsonl
 
 # telemetry
 backend/.deepeval_telemetry.txt
