@@ -8,7 +8,13 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-# data / generated metrics
+# 7-node agent harness evaluation experiment (2 models)
+#   - backend/data/metrics/*.jsonl  -> tracked production + eval run logs
+#   - backend/backend/data/metrics/ -> stale duplicate copies (ignored)
+#   - backend/backend/             -> stale duplicate copies (ignored)
+# The committed dataset is the thesis faithfulness corpus:
+#   37 files / 329 runs / 820 verified claims / 100% faithfulness.
+# Reproducible via backend/scripts/audit_faithfulness_metrics.py.
 backend/backend/data/metrics/
 backend/backend/
 backend/logs/
