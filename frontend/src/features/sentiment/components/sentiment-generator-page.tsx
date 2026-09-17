@@ -12,7 +12,8 @@ import {
   BarChart3,
   Settings,
   Menu,
-  X
+  X,
+  CheckCircle2
 } from "lucide-react";
 import { KeyboardButton } from "@/components/ui/keyboard-button";
 
@@ -29,6 +30,21 @@ import { MobileFilters } from "./MobileFilters";
 import { VerificationBadge } from "./VerificationBadge";
 import { isEmptyParagraph, parseCitations } from "../utils/citation-parser";
 import { PRESET_OPTIONS, GENERATOR_STEPS } from "../constants";
+
+/**
+ * Single semantic tone scale for every quality metric on this page.
+ * Higher-is-better rates: emerald >= 0.85, amber >= 0.5, rose below.
+ */
+function toneForRate(rate: number): string {
+  if (rate >= 0.85) return "text-emerald-600";
+  if (rate >= 0.5) return "text-amber-600";
+  return "text-rose-600";
+}
+
+/** Counts where zero is the good state (unverified, hallucinations, misinfo). */
+function toneForDefectCount(count: number): string {
+  return count === 0 ? "text-emerald-600" : "text-rose-600";
+}
 
 type SentimentGeneratorPageProps = {
   activePage?: ActivePage;
@@ -343,7 +359,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
     const neu = Math.round(neutral * 100);
     const pos = Math.round(positive * 100);
     const total = neg + neu + pos;
-    
+
+    negativePercent = neg;
+    neutralPercent = neu;
+    positivePercent = pos;
+
     if (total !== 100) {
       // Adjust the largest percentage to make sum 100%
       const diff = 100 - total;
@@ -353,14 +373,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
         { value: pos, key: 'positive' }
       ];
       const largest = values.reduce((a, b) => a.value > b.value ? a : b);
-      
+
       if (largest.key === 'negative') negativePercent = neg + diff;
       else if (largest.key === 'neutral') neutralPercent = neu + diff;
       else positivePercent = pos + diff;
-    } else {
-      negativePercent = neg;
-      neutralPercent = neu;
-      positivePercent = pos;
     }
   }
 
@@ -681,18 +697,16 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                             hoveredCardIndex === 4 && "transform scale-105 shadow-xl ring-2 ring-slate-300"
-                          )}>
-                            <strong className="block text-base sm:text-lg font-semibold text-slate-700">{credibilityBreakdown.avgScore}%</strong>
+                          )}
+                          title="5-signal credibility analysis">
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.avgScore / 100))}>{credibilityBreakdown.avgScore}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
-                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              {credibilityBreakdown.hasData ? '5-signal analysis' : 'No data yet'}
-                            </p>
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                             hoveredCardIndex === 5 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
                           )}>
-                            <strong className="block text-base sm:text-lg font-semibold text-emerald-600">{credibilityBreakdown.highCredibility}%</strong>
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.highCredibility / 100))}>{credibilityBreakdown.highCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
                               {credibilityBreakdown.hasData ? 'Low risk' : 'Score ≥55%'}
@@ -702,11 +716,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                             hoveredCardIndex === 6 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
                           )}>
-                            <strong className="block text-base sm:text-lg font-semibold text-rose-600">{credibilityBreakdown.lowCredibility}%</strong>
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibility / 100))}>{credibilityBreakdown.lowCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Misinfo</span>
-                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              {credibilityBreakdown.hasData ? 'Review needed' : 'Score <55%'}
-                            </p>
                           </div>
                         </div>
 
@@ -719,31 +730,48 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                                 hoveredCardIndex === 7 && "transform scale-105 shadow-xl ring-2 ring-violet-300"
                               )}>
-                                <strong className="block text-base sm:text-lg font-semibold text-violet-600">
+                                <strong className={clsx(
+                                  "block text-base sm:text-lg font-semibold",
+                                  toneForRate(snapshot.verification.faithfulness_score)
+                                )}>
                                   {Math.round(snapshot.verification.faithfulness_score * 100)}%
                                 </strong>
                                 <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Faithfulness</span>
-                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                                  {snapshot.verification.faithfulness_score >= 0.85 ? '✅ SOTA' : '⚠️ Needs improvement'}
+                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:flex sm:items-center sm:justify-center sm:gap-1">
+                                  {snapshot.verification.faithfulness_score >= 0.85 ? (
+                                    <>
+                                      <CheckCircle2 className="h-3 w-3 text-emerald-600" aria-hidden="true" /> Excellent
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertTriangle className="h-3 w-3 text-amber-600" aria-hidden="true" /> Needs improvement
+                                    </>
+                                  )}
                                 </p>
                               </div>
                               <div className={clsx(
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                                 hoveredCardIndex === 8 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
-                              )}>
-                                <strong className="block text-base sm:text-lg font-semibold text-emerald-600">
+                              )}
+                              title="LLM claim extraction + NLI verification">
+                                <strong className={clsx(
+                                  "block text-base sm:text-lg font-semibold",
+                                  snapshot.verification.total_claims > 0
+                                    ? toneForRate(snapshot.verification.verified_claims / snapshot.verification.total_claims)
+                                    : "text-slate-400"
+                                )}>
                                   {snapshot.verification.verified_claims}/{snapshot.verification.total_claims}
                                 </strong>
                                 <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Claims Verified</span>
-                                <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                                  LLM extraction + NLI verification
-                                </p>
                               </div>
                               <div className={clsx(
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                                 hoveredCardIndex === 9 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
                               )}>
-                                <strong className="block text-base sm:text-lg font-semibold text-rose-600">
+                                <strong className={clsx(
+                                  "block text-base sm:text-lg font-semibold",
+                                  toneForDefectCount(snapshot.verification.unverified_claims)
+                                )}>
                                   {snapshot.verification.unverified_claims}
                                 </strong>
                                 <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Unverified</span>
@@ -766,13 +794,16 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                   )}>
                                     {snapshot.verification.hallucination_analysis.hallucination_count}
                                   </strong>
-                                  <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Halluc.</span>
+                                  <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 block leading-tight">Hallucinations</span>
                                 </div>
 
                                 {/* Citation Accuracy */}
                                 {snapshot.verification.citation_verification && (
                                   <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
-                                    <strong className="block text-base sm:text-lg font-semibold text-blue-600">
+                                    <strong className={clsx(
+                                      "block text-base sm:text-lg font-semibold",
+                                      toneForRate(snapshot.verification.citation_verification.citation_accuracy_rate)
+                                    )}>
                                       {Math.round(snapshot.verification.citation_verification.citation_accuracy_rate * 100)}%
                                     </strong>
                                     <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Citation</span>
@@ -782,10 +813,13 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                 {/* Misattribution Count */}
                                 {snapshot.verification.misattribution_analysis && (
                                   <div className="rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner">
-                                    <strong className="block text-base sm:text-lg font-semibold text-indigo-600">
+                                    <strong className={clsx(
+                                      "block text-base sm:text-lg font-semibold",
+                                      toneForDefectCount(snapshot.verification.misattribution_analysis.misattribution_count)
+                                    )}>
                                       {snapshot.verification.misattribution_analysis.misattribution_count}
                                     </strong>
-                                    <span className="text-[9px] sm:text-2xs uppercase text-slate-500 block">Misattri.</span>
+                                    <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 block leading-tight">Misattributed</span>
                                   </div>
                                 )}
                               </div>
@@ -806,10 +840,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                         key={type}
                                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-medium"
                                       >
-                                        {type === "fabricated_claim" && "🎭"}
-                                        {type === "contradicted_claim" && "❌"}
-                                        {type === "numerical_hallucination" && "🔢"}
-                                        {type.replace("_", " ")}: {count}
+                                        {type.replace(/_/g, " ")}: {count}
                                       </span>
                                     ))}
                                 </div>
@@ -820,8 +851,9 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             {snapshot.verification.numerical_hallucinations &&
                              snapshot.verification.numerical_hallucinations.count > 0 && (
                               <div className="bg-rose-50/50 border border-rose-200 rounded-lg p-2">
-                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5">
-                                  ⚠ Numerical Hallucinations Detected
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5 inline-flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                                  Numerical Hallucinations Detected
                                 </p>
                                 <div className="space-y-1">
                                   {snapshot.verification.numerical_hallucinations.details?.slice(0, 3).map((detail, idx) => (

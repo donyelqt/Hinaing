@@ -42,7 +42,7 @@ class GroqProvider(BaseLLMProvider):
     def __init__(
         self,
         *,
-        model: str = "llama-3.1-8b-instant",
+        model: str = "groq/compound",
         timeout: float = 30.0,
         max_retries: int = 3,
     ):
@@ -378,7 +378,7 @@ async def cleanup_groq_clients():
     _groq_providers.clear()
 
 
-def get_groq_provider(model: str = "llama-3.1-8b-instant") -> GroqProvider:
+def get_groq_provider(model: str = "groq/compound") -> GroqProvider:
     """Get or create Groq provider instance for specific model.
 
     Each model gets its own provider instance to prevent state pollution.

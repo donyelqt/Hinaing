@@ -132,7 +132,7 @@ export function PartnerBadges() {
                 {/* Text Content */}
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">TRL 7 Validated</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Validated and Evaluated</span>
                     <span className="h-1 w-1 rounded-full bg-blue-300" />
                     <span className="text-[10px] font-medium text-blue-200">System Architecture</span>
                   </div>

@@ -269,7 +269,7 @@ export function LandingHero() {
                       {/* Stitched border effect */}
                       <div className="absolute inset-1 border-2 border-dashed border-white/30 rounded-sm" />
                       <span className="relative z-10 text-[9px] font-bold uppercase tracking-wider text-white whitespace-nowrap">
-                        State-of-the-art Agentic AI
+                        Civic Agent Harness
                       </span>
                     </div>
                     {/* Ribbon tail right - stitched edge */}
