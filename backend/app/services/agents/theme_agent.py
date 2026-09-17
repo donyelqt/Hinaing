@@ -216,16 +216,14 @@ IMPORTANT:
         if not settings.groq_api_key:
             raise RuntimeError("GROQ_API_KEY missing")
         
-        # Use llama-4-scout for theme analysis: 30K TPM (5x more than 8b-instant)
-        # Handles 6 concurrent theme agents without rate limits
-        # Clean JSON output, excellent instruction following
-        from ..llm.groq_provider import get_groq_provider
-        llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
+        # Use configured LLM provider (supports local/Ollama via env vars)
+        from ..llm.factory import get_node_llm
+        llm = get_node_llm("theme_agents")
         
         context = self._build_context(documents)
         prompt = self._build_prompt(self.theme_label, self.theme_focus, context, len(documents))
         
-        logger.info(f"[{self.theme_label}] Starting Groq (llama-4-scout) analysis with {len(documents)} documents")
+        logger.info(f"[{self.theme_label}] Starting Groq analysis with {len(documents)} documents")
         
         try:
             response = await llm.generate(

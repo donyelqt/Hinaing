@@ -347,15 +347,11 @@ class LLMCredibilityAnalyzer:
         if not settings.groq_api_key:
             raise RuntimeError("GROQ_API_KEY missing")
         
-        # Use llama-4-scout for credibility: Fast classification with higher TPM
-        # TPM: 30K (5x higher than 8b-instant)
-        # 40 docs × 200 tokens = 8K tokens/batch
-        # Full parallel processing - Groq SDK handles retries
-        # Full parallel processing - Groq SDK handles retries
-        from app.services.llm.groq_provider import get_groq_provider
-        self.llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
+        # Use configured LLM provider (supports local/Ollama via env vars)
+        from app.services.llm.factory import get_node_llm
+        self.llm = get_node_llm("credibility")
         self.batch_size = 40  # Increased from 20 due to higher TPM limit
-        logger.info("[LLMCredibilityAnalyzer] Using Groq llama-4-scout-17b (TPM: 30K, TPD: 500K)")
+        logger.info(f"[LLMCredibilityAnalyzer] Using {type(self.llm).__name__} (model={self.llm.model_name})")
     
     def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
