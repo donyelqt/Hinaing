@@ -4,7 +4,7 @@ import React from "react";
 import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
-import { parseCitations } from "../sentiment/utils/citation-parser";
+import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-parser";
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 
@@ -203,11 +203,11 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                 
                 {data.overall_sentiment?.summary && (
                     <div className="text-xs sm:text-sm text-slate-600 mb-3 sm:mb-4 space-y-2 sm:space-y-3 leading-relaxed">
-                        {data.overall_sentiment.summary.split(/\n\n+/).map((paragraph, idx) => {
+                        {data.overall_sentiment.summary.split(/\n\n+/).filter((paragraph) => !isEmptyParagraph(paragraph)).map((paragraph, idx) => {
                             // Handle **Bold:** pattern for topic headers
                             const parts = paragraph.split(/\*\*([^*]+)\*\*/);
                             return (
-                                <p key={idx} className="text-justify">
+                                <p key={idx} className="text-left text-pretty">
                                     {parts.map((part, partIdx) =>
                                         partIdx % 2 === 1 ? (
                                             <span key={partIdx} className="font-semibold text-blue-700">{part}</span>

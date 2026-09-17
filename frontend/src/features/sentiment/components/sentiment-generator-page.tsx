@@ -27,7 +27,7 @@ import { TimeWindowSelector } from "./TimeWindowSelector";
 import { FocusAreaSelector } from "./FocusAreaSelector";
 import { MobileFilters } from "./MobileFilters";
 import { VerificationBadge } from "./VerificationBadge";
-import { parseCitations } from "../utils/citation-parser";
+import { isEmptyParagraph, parseCitations } from "../utils/citation-parser";
 import { PRESET_OPTIONS, GENERATOR_STEPS } from "../constants";
 
 type SentimentGeneratorPageProps = {
@@ -616,7 +616,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   ) : null}
                 </header>
 
-                <div className="flex flex-1 flex-col justify-center space-y-5 min-h-0">
+                <div className="flex flex-1 flex-col justify-start space-y-5 min-h-0">
                   {snapshot ? (
                     <>
                       <Card className={clsx(
@@ -634,11 +634,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             {snapshot.overall_sentiment.label}
                           </h3>
                           <div className="text-sm text-slate-600 space-y-4 leading-relaxed">
-                            {(animatedSummary || fullSummaryText).split(/\n\n+/).map((paragraph, idx) => {
+                            {(animatedSummary || fullSummaryText).split(/\n\n+/).filter((paragraph) => !isEmptyParagraph(paragraph)).map((paragraph, idx) => {
                               // Handle **Bold:** pattern for topic headers
                               const parts = paragraph.split(/\*\*([^*]+)\*\*/);
                               return (
-                                <p key={idx} className="text-justify">
+                                <p key={idx} className="text-left text-pretty">
                                   {parts.map((part, partIdx) =>
                                     partIdx % 2 === 1 ? (
                                       <span key={partIdx} className="font-semibold text-hinaing-blue-700">{part}</span>
