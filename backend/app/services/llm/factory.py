@@ -3,16 +3,17 @@
 import logging
 from enum import Enum
 
+from ...core.config import get_settings
 from .base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
-
 
 class LLMProvider(str, Enum):
     """Supported LLM providers."""
     GROQ = "groq"
     GEMINI = "gemini"
     OPENROUTER = "openrouter"
+    LOCAL = "local"
 
 
 def get_llm_provider(
@@ -55,8 +56,10 @@ def get_llm_provider(
 
     if provider_str == "groq":
         from .groq_provider import GroqProvider
+        # NOTE: only groq/compound is served on this account — legacy
+        # direct model IDs (llama-3.x, llama-4-scout) 404. Verified via SDK.
         return GroqProvider(
-            model=model or "llama-3.1-8b-instant",
+            model=model or "groq/compound",
             **kwargs
         )
     elif provider_str == "gemini":
@@ -72,6 +75,10 @@ def get_llm_provider(
             model=model or "deepseek/deepseek-chat",
             **kwargs
         )
+    elif provider_str == "local":
+        from .ollama_provider import get_ollama_provider
+        model_name = model or getattr(get_settings(), "ollama_default_model", "qwen2.5:3b")
+        return get_ollama_provider(model=model_name)
     else:
         raise ValueError(f"Unknown provider: {provider_str}")
 
@@ -117,7 +124,7 @@ def get_balanced_llm(**kwargs) -> BaseLLMProvider:
     """
     return get_llm_provider(
         LLMProvider.GROQ,
-        model="llama-3.1-8b-instant",
+        model="groq/compound",
         **kwargs
     )
 
@@ -182,7 +189,7 @@ def get_node_llm(node_name: str, **kwargs) -> BaseLLMProvider:
         "sentiment": settings.llm_provider_sentiment,
         "credibility": settings.llm_provider_credibility,
         "theme_agents": settings.llm_provider_theme_agents,
-        "coordinator": settings.llm_provider_coordinator,
+        "coordinator": getattr(settings, "llm_provider_coordinator", "groq"),
     }
     
     provider = config_map.get(node_name, "groq")
