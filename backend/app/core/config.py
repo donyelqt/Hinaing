@@ -49,16 +49,20 @@ class Settings(BaseSettings):
     
     # Groq Configuration (ultra-fast inference)
     groq_api_key: str | None = None
-    groq_default_model: str = "llama-3.3-70b-versatile"
+    groq_default_model: str = "groq/compound"
     groq_timeout: float = 30.0
     groq_max_retries: int = 3
     
     # LLM Provider Selection (per node) - ALL USING GROQ
-    llm_provider_query_orchestrator: str = "groq"  # Node 1: groq/compound (UNLIMITED TPD)
-    llm_provider_sentiment: str = "groq"           # Node 4: llama-4-scout-17b (30K TPM)
-    llm_provider_credibility: str = "groq"         # Node 5: llama-3.1-8b-instant (6K TPM)
-    llm_provider_theme_agents: str = "groq"        # Node 6: llama-4-scout-17b (30K TPM)
-    llm_provider_coordinator: str = "groq"         # Node 7: llama-4-scout-17b (30K TPM)
+    llm_provider_query_orchestrator: str = "groq"  # Node 1: groq_default_model
+    llm_provider_sentiment: str = "groq"           # Node 4: groq/compound
+    llm_provider_credibility: str = "groq"         # Node 5: groq/compound
+    llm_provider_theme_agents: str = "groq"        # Node 6: groq/compound
+    # Ollama Configuration (local model inference)
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_default_model: str = "qwen2.5:3b"
+    ollama_timeout: float = 120.0
+    ollama_max_retries: int = 3
     
     # Fallback Configuration (DISABLED - Groq SDK has built-in retries)
     # Groq SDK already retries 3 times with exponential backoff
