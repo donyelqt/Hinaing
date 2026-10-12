@@ -428,7 +428,11 @@ class QueryOrchestratorAgent:
         return self._executor
 
     @measure_performance(component="QueryOrchestratorAgent", operation="run_planning")
-    async def run(self, request: SnapshotRequest) -> QueryPlan:
+    async def run(
+        self,
+        request: SnapshotRequest,
+        ablation_config: dict | None = None,
+    ) -> QueryPlan:
         """Generate query plan using AI-powered agentic reasoning.
 
         AGENTIC STRATEGY:
@@ -445,6 +449,8 @@ class QueryOrchestratorAgent:
         """
         focus_values = request.focus_areas or [self.fallback_focus]
         time_window = request.time_window or "24h"
+        if ablation_config and ablation_config.get("temporal_enabled") is False:
+            logger.info("[query_orchestrator] Ablation: temporal context disabled")
         time_suffix = _get_time_search_suffix(time_window)
         current_date = datetime.now().strftime("%B %d, %Y")
 
