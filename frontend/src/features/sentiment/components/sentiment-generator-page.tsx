@@ -659,7 +659,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                     partIdx % 2 === 1 ? (
                                       <span key={partIdx} className="font-semibold text-hinaing-blue-700">{part}</span>
                                     ) : (
-                                      <span key={partIdx}>{parseCitations(part)}</span>
+                                      <span key={partIdx}>{parseCitations(part, snapshot.sources ?? undefined)}</span>
                                     )
                                   )}
                                   {isTypingSummary && idx === (animatedSummary || fullSummaryText).split(/\n\n+/).length - 1 && (
@@ -1020,7 +1020,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Generating…
                         </span>
                       ) : (
-                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> 19 agents idle</span>
+                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> 18 + 1 agents idle</span>
                       )}
                     </div>
                   )}

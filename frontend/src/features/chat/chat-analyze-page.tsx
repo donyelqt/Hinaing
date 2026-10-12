@@ -212,7 +212,7 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                                         partIdx % 2 === 1 ? (
                                             <span key={partIdx} className="font-semibold text-blue-700">{part}</span>
                                         ) : (
-                                            <span key={partIdx}>{parseCitations(part)}</span>
+                                            <span key={partIdx}>{parseCitations(part, data.sources)}</span>
                                         )
                                     )}
                                 </p>

@@ -3,7 +3,7 @@
 import React from 'react';
 
 /**
- * Parse and render citations as compact superscript footnote chips.
+ * Parse citations into numbered reference chips (e.g. [1], [2]).
  *
  * Backend emits several variants (see backend/app/services/nlp/gemini.py):
  *   [Src: domain | Sent: X | verified]            (canonical)
@@ -11,23 +11,34 @@ import React from 'react';
  *   [Src: domain | X | skipped_limit]             (unmapped internal status)
  *   [Src: url | Cred: 0.XX | Sent: X | verified]  (legacy 4-segment)
  *
- * Internal statuses are mapped to user-facing labels:
- *   vsee_bypass -> verified, skipped_limit/rate_limited/error -> unverified
+ * Numbers map to the snapshot's source list by domain. Internal statuses
+ * are mapped to user-facing labels (vsee_bypass -> verified,
+ * skipped_limit/rate_limited/error -> unverified).
  *
  * @param text - The paragraph text potentially containing citations
- * @returns Array of JSX elements (strings and citation chips)
+ * @param sources - Snapshot sources ({ url }) used to number references
+ * @returns Array of JSX elements (strings and reference chips)
  */
 type DisplayStatus = 'verified' | 'contradicted' | 'unverified';
 
-function mapStatus(raw: string): { display: DisplayStatus; wasMapped: boolean } {
+export interface CitationSource {
+  url?: string | null;
+}
+
+function normalizeHost(value: string): string {
+  const host = value.includes('://') ? value : `https://${value}`;
+  try {
+    return new URL(host).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return value.trim().replace(/^www\./, '').toLowerCase();
+  }
+}
+
+function mapStatus(raw: string): DisplayStatus {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === 'verified' || normalized === 'vsee_bypass') {
-    return { display: 'verified', wasMapped: normalized === 'vsee_bypass' };
-  }
-  if (normalized === 'contradicted') {
-    return { display: 'contradicted', wasMapped: false };
-  }
-  return { display: 'unverified', wasMapped: normalized !== 'unverified' };
+  if (normalized === 'verified' || normalized === 'vsee_bypass') return 'verified';
+  if (normalized === 'contradicted') return 'contradicted';
+  return 'unverified';
 }
 
 function parseSegments(inner: string): { domain: string; sentiment: string; status: string } | null {
@@ -42,13 +53,26 @@ function parseSegments(inner: string): { domain: string; sentiment: string; stat
   return { domain, sentiment, status };
 }
 
-const DOT_CLASS: Record<DisplayStatus, string> = {
-  verified: 'bg-emerald-500',
-  contradicted: 'bg-rose-500',
-  unverified: 'bg-amber-500',
+const CHIP_CLASS: Record<DisplayStatus, string> = {
+  verified: 'bg-emerald-100 text-emerald-700',
+  contradicted: 'bg-rose-100 text-rose-700',
+  unverified: 'bg-amber-100 text-amber-700',
 };
 
-export function parseCitations(text: string): (string | React.JSX.Element)[] {
+export function parseCitations(
+  text: string,
+  sources?: CitationSource[],
+): (string | React.JSX.Element)[] {
+  // Number sources by domain for [n] references.
+  const indexByHost = new Map<string, number>();
+  (sources ?? []).forEach((source) => {
+    if (!source?.url) return;
+    const host = normalizeHost(source.url);
+    if (host && !indexByHost.has(host)) {
+      indexByHost.set(host, indexByHost.size + 1);
+    }
+  });
+
   // Match any [Src: ...] block; segments are interpreted leniently.
   const citationRegex = /\[Src:\s*([^\]]+?)\]/g;
 
@@ -66,19 +90,30 @@ export function parseCitations(text: string): (string | React.JSX.Element)[] {
     }
 
     const { domain, sentiment, status } = parsed;
-    const { display } = mapStatus(status);
+    const display = mapStatus(status);
+    const refNumber = indexByHost.get(normalizeHost(domain)) ?? null;
+    const label = `Source${refNumber ? ` ${refNumber}` : ''}: ${domain} | Sentiment: ${sentiment} | ${display}`;
 
     parts.push(
-      <sup
-        key={`citation-${match.index}`}
-        className="ml-1 inline-flex translate-y-[-1px] items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-2 py-0.5 align-baseline text-[10px] font-medium leading-5 text-slate-500 shadow-sm"
-        title={`Source: ${domain} | Sentiment: ${sentiment} | ${display}`}
-        aria-label={`Citation: ${domain}, sentiment ${sentiment}, ${display}`}
-      >
-        <span aria-hidden="true" className={`inline-block h-1.5 w-1.5 rounded-full ${DOT_CLASS[display]}`} />
-        <span className="max-w-[10rem] truncate">{domain}</span>
-        <span className="text-slate-400">{display}</span>
-      </sup>
+      refNumber !== null ? (
+        <sup
+          key={`citation-${match.index}`}
+          className={`ml-0.5 inline-flex h-4 min-w-4 translate-y-[-2px] items-center justify-center rounded-md px-1 align-baseline text-[10px] font-bold leading-4 ${CHIP_CLASS[display]}`}
+          title={label}
+          aria-label={`Citation ${label}`}
+        >
+          {refNumber}
+        </sup>
+      ) : (
+        <sup
+          key={`citation-${match.index}`}
+          className="ml-0.5 inline-flex h-4 translate-y-[-2px] items-center rounded-md bg-slate-100 px-1 align-baseline text-[10px] font-medium leading-4 text-slate-500"
+          title={label}
+          aria-label={`Citation ${label}`}
+        >
+          {domain.length > 18 ? `${domain.slice(0, 17)}…` : domain}
+        </sup>
+      ),
     );
 
     lastIndex = citationRegex.lastIndex;
