@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { X } from "lucide-react";
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS } from '../constants';
+import type { LlmMode } from '../types';
 
 type AnalysisMode = 'full' | 'sentiment' | 'credibility';
 
@@ -13,6 +14,8 @@ type MobileFiltersProps = {
   includeAlerts: boolean;
   mode: AnalysisMode;
   setMode: (value: AnalysisMode) => void;
+  llmMode: LlmMode;
+  setLlmMode: (value: LlmMode) => void;
   onToggleSelection: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   setPlatforms: (updater: (prev: string[]) => string[]) => void;
   setTimeWindow: (value: string) => void;
@@ -29,6 +32,8 @@ export function MobileFilters({
   includeAlerts,
   mode,
   setMode,
+  llmMode,
+  setLlmMode,
   onToggleSelection,
   setPlatforms,
   setTimeWindow,
@@ -146,6 +151,32 @@ export function MobileFilters({
                     onChange={() => setMode(option.value as AnalysisMode)}
                     value={option.value}
                     name="mobile-analysis-mode"
+                  />
+                  <div>
+                    <span className="font-medium text-slate-800">{option.label}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* LLM Mode */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">LLM Mode</h3>
+            <div className="space-y-2">
+              {[
+                { value: 'cloud', label: 'Cloud (Groq)', description: 'Hosted, fastest results' },
+                { value: 'local', label: 'Local (Qwen)', description: 'Offline, runs on-device' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                  <input
+                    type="radio"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-hinaing-blue-500 focus:ring-violet-500"
+                    checked={llmMode === option.value}
+                    onChange={() => setLlmMode(option.value as LlmMode)}
+                    value={option.value}
+                    name="mobile-llm-mode"
                   />
                   <div>
                     <span className="font-medium text-slate-800">{option.label}</span>

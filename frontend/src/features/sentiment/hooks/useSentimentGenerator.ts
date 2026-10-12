@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS, PRESET_OPTIONS } from '../constants';
-import type { SentimentState, SentimentActions } from '../types';
+import type { SentimentState, SentimentActions, LlmMode } from '../types';
 
 export type ValidationErrors = {
   platforms?: string;
@@ -132,6 +132,7 @@ export function useSentimentGenerator() {
     isGenerating,
     isRefreshing,
     showMobileFilters,
+    llmMode: 'cloud' as LlmMode,
   };
 
   const actions: SentimentActions = {
@@ -145,6 +146,7 @@ export function useSentimentGenerator() {
     toggleSelection,
     applyPreset,
     setAblationPreset: () => {}, // No-op for this hook
+    setLlmMode: () => {}, // No-op for this hook
   };
 
   const computed = {

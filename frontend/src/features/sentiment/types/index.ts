@@ -26,7 +26,10 @@ export type SentimentState = {
   isGenerating: boolean;
   isRefreshing: boolean;
   showMobileFilters: boolean;
+  llmMode: LlmMode;
 };
+
+export type LlmMode = 'cloud' | 'local';
 
 export type AblationPreset = 'full' | 'ablated';
 
@@ -41,6 +44,7 @@ export type SentimentActions = {
   toggleSelection: (value: string, setState: (updater: (prev: string[]) => string[]) => void) => void;
   applyPreset: (presetId: string) => void;
   setAblationPreset: (preset: AblationPreset) => void;
+  setLlmMode: (value: LlmMode) => void;
 };
 
 // Faithfulness Verification Types (NEW - Best Practice)

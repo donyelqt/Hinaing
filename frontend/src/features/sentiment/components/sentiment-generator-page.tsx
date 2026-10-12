@@ -22,6 +22,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { Sidebar } from "../../shared/components";
 import type { ActivePage } from "../../shared/types/navigation";
 import { useAgenticOrchestrator } from "../hooks/useAgenticOrchestrator";
+import type { LlmMode } from "../types";
 import { HeroSection } from "./HeroSection";
 import { PlatformSelector } from "./PlatformSelector";
 import { TimeWindowSelector } from "./TimeWindowSelector";
@@ -310,6 +311,8 @@ function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; in
 
 export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }: SentimentGeneratorPageProps = {}) {
   const { state, actions, computed, validation } = useAgenticOrchestrator();
+  const llmMode = state.llmMode;
+  const setLlmMode = actions.setLlmMode;
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [snapshot, setSnapshot] = React.useState<SnapshotResponse | null>(null);
@@ -468,6 +471,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
       focus_areas: state.focusAreas,
       include_alerts: state.includeAlerts,
       mode: mode,
+      llm_mode: llmMode,
     };
 
     try {
@@ -574,6 +578,25 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
                     <div className="relative flex gap-4 sm:pl-10">
                       <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">LLM Mode</span><span className="text-[11px] text-slate-400">Engine</span></div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                        {[
+                            { value: 'cloud', label: 'Cloud (Groq)', desc: 'Hosted, fastest results' },
+                            { value: 'local', label: 'Local (Qwen)', desc: 'Offline, runs on-device' }
+                        ].map((option) => (
+                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${llmMode===option.value ? 'border-transparent bg-gradient-to-br from-[#3348b8] to-[#5b3cc8] text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
+                            <input type="radio" className="sr-only" checked={llmMode === option.value} onChange={() => setLlmMode(option.value as LlmMode)} value={option.value} name="llm-mode" />
+                            <span className={`text-sm font-semibold ${llmMode===option.value ? 'text-white' : 'text-slate-800'}`}>{option.label}</span>
+                            <span className={`text-xs ${llmMode===option.value ? 'text-white/80' : 'text-slate-500'}`}>{option.desc}</span>
+                          </label>
+                        ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative flex gap-4 sm:pl-10">
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">6</span></div>
                       <label className="flex flex-1 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 hover:bg-white">
                         <input
                           type="checkbox"
@@ -1041,6 +1064,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
         includeAlerts={state.includeAlerts}
         mode={mode}
         setMode={setMode}
+        llmMode={llmMode}
+        setLlmMode={setLlmMode}
         onToggleSelection={actions.toggleSelection}
         setPlatforms={actions.setPlatforms}
         setTimeWindow={actions.setTimeWindow}

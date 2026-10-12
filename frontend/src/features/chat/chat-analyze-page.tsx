@@ -758,6 +758,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<AnalysisMode>('auto');
+  const [llmMode, setLlmMode] = React.useState<'cloud' | 'local'>('cloud');
   
   // NEW: System mode toggle (AgenticHinaing vs Evaluation)
   const [systemMode, setSystemMode] = React.useState<SystemMode>('agentic_hinaing');
@@ -847,6 +848,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     platforms: ["web"],
                     time_window: "24h",
                     mode: mode,
+                    llm_mode: llmMode,
                     // NEW: System mode toggle
                     system_mode: systemMode,
                     eval_mode: systemMode === 'evaluation' ? evalMode : undefined,
@@ -1146,6 +1148,28 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                                     </button>
                                                 ))
                                             )}
+                                        </div>
+
+                                        {/* Right: LLM Mode Toggle (Cloud vs Local) */}
+                                        <div className="flex items-center gap-1">
+                                            {([
+                                                { value: 'cloud', label: 'Cloud (Groq)' },
+                                                { value: 'local', label: 'Local (Qwen)' }
+                                            ] as const).map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => setLlmMode(option.value)}
+                                                    className={clsx(
+                                                        "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
+                                                        llmMode === option.value
+                                                            ? "bg-violet-100 text-violet-700 border border-violet-200"
+                                                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
                                         </div>
 
                                         {/* Right: System Toggle (Minimalist Pill) */}
