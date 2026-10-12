@@ -353,19 +353,19 @@ class RetrievalAgent:
 
 @dataclass
 class SentimentAgent:
-    """AI-powered agent that labels sentiment using Gemini."""
+    """AI-powered agent that labels sentiment using an LLM (cloud Groq / local Qwen)."""
 
     use_ai: bool = True  # Set to False to use rule-based fallback
 
-    def run(self, documents: Sequence[WebDocument]) -> list[WebDocument]:
+    def run(self, documents: Sequence[WebDocument], llm_mode: str | None = None) -> list[WebDocument]:
         logger.info("[sentiment_agent] labeling %d documents (AI=%s)", len(documents), self.use_ai)
         
         if self.use_ai:
             try:
                 agent = get_sentiment_agent()
-                return agent.analyze_batch(list(documents))
+                return agent.analyze_batch(list(documents), llm_mode=llm_mode)
             except Exception as exc:
-                logger.warning("[sentiment_agent] Gemini failed, falling back to rules: %s", exc)
+                logger.warning("[sentiment_agent] LLM failed, falling back to rules: %s", exc)
                 return assign_sentiment(list(documents))
         
         return assign_sentiment(list(documents))
@@ -387,7 +387,7 @@ class CredibilityAgent:
     
     use_enhanced: bool = True
 
-    async def run(self, documents: Sequence[WebDocument], disable_vsee: bool = False) -> list[WebDocument]:
+    async def run(self, documents: Sequence[WebDocument], disable_vsee: bool = False, llm_mode: str | None = None) -> list[WebDocument]:
         """Score credibility and return enriched documents."""
         logger.info("[credibility_agent] scoring %d documents with 5 parallel sub-agents", len(documents))
 
@@ -395,7 +395,7 @@ class CredibilityAgent:
             try:
                 from ..agents.credibility_agent import get_credibility_agent
                 agent = get_credibility_agent()
-                return await agent.run(list(documents), disable_vsee=disable_vsee)
+                return await agent.run(list(documents), disable_vsee=disable_vsee, llm_mode=llm_mode)
             except Exception as exc:
                 logger.warning("[credibility_agent] Enhanced failed, using fallback: %s", exc)
                 import traceback

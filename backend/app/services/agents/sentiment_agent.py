@@ -177,24 +177,22 @@ class EnsembleSentimentAgent:
     """Full Ensemble: RoBERTa + Groq analyze ALL documents."""
     
     def __init__(self):
-        settings = get_settings()
-        if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY missing")
-        
-        # Use configured LLM provider (supports local/Ollama via env vars)
-        from ..llm.factory import get_node_llm
-        self.llm = get_node_llm("sentiment")
         self.roberta = get_sentiment_model()
-        self.batch_size = 40  # Full parallel, Groq SDK handles retries
+        self.batch_size = 40  # Full parallel, LLM SDK handles retries
         
         logger.info(
-            f"EnsembleSentimentAgent initialized with {type(self.llm).__name__} "
-            f"(model={self.llm.model_name}, RoBERTa weight={ROBERTA_WEIGHT}, "
+            f"EnsembleSentimentAgent initialized "
+            f"(RoBERTa weight={ROBERTA_WEIGHT}, "
             f"LLM weight={LLM_WEIGHT}, Batch size={self.batch_size})"
         )
     
-    def analyze_batch(self, documents: list[WebDocument]) -> list[WebDocument]:
-        """Analyze sentiment using full ensemble of both models.
+    def _resolve_llm(self, llm_mode: str | None = None):
+        """Resolve the LLM provider per request based on llm_mode (cloud/local)."""
+        from ..llm.factory import get_llm_for_mode
+        return get_llm_for_mode(llm_mode)
+    
+    def analyze_batch(self, documents: list[WebDocument], llm_mode: str | None = None) -> list[WebDocument]:
+        """Analyze sentiment using full ensemble of both models (LLM resolved per llm_mode).
         
         MEMORY OPTIMIZATION: Sequential processing to prevent OOM on Railway.
         TIMEOUT PROTECTION: Total 120s timeout for entire sentiment analysis.
@@ -229,8 +227,8 @@ class EnsembleSentimentAgent:
         
         # Task 1: RoBERTa (Local Transformer)
         ro_future = GLOBAL_EXECUTOR.submit(self.roberta.predict_batch_with_probs, texts)
-        # Task 2: LLM (Groq Cloud)
-        llm_future = GLOBAL_EXECUTOR.submit(self._llm_analyze_all, documents)
+        # Task 2: LLM (Cloud/Local via llm_mode)
+        llm_future = GLOBAL_EXECUTOR.submit(self._llm_analyze_all, documents, llm_mode)
         
         # Wait for both (with global timeout)
         try:
@@ -367,8 +365,8 @@ class EnsembleSentimentAgent:
         self._log_distribution(enriched)
         return enriched
     
-    def _llm_analyze_all(self, documents: list[WebDocument]) -> list[dict[str, float]]:
-        """Get Groq probability distributions for all documents.
+    def _llm_analyze_all(self, documents: list[WebDocument], llm_mode: str | None = None) -> list[dict[str, float]]:
+        """Get LLM probability distributions for all documents (provider resolved per llm_mode).
         
         FULL PARALLEL PROCESSING: All batches fire at once for maximum speed.
         Groq SDK handles rate limits with exponential backoff automatically.
@@ -389,7 +387,7 @@ class EnsembleSentimentAgent:
         
         # Create a future for each batch using the global hot pool
         future_to_batch = {
-            GLOBAL_EXECUTOR.submit(self._llm_batch_with_probs_sync, batch): i 
+            GLOBAL_EXECUTOR.submit(self._llm_batch_with_probs_sync, batch, llm_mode): i 
             for i, batch in enumerate(batches)
         }
         
@@ -417,18 +415,18 @@ class EnsembleSentimentAgent:
         
         return all_probs
     
-    def _llm_batch_with_probs_sync(self, batch: list[WebDocument]) -> list[dict]:
-        """Synchronous wrapper for async Groq call (for ThreadPoolExecutor)."""
+    def _llm_batch_with_probs_sync(self, batch: list[WebDocument], llm_mode: str | None = None) -> list[dict]:
+        """Synchronous wrapper for async LLM call (for ThreadPoolExecutor)."""
         import asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            return loop.run_until_complete(self._llm_batch_with_probs(batch))
+            return loop.run_until_complete(self._llm_batch_with_probs(batch, llm_mode))
         finally:
             loop.close()
     
-    async def _llm_batch_with_probs(self, batch: list[WebDocument]) -> list[dict[str, float]]:
-        """Get Groq (llama-3.3-70b-versatile) predictions with confidence scores.
+    async def _llm_batch_with_probs(self, batch: list[WebDocument], llm_mode: str | None = None) -> list[dict[str, float]]:
+        """Get LLM predictions with confidence scores (provider resolved per llm_mode).
         
         Implements exponential backoff for rate limit handling.
         """
@@ -463,7 +461,8 @@ Return JSON array of results:
         
         for attempt in range(max_retries):
             try:
-                response = await self.llm.generate(
+                llm = self._resolve_llm(llm_mode)
+                response = await llm.generate(
                     prompt=prompt,
                     system_prompt="You are a sentiment analysis expert. Return accurate, concise JSON.",
                     temperature=0.0,
@@ -479,13 +478,13 @@ Return JSON array of results:
                 if "429" in error_msg or "rate limit" in error_msg:
                     if attempt < max_retries - 1:
                         delay = base_delay * (2 ** attempt)  # Exponential backoff: 2s, 4s, 8s
-                        logger.warning(f"Groq rate limit hit, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
+                        logger.warning(f"[LLM] rate limit hit, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
                         await asyncio.sleep(delay)
                         continue
                     else:
-                        logger.error(f"Groq rate limit exceeded after {max_retries} retries")
+                        logger.error(f"[LLM] rate limit exceeded after {max_retries} retries")
                 else:
-                    logger.warning(f"Groq (llama-3.3-70b-versatile) batch failed: {e}")
+                    logger.warning(f"[LLM] ({llm.model_name}) batch failed: {e}")
                 
                 # Return neutral defaults on final failure
                 return [{"negative": 0.33, "neutral": 0.34, "positive": 0.33}] * len(batch)
