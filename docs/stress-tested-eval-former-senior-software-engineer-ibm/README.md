@@ -164,17 +164,6 @@ The evaluation framework is based on recent agentic evaluation research:
 
 ---
 
-## Comparison to Benchmarks
-
-| Metric | Hinaing | Benchmark | Delta |
-|--------|---------|-----------|-------|
-| Tool-Use Trajectory | 18.00/18 (100%) | - | Perfect ✅ |
-| Faithfulness | 100% | 85% | +15% ✅ |
-| Overall | 80.51 | 85.0 | -4.49 ⚠️ |
-| Adversarial | 55.2 | 75.0 | -19.8 ❌ |
-
-**Assessment**: Competitive with top systems, 2 metrics exceeding benchmarks, 1 within 5%, 1 requiring improvement.
-
 ---
 
 ## For Thesis Defense
