@@ -20,7 +20,7 @@ The prototype delivers a **7-Node Self-Learning Multi-Agent System** with **18 s
 **Graph Topology:** Directed Acyclic Graph (DAG) with Linear Topology.
 **State Management:** Self-Learning Cyclic RAG (Read-Write Memory Loop).
 
-> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Emerging Concerns and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes = 80x speedup over human analysis) while enabling continuous learning.
+> **Why DAG over Cyclic Graph?** A Cyclic Graph (autonomous looping) would introduce unbound latency (20+ minutes). The **Query Orchestrator Agent** mitigates the "brittleness" of a linear path by using **Context Engineering (Emerging Concerns and Contextual Expansion)** to maximize success probability in a single pass, eliminating retry loops. This ensures predictable latency (3-5 minutes for 6 themes, a ~10x speedup over manual analysis of the same 50-100+ document corpus, band 6-15x — derived from reading-rate modeling, see `thesis-docs/speedup-basis.md`) while enabling continuous learning.
 
 ## Agent Summary (19 Total)
 

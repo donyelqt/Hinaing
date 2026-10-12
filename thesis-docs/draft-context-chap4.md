@@ -71,7 +71,7 @@ The external stress-testing identified three categories of observed behavior tha
 | LLM-judge groundedness | 3.19 / 5.0 (63.8%) | Claude Sonnet 4, independent judge |
 | Thematic actionability | 16.62 / 18.00 | Expert validator, Objective Quality dimension |
 | API cost reduction | 81% best case, 54.5% average | Smart Reuse + Cyclic RAG telemetry |
-| Speedup over manual | 80x | 3–5 min vs. >20 min human analysis |
+| Speedup over manual | ~10x (6–15x band, derived) | 3–5 min measured vs. 30–60 min modeled human analysis |
 | Scenarios evaluated | 46 | Ablation (12), adversarial (10), cache (8), hyperlocal (10), missing_data (6) |
 | Expert attestation | Signed April 16, 2026 | Richard P Jakelski, Former IBM Senior Software Engineer |
 | Ablation delta (avg) | +13.69 | Full vs. ablated across 6 pairs |
