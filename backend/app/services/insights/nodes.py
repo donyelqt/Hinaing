@@ -136,8 +136,8 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
     """Recall internal knowledge (RAG) based on focus areas.
 
     ABLATION STUDY: If cyclic_rag_enabled is False, skip recall to measure impact.
-    OPTIMIZATION: Increased limit from 20 to 50 docs for higher cache hit rate.
-    This improves API cost reduction by recalling more cached documents.
+    OPTIMIZATION: Reduced limit from 50 to 10 docs so only the highest-scoring
+    recalled documents reach analysis.
     """
     request = state["request"]
     focus = request.focus_areas
@@ -156,8 +156,8 @@ async def retrieve_internal_knowledge(state: SnapshotState) -> SnapshotState:
     internal_docs = []
     if focus:
         try:
-            # Increased from 20 to 50 for higher Smart Reuse rate
-            internal_docs = await context_agent.retrieve_knowledge(focus_areas=focus, limit=50)
+            # Reduced from 50 to 10 for tighter context
+            internal_docs = await context_agent.retrieve_knowledge(focus_areas=focus, limit=10)
         except Exception as exc:
             logger.warning("[snapshot] Internal retrieval failed: %s", exc)
 
@@ -803,7 +803,23 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             logger.exception("[snapshot] CoordinatorAgent failed: %s", exc)
             summary_text = None
             insights_payload = []
-
+    # Check if we have relevant documents to work with
+    docs = state.get("documents", [])
+    if not docs:
+        # GRACEFUL DEGRADATION: No relevant documents found
+        # Return explicit "no data" instead of fabricating insights
+        logger.info("[snapshot] No relevant documents - graceful degradation")
+        state["snapshot"] = SnapshotResponse(
+            overall_sentiment=SentimentBreakdown(
+                label="No Data",
+                summary="No data available for the requested time window.",
+                scores={"negative": 0.0, "neutral": 1.0, "positive": 0.0},
+            ),
+            actionable_insights=[],
+            alerts=None,
+            sources=[],
+        )
+        return state
     if not summary_text:
         summary_text = summary_chain.invoke(
             {
@@ -833,11 +849,14 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 summary=summary_text,
                 documents=[doc.model_dump() for doc in docs],
             )
+            hallucination_count = (
+                verification_report.get("hallucination_analysis") or {}
+            ).get("hallucination_count", 0)
             logger.info(
                 f"[Node 7] Verification complete: "
-                f"{verification_report['verified_claims']}/{verification_report['total_claims']} "
-                f"verified ({verification_report['faithfulness_score']:.2f}), "
-                f"{verification_report['hallucination_analysis']['hallucination_count']} hallucinations detected",
+                f"{verification_report.get('verified_claims', 0)}/{verification_report.get('total_claims', 0)} "
+                f"verified ({verification_report.get('faithfulness_score', 0.0):.2f}), "
+                f"{hallucination_count} hallucinations detected",
             )
             # Record faithfulness metrics with citation accuracy and hallucination detection
             metrics.record_faithfulness_metrics(
@@ -1159,7 +1178,8 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         prompt = _build_theme_prompt(label, agent.theme_focus if hasattr(agent, 'theme_focus') else f"Focus on {label}", context, len(enriched_docs))
         
         # Use Groq synchronously to avoid event loop issues
-        llm = get_groq_provider("meta-llama/llama-4-scout-17b-16e-instruct")
+        # NOTE: groq/compound is the only model served on this account.
+        llm = get_groq_provider()
         logger.info(f"[ThemeAgent] Running synchronous Groq for '{label}' with {len(enriched_docs)} docs")
         
         try:

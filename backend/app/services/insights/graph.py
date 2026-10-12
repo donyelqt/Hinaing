@@ -349,4 +349,8 @@ async def generate_snapshot(
             alerts=None,
             sources=[],
         )
+    # Attach enriched documents to snapshot.sources so the judge can use them
+    enriched = state.get("enriched", [])
+    if enriched:
+        snapshot.sources = enriched
     return snapshot
