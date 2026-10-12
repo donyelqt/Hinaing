@@ -185,6 +185,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
     const [backendError, setBackendError] = React.useState<string | null>(null);
+    const [llmMode, setLlmMode] = React.useState<'cloud' | 'local'>('cloud');
 
     // We rely on Main Layout's mobile toggle logic, but keep local state for Sidebar prop compatibility
 
@@ -249,6 +250,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                 message: string;
                 history: Array<{ role: string; content: string }>;
                 jurisdiction: string;
+                llm_mode: "cloud" | "local";
             }
 
             interface ChatResponse {
@@ -260,6 +262,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                 message: userMsg.content,
                 history,
                 jurisdiction: "Baguio City",
+                llm_mode: llmMode,
             });
 
             const aiMsg: Message = {
@@ -350,6 +353,28 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                             {/* Input Area - Safe area padding for mobile */}
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto relative group">
+                                    {/* LLM Mode Toggle (Cloud vs Local) */}
+                                    <div className="flex items-center justify-end gap-1 mb-2">
+                                        {([
+                                            { value: 'cloud', label: 'Cloud (Groq)' },
+                                            { value: 'local', label: 'Local (Qwen)' }
+                                        ] as const).map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                onClick={() => setLlmMode(option.value)}
+                                                disabled={isLoading}
+                                                className={clsx(
+                                                    "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
+                                                    llmMode === option.value
+                                                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-300 via-violet-300 to-blue-300 rounded-xl sm:rounded-2xl opacity-20 group-hover:opacity-40 transition blur duration-500"></div>
                                     <form
                                         onSubmit={handleSubmit}

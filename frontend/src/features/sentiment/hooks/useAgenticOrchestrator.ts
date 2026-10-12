@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { PLATFORM_OPTIONS, TIME_WINDOW_OPTIONS, FOCUS_OPTIONS, PRESET_OPTIONS } from '../constants';
-import type { SentimentState, SentimentActions, AblationPreset } from '../types';
+import type { SentimentState, SentimentActions, AblationPreset, LlmMode } from '../types';
 
 export type ValidationErrors = {
   platforms?: string;
@@ -36,6 +36,8 @@ export function useAgenticOrchestrator() {
   
   // ABLATION STUDY: Binary toggle for quick comparison
   const [ablationPreset, setAblationPreset] = useState<AblationPreset>('full');
+
+  const [llmMode, setLlmMode] = useState<LlmMode>('cloud');
 
   // Computed values
   const platformSummary = useMemo(
@@ -135,6 +137,7 @@ export function useAgenticOrchestrator() {
     isGenerating,
     isRefreshing,
     showMobileFilters,
+    llmMode,
   };
 
   const actions: SentimentActions = {
@@ -148,6 +151,7 @@ export function useAgenticOrchestrator() {
     toggleSelection,
     applyPreset,
     setAblationPreset,
+    setLlmMode,
   };
 
   const computed = {
