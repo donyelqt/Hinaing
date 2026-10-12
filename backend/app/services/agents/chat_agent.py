@@ -172,17 +172,19 @@ async def run_chat_agent(
     message: str,
     history: Optional[List[Any]] = None,  # Accepts both ChatMessage objects and dicts
     jurisdiction: str = "Baguio City",
-    system_instruction: str | None = None
+    system_instruction: str | None = None,
+    llm_mode: str | None = None,
 ) -> Tuple[str, List[dict]]:
-    """Run the conversational loop with Hybrid Retrieval (Web + Memory) using Groq.
+    """Run the conversational loop with Hybrid Retrieval (Web + Memory).
     
     Production safety checks:
     - Input length validation (max 2000 chars)
     - History limit (max 10 messages)
     """
-    settings = get_settings()
-    if not settings.groq_api_key:
-        return "Error: Groq API key missing.", []
+    from ..llm.factory import get_llm_for_mode
+    llm = get_llm_for_mode(llm_mode)
+    if llm is None or not hasattr(llm, "generate") or not llm.is_available:
+        return "LLM backend unavailable. Check GROQ_API_KEY (cloud) or the Ollama server (local).", []
     
     # INPUT VALIDATION: Check message length (P0 security fix)
     if not message or not message.strip():
@@ -223,9 +225,7 @@ async def run_chat_agent(
             "7. **Be Helpful:** If the exact answer isn't found, share RELATED information that might be useful. Don't just say 'no results' - explain what WAS found and how it relates to the question."
         )
     
-    # Use configured LLM provider (supports local/Ollama via env vars)
-    from ..llm.factory import get_node_llm
-    llm = get_node_llm("query_orchestrator")
+    # LLM provider already resolved at the top of the function (request-scoped mode)
     
     # Safety check: Ensure LLM was properly initialized
     if llm is None or not hasattr(llm, 'generate'):

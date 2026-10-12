@@ -8,6 +8,10 @@ from .snapshot import WebDocument
 
 class GeminiAgentRequest(BaseModel):
     message: str = Field(..., description="Prompt or instruction for the Gemini agent")
+    llm_mode: str = Field(
+        default="cloud",
+        description="LLM execution mode: cloud (Groq, or Gemini for query planning) or local (Ollama/Qwen)",
+    )
     documents: list[WebDocument] | None = Field(
         default=None,
         description="Optional context documents to ground the response.",
