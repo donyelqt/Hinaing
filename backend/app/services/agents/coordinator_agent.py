@@ -19,7 +19,7 @@ class CoordinatorAgent:
     """Agent that coordinates final response generation.
     
     Wraps LLMNarrativeClient to provide a consistent agent interface for Node 7.
-    Uses Groq's llama-4-scout-17b for comprehensive narrative generation.
+    Uses Groq compound for comprehensive narrative generation.
     """
     
     def __init__(self, client: LLMNarrativeClient | None = None):

@@ -45,7 +45,7 @@ LLM_WEIGHT = 0.6       # LLM weight (higher because context-aware)
 def sanitize_text(text: str | None) -> str:
     """Remove invalid Unicode characters (surrogates) that break APIs.
     
-    The character \ud835 and similar surrogates cause:
+    The character \\ud835 and similar surrogates cause:
     - UnicodeEncodeError in LLM APIs
     - Tokenizer errors in transformers
     - JSON serialization failures
@@ -181,19 +181,16 @@ class EnsembleSentimentAgent:
         if not settings.groq_api_key:
             raise RuntimeError("GROQ_API_KEY missing")
         
-        # Use llama-3.3-70b-versatile for sentiment: 96% accuracy (24% better than Scout's 72%)
-        # Evaluation results: 96% accuracy, 3.7s speed, 25% faster than Scout
-        # TPM: 12K, TPD: 14K
-        # Batch size: 10 docs (Groq SDK handles rate limits with exponential backoff)
-        from ..llm.groq_provider import get_groq_provider
-        self.llm = get_groq_provider("llama-3.3-70b-versatile")
+        # Use configured LLM provider (supports local/Ollama via env vars)
+        from ..llm.factory import get_node_llm
+        self.llm = get_node_llm("sentiment")
         self.roberta = get_sentiment_model()
         self.batch_size = 40  # Full parallel, Groq SDK handles retries
         
         logger.info(
-            f"EnsembleSentimentAgent initialized with Groq llama-3.3-70b-versatile "
-            f"(RoBERTa weight={ROBERTA_WEIGHT}, LLM weight={LLM_WEIGHT}, "
-            f"Batch size={self.batch_size}, TPM: 12K, TPD: 14K, Accuracy: 96%, Full parallel)"
+            f"EnsembleSentimentAgent initialized with {type(self.llm).__name__} "
+            f"(model={self.llm.model_name}, RoBERTa weight={ROBERTA_WEIGHT}, "
+            f"LLM weight={LLM_WEIGHT}, Batch size={self.batch_size})"
         )
     
     def analyze_batch(self, documents: list[WebDocument]) -> list[WebDocument]:

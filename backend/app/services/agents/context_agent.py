@@ -99,7 +99,7 @@ class ContextAugmentationAgent:
     async def retrieve_knowledge(
         self,
         focus_areas: list[str] | None,
-        limit: int = 50  # Increased from 10 to 50 for higher cache hit rate
+        limit: int = 10  # Reduced from 50 to 10 to keep the recalled context focused
     ) -> list[WebDocument]:
         """Recall internal knowledge from memory (Vector DB).
 
@@ -112,7 +112,7 @@ class ContextAugmentationAgent:
 
         Args:
             focus_areas: List of keywords/themes to search for
-            limit: Max total number of documents to retrieve (default: 50)
+            limit: Max total number of documents to retrieve (default: 10)
 
         Returns:
             List of WebDocuments from memory (cached, no API needed)
