@@ -43,7 +43,6 @@ def _round(val: Any, ndigits: int = 0) -> float:
         return 0.0
 
 import httpx  # type: ignore
-import google.generativeai as genai  # type: ignore
 from google.generativeai.types import HarmCategory, HarmBlockThreshold  # type: ignore
 
 from app.core.config import get_settings  # type: ignore
@@ -340,20 +339,18 @@ def parse_fact_check(claims: list[dict]) -> tuple[float, str | None]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class LLMCredibilityAnalyzer:
-    """Groq-based content credibility analysis."""
+    """LLM-based content credibility analysis (mode-resolved: cloud/local)."""
     
     def __init__(self):
-        settings = get_settings()
-        if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY missing")
-        
-        # Use configured LLM provider (supports local/Ollama via env vars)
-        from app.services.llm.factory import get_node_llm
-        self.llm = get_node_llm("credibility")
         self.batch_size = 40  # Increased from 20 due to higher TPM limit
-        logger.info(f"[LLMCredibilityAnalyzer] Using {type(self.llm).__name__} (model={self.llm.model_name})")
+        logger.info("[LLMCredibilityAnalyzer] initialized (LLM resolved per request via llm_mode)")
     
-    def analyze_batch(self, docs: list[WebDocument]) -> list[dict]:
+    def _resolve_llm(self, llm_mode: str | None = None):
+        """Resolve the LLM provider per request based on llm_mode (cloud/local)."""
+        from app.services.llm.factory import get_llm_for_mode
+        return get_llm_for_mode(llm_mode)
+    
+    def analyze_batch(self, docs: list[WebDocument], llm_mode: str | None = None) -> list[dict]:
         """Analyze all documents in batches with high parallelism.
         
         CTO-OPTIMIZATION: Using GLOBAL_EXECUTOR to avoid thread spawning overhead.
@@ -368,7 +365,7 @@ class LLMCredibilityAnalyzer:
         batches: list[list[WebDocument]] = cast(list[list[WebDocument]], _batches_raw)
         
         # Parallel execution using global pool
-        futures = [GLOBAL_EXECUTOR.submit(self._analyze_batch_sync, batch) for batch in batches]
+        futures = [GLOBAL_EXECUTOR.submit(self._analyze_batch_sync, batch, llm_mode) for batch in batches]
         
         results = []
         for future in futures:
@@ -392,13 +389,13 @@ class LLMCredibilityAnalyzer:
             
         return [dict(x) for x in list(cast(list, results))]
     
-    def _analyze_batch_sync(self, batch: list[WebDocument]) -> list[dict]:
-        """Synchronous wrapper for async Groq call."""
+    def _analyze_batch_sync(self, batch: list[WebDocument], llm_mode: str | None = None) -> list[dict]:
+        """Synchronous wrapper for async LLM call."""
         import asyncio
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            res_batch = loop.run_until_complete(self._analyze_batch(batch))
+            res_batch = loop.run_until_complete(self._analyze_batch(batch, llm_mode))
             return [dict(x) for x in list(cast(list, res_batch or []))]
         except Exception:
             return []
@@ -407,8 +404,8 @@ class LLMCredibilityAnalyzer:
             
         return []
     
-    async def _analyze_batch(self, batch: list[WebDocument]) -> list[dict]:
-        """Analyze a single batch using Groq."""
+    async def _analyze_batch(self, batch: list[WebDocument], llm_mode: str | None = None) -> list[dict]:
+        """Analyze a single batch using the mode-resolved LLM provider."""
         entries = []
         for i, doc in enumerate(batch):
             domain = _extract_domain(str(doc.url) if doc.url else None)
@@ -452,7 +449,8 @@ Score guide:
 - 0.0-0.4: Potential misinformation, poor sourcing"""
 
         try:
-            response = await self.llm.generate(
+            llm = self._resolve_llm(llm_mode)
+            response = await llm.generate(
                 prompt=prompt,
                 system_prompt="You are a credibility analysis expert. Return accurate, concise JSON.",
                 temperature=0.1,
@@ -1169,14 +1167,14 @@ class LLMAnalysisAgent:
         if self.analyzer is None:
             self.analyzer = LLMCredibilityAnalyzer()
     
-    def score(self, doc: WebDocument, context: dict[str, Any]) -> float:
+    def score(self, doc: WebDocument, context: dict[str, Any], llm_mode: str | None = None) -> float:
         """Calculate LLM-based credibility score."""
         # Process through batch analyzer (sync, uses ThreadPool internally)
         # Defensive check for analyzer existence
         analyzer = self.analyzer
         if analyzer is None:
             return 0.50
-        results = analyzer.analyze_batch([doc])
+        results = analyzer.analyze_batch([doc], llm_mode=llm_mode)
         if results:
             return float(results[0].get("score", 0.50))
         return 0.50
@@ -1275,6 +1273,7 @@ class CredibilityAgent:
         disable_signals: list[str] | None = None,
         simulate_api_failure: bool = False,
         disable_vsee: bool = False,
+        llm_mode: str | None = None,
     ) -> list[dict[str, Any]]:
         """Synchronous score wrapper for benchmark evaluation."""
         import asyncio
@@ -1288,6 +1287,7 @@ class CredibilityAgent:
                     disable_signals=disable_signals,
                     simulate_api_failure=simulate_api_failure,
                     disable_vsee=disable_vsee,
+                    llm_mode=llm_mode,
                 )
             )
             res_final = list(cast(list, res_val or []))
@@ -1305,6 +1305,7 @@ class CredibilityAgent:
         disable_signals: list[str] | None = None,
         simulate_api_failure: bool = False,
         disable_vsee: bool = False,
+        llm_mode: str | None = None,
     ) -> list[dict[str, Any]]:
         """Internal async scoring with Hard Boundary isolation."""
         # Absolute check for non-None list to prevent Buffer iteration artifacts
@@ -1322,7 +1323,7 @@ class CredibilityAgent:
             self.factcheck_agent.api_key = None
             self.tavily_agent.api_key = None
 
-        enriched_docs = await self.run(documents, disable_vsee=disable_vsee)
+        enriched_docs = await self.run(documents, disable_vsee=disable_vsee, llm_mode=llm_mode)
 
         if simulate_api_failure:
             self.factcheck_agent.api_key = original_fact_check_key
@@ -1398,7 +1399,7 @@ class CredibilityAgent:
             f"Cond2(domain>={domain_authority_threshold:.2f}, crossref>={crossref_authority_threshold:.2f})"
         )
 
-    async def run(self, documents: list[WebDocument], disable_vsee: bool = False) -> list[WebDocument]:
+    async def run(self, documents: list[WebDocument], disable_vsee: bool = False, llm_mode: str | None = None) -> list[WebDocument]:
         """Assess credibility using 5 parallel sub-agents.
 
         Expected speedup: 3-5x (78s → ~20s)
@@ -1452,7 +1453,7 @@ class CredibilityAgent:
              from app.services.agents.credibility_agent import LLMCredibilityAnalyzer  # Re-import to avoid local scope issues
              llm_analyzer = LLMCredibilityAnalyzer()
         
-        llm_results = cast(Any, llm_analyzer).analyze_batch(documents)
+        llm_results = cast(Any, llm_analyzer).analyze_batch(documents, llm_mode=llm_mode)
         
         # Determine VSEE eligibility BEFORE making Tavily/Fact Check API calls.
         # Condition 1: High Corroboration (crossref_score >= 0.70 and domain_score >= 0.45)

@@ -11,9 +11,6 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-import google.generativeai as genai
-
-from ...core.config import get_settings
 from ...schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
@@ -199,11 +196,12 @@ IMPORTANT:
             logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
             return []
     
-    async def run(self, documents: list[dict[str, Any]]) -> list[dict]:
-        """Execute the sub-agent's autonomous reasoning using Groq.
+    async def run(self, documents: list[dict[str, Any]], llm_mode: str | None = None) -> list[dict]:
+        """Execute the sub-agent's autonomous reasoning (cloud: Groq, local: Qwen).
         
         Args:
             documents: List of documents to analyze for this theme
+            llm_mode: Request-scoped LLM mode (cloud/local); None uses the active/default mode
             
         Returns:
             List of insight dictionaries with title, detail, and evidence
@@ -212,13 +210,8 @@ IMPORTANT:
             logger.info(f"[{self.theme_label}] No documents, skipping")
             return []
         
-        settings = get_settings()
-        if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY missing")
-        
-        # Use configured LLM provider (supports local/Ollama via env vars)
-        from ..llm.factory import get_node_llm
-        llm = get_node_llm("theme_agents")
+        from ..llm.factory import get_llm_for_mode
+        llm = get_llm_for_mode(llm_mode)
         
         context = self._build_context(documents)
         prompt = self._build_prompt(self.theme_label, self.theme_focus, context, len(documents))
@@ -358,11 +351,12 @@ async def run_theme_agent(
     theme_label: str,
     prompt: str,
     documents: list[dict[str, Any]],
+    llm_mode: str | None = None,
 ) -> str:
     """Legacy function interface - kept for backward compatibility.
     
     Note: For new code, use the sub-agent classes directly.
     """
     agent = get_theme_agent(theme_label)
-    insights = await agent.run(documents)
+    insights = await agent.run(documents, llm_mode=llm_mode)
     return json.dumps({"insights": insights})
