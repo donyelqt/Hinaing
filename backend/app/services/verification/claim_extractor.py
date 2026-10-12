@@ -7,37 +7,38 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..llm.groq_provider import get_groq_provider
+from ..llm.factory import get_llm_for_mode
 
 logger = logging.getLogger(__name__)
 
 
 class ClaimExtractor:
     """Extracts factual claims from text using LLM.
-    
-    Uses Groq llama-4-scout for fast, accurate claim extraction.
+
+    The provider is resolved per request from the requested mode:
+    ``cloud`` uses Groq ``groq/compound``, ``local`` uses Ollama Qwen.
+    Extraction is retried up to five times on transient LLM failures.
     """
 
-    def __init__(self, model_name: str = "meta-llama/llama-4-scout-17b-16e-instruct"):
+    def __init__(self, model_name: str | None = None):
         """Initialize claim extractor.
-        
-        Args:
-            model_name: Groq model to use for extraction
-        """
-        from ...core.config import get_settings
-        settings = get_settings()
-        
-        if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY not configured")
-        
-        self._model = get_groq_provider(model_name)
-        logger.info(f"[ClaimExtractor] Initialized with Groq: {model_name}")
 
-    async def extract_claims(self, summary: str) -> list[dict[str, Any]]:
+        Args:
+            model_name: Optional model override passed to the provider factory.
+        """
+        self._model_name = model_name
+        logger.info("[ClaimExtractor] provider resolved per request")
+
+    def _resolve_model(self, llm_mode: str | None = None):
+        """Resolve the LLM provider for this request's mode."""
+        return get_llm_for_mode(llm_mode, model=self._model_name)
+
+    async def extract_claims(self, summary: str, llm_mode: str | None = None) -> list[dict[str, Any]]:
         """Extract individual factual claims from summary.
         
         Args:
             summary: Generated narrative summary text
+            llm_mode: Requested LLM mode ("cloud" or "local"); None uses the active mode
             
         Returns:
             List of claim dictionaries with:
@@ -49,28 +50,36 @@ class ClaimExtractor:
             return []
 
         prompt = self._build_extraction_prompt(summary)
-        
-        try:
-            import time
-            start = time.perf_counter()
-            
-            raw_text = await self._model.generate(
-                prompt=prompt,
-                system_prompt="You are a claim extraction specialist. Return ONLY valid JSON array of claims (no markdown, no code blocks).",
-                temperature=0.1,
-                max_tokens=4000,
-            )
-            
-            elapsed = time.perf_counter() - start
-            logger.info(f"[ClaimExtractor] Extracted claims in {elapsed:.2f}s")
-            
-            # Parse JSON response
-            claims = self._parse_claims(raw_text)
-            return claims
-            
-        except Exception as exc:
-            logger.exception(f"[ClaimExtractor] Claim extraction failed: {exc}")
-            return []
+
+        import time
+        import asyncio
+
+        for attempt in range(1, 6):
+            try:
+                start = time.perf_counter()
+
+                raw_text = await self._resolve_model(llm_mode).generate(
+                    prompt=prompt,
+                    system_prompt="You are a claim extraction specialist. Return ONLY valid JSON array of claims (no markdown, no code blocks).",
+                    temperature=0.1,
+                    max_tokens=4000,
+                )
+
+                elapsed = time.perf_counter() - start
+                logger.info(f"[ClaimExtractor] Extracted claims in {elapsed:.2f}s")
+
+                claims = self._parse_claims(raw_text)
+                return claims
+
+            except Exception as exc:
+                if attempt == 5:
+                    logger.exception(f"[ClaimExtractor] Claim extraction failed after {attempt} attempts: {exc}")
+                    return []
+                delay = 2.0 * (2 ** (attempt - 1))
+                logger.warning(f"[ClaimExtractor] Attempt {attempt} failed ({exc}), retrying in {delay:.1f}s")
+                await asyncio.sleep(delay)
+
+        return []  # Unreachable: loop returns on success or final attempt.
 
     def _build_extraction_prompt(self, summary: str) -> str:
         """Build prompt for claim extraction."""

@@ -1,7 +1,7 @@
 """LLM-based narrative generation for civic sentiment analysis.
 
 This module provides the LLMNarrativeClient class which synthesizes comprehensive 
-narratives from theme insights and documents using Groq LLMs.
+narratives from theme insights and documents.
 """
 from __future__ import annotations
 
@@ -34,35 +34,31 @@ def sanitize_text(text: str | None) -> str:
 
 class LLMNarrativeClient:
     """Generates comprehensive narratives from theme insights and documents.
-    
-    Uses Groq llama-4-scout for fast narrative synthesis:
-    - 30K TPM (5x more than 8b-instant)
-    - 500K TPD
-    - Clean JSON output
-    - Handles large narratives without rate limits
+
+    The LLM provider is resolved per request from the requested mode
+    (``cloud`` -> Groq, ``local`` -> Ollama), so the client never binds a
+    provider at import time.
     """
 
-    def __init__(self, *, model_name: str = "meta-llama/llama-4-scout-17b-16e-instruct") -> None:
-        """Initialize narrative generator with Groq.
-        
-        Args:
-            model_name: Groq model to use for narrative generation
-        """
-        settings = get_settings()
-        self._api_key = settings.groq_api_key
-        self._model_name = model_name
+    def __init__(self, *, model_name: str | None = None) -> None:
+        """Initialize the narrative generator (provider resolved per request)."""
+        self._model_name = model_name  # optional override for the cloud provider
         self._model = None
+        self._provider = "unresolved"
 
-        if self._api_key:
-            from ..llm.groq_provider import get_groq_provider
-            self._model = get_groq_provider(model_name)
-            logger.info(f"[LLMNarrativeClient] Initialized with Groq: {model_name} (30K TPM)")
-        else:
-            logger.warning("[LLMNarrativeClient] Groq API key not configured")
+    def _resolve_model(self, llm_mode: str | None = None):
+        from ..llm.factory import get_llm_for_mode
+        self._model = get_llm_for_mode(llm_mode, model=self._model_name)
+        self._provider = type(self._model).__name__
+        return self._model
 
     @property
     def is_available(self) -> bool:
-        return self._model is not None
+        if self._model is not None:
+            return self._model.is_available
+        from ...core.config import get_settings
+        s = get_settings()
+        return bool(s.groq_api_key or s.ollama_base_url)
 
     async def analyze_snapshot(
         self,
@@ -72,6 +68,7 @@ class LLMNarrativeClient:
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
         sentiment_distribution: dict[str, float] | None = None,
+        llm_mode: str | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         # OPTIMIZATION: If theme_insights exist, skip the slow agent path
         # Theme insights are already summarized by Theme Agents (Node 6)
@@ -87,6 +84,7 @@ class LLMNarrativeClient:
                 documents=documents,  # Still passed for fallback context
                 theme_insights=theme_insights,
                 sentiment_distribution=sentiment_distribution,
+                llm_mode=llm_mode,
             )
             
             # POST-PROCESSING: Filter invalid citations (safety net for LLM errors)
@@ -104,10 +102,10 @@ class LLMNarrativeClient:
         agent_instruction = self._build_agent_instruction(window=window, focus_areas=focus_areas)
 
         try:
-            # Legacy agent path - requires run_gemini_agent import
-            from ..agents.gemini import run_gemini_agent
+            # Legacy agent path - requires run_analysis_agent import
+            from ..agents.react_analysis_agent import run_analysis_agent
             agent_output = await asyncio.to_thread(
-                lambda: run_gemini_agent(agent_instruction, documents=documents)
+                lambda: run_analysis_agent(agent_instruction, documents=documents, llm_mode=llm_mode)
             )
             parsed = self._try_parse_json(agent_output)
             if parsed is not None:
@@ -118,14 +116,14 @@ class LLMNarrativeClient:
             logger.exception("Narrative generation agent execution failed")
 
         # Fallback to direct model invocation if the agent path fails or returns invalid JSON.
-        if not self._model:
-            return None, []
+        llm = self._resolve_model(llm_mode)
 
         return await self._run_direct_generation(
             window=window,
             focus_areas=focus_areas,
             documents=documents,
             theme_insights=theme_insights,
+            llm_mode=llm_mode,
         )
 
     def _sanitize_insights(self, insights: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -327,6 +325,7 @@ class LLMNarrativeClient:
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
         sentiment_distribution: dict[str, float] | None = None,
+        llm_mode: str | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         # Single-shot analysis without separate planning step for speed
         analysis_prompt = self._build_prompt(
@@ -340,7 +339,8 @@ class LLMNarrativeClient:
         try:
             import time
             start = time.perf_counter()
-            raw_text = await self._model.generate(
+            llm = self._resolve_model(llm_mode)
+            raw_text = await llm.generate(
                 prompt=analysis_prompt,
                 system_prompt="You are a senior analyst for Baguio City command center. Return VALID JSON only (no markdown, no code blocks).",
                 temperature=0.2,
@@ -352,7 +352,7 @@ class LLMNarrativeClient:
             logger.error("[LLMNarrativeClient] Narrative generation timed out after 60s")
             return None, []
         except Exception:  # pragma: no cover - network/SDK failures
-            logger.exception("Groq analysis failed")
+            logger.exception("LLM narrative generation failed")
             return None, []
 
         parsed = self._try_parse_json(raw_text)
@@ -786,6 +786,3 @@ RULES:
 
 # Global singleton instance
 llm_narrative_client = LLMNarrativeClient()
-
-# Backward compatibility alias (deprecated - use llm_narrative_client instead)
-gemini_client = llm_narrative_client
