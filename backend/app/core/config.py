@@ -47,29 +47,28 @@ class Settings(BaseSettings):
     concerns_memory_enabled: bool = True  # Enable/disable self-learning
     concerns_memory_ttl_days: int = 7  # Days before regenerating concerns
     
-    # Groq Configuration (ultra-fast inference)
+    # Groq Configuration (ultra-fast inference; default cloud backend)
     groq_api_key: str | None = None
     groq_default_model: str = "groq/compound"
     groq_timeout: float = 30.0
     groq_max_retries: int = 3
+
+    # Gemini Configuration (Node 1 query orchestration only — cheapest +
+    # fastest per-inference for the multi-iteration ReAct loop)
+    gemini_api_key: str = ""
+    gemini_default_model: str = "gemini-2.5-flash-lite"
     
-    # LLM Provider Selection (per node) - ALL USING GROQ
-    llm_provider_query_orchestrator: str = "groq"  # Node 1: groq_default_model
-    llm_provider_sentiment: str = "groq"           # Node 4: groq/compound
-    llm_provider_credibility: str = "groq"         # Node 5: groq/compound
-    llm_provider_theme_agents: str = "groq"        # Node 6: groq/compound
+    # LLM Execution Mode
+    # "cloud" -> Groq (groq/compound), "local" -> Ollama (ollama_default_model).
+    # Requests may override this per call via their `llm_mode` field.
+    llm_mode: str = "cloud"
+
     # Ollama Configuration (local model inference)
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "qwen2.5:3b"
     ollama_timeout: float = 120.0
     ollama_max_retries: int = 3
-    
-    # Fallback Configuration (DISABLED - Groq SDK has built-in retries)
-    # Groq SDK already retries 3 times with exponential backoff
-    # Fallback to Gemini defeats the purpose of using Groq for speed
-    llm_enable_fallback: bool = False
-    llm_fallback_provider: str = "gemini"
-    
+
     ingestion_interval_seconds: int = 120
     ingestion_region_keywords: list[str] = [
         "baguio",

@@ -1,201 +1,129 @@
-"""LLM provider factory for multi-provider support."""
+"""LLM provider factory: Gemini/Groq (cloud) and Ollama/Qwen (local).
+
+Provider choice is driven by the request-scoped ``llm_mode`` (see
+:mod:`app.services.llm.mode`). Cloud mode picks the backend per call site via
+:func:`get_cloud_llm` — Node 1 query orchestration uses Gemini 2.5 Flash Lite
+(fastest per-inference and cheapest for multi-iteration ReAct), everything else
+uses Groq ``groq/compound``. Local mode is always Ollama and never touches a
+cloud provider. Every backend implements :class:`BaseLLMProvider`, so call
+sites only ever see ``generate`` / ``generate_json`` / ``generate_stream``.
+"""
+from __future__ import annotations
 
 import logging
-from enum import Enum
 
 from ...core.config import get_settings
 from .base import BaseLLMProvider
+from .mode import get_active_llm_mode, normalize_llm_mode
 
 logger = logging.getLogger(__name__)
 
-class LLMProvider(str, Enum):
-    """Supported LLM providers."""
-    GROQ = "groq"
-    GEMINI = "gemini"
-    OPENROUTER = "openrouter"
-    LOCAL = "local"
+# Provider identifiers accepted by :func:`get_llm_provider`.
+PROVIDER_GEMINI = "gemini"
+PROVIDER_GROQ = "groq"
+PROVIDER_LOCAL = "local"
+SUPPORTED_PROVIDERS: tuple[str, ...] = (PROVIDER_GEMINI, PROVIDER_GROQ, PROVIDER_LOCAL)
 
 
 def get_llm_provider(
-    provider: LLMProvider | str = LLMProvider.GROQ,
+    provider: str,
     *,
     model: str | None = None,
-    **kwargs
 ) -> BaseLLMProvider:
-    """Factory function to get LLM provider instance.
-    
-    This factory enables:
-    1. Easy switching between providers (Groq, Gemini, OpenRouter)
-    2. Consistent interface across all agents
-    3. Automatic fallback on provider failure
-    4. A/B testing different providers
-    
+    """Return the provider client for ``provider``.
+
+    Instances are cached per model name (see ``get_groq_provider`` /
+    ``get_ollama_provider``), so repeated calls are cheap and reuse the same
+    pooled HTTP client.
+
     Args:
-        provider: Provider name (groq, gemini, openrouter)
-        model: Optional model override
-        **kwargs: Provider-specific configuration
-    
-    Returns:
-        Configured LLM provider instance
-        
-    Examples:
-        >>> # Get Groq provider (fastest)
-        >>> llm = get_llm_provider("groq")
-        >>> response = await llm.generate("What is the capital of France?")
-        
-        >>> # Get Gemini provider (highest quality)
-        >>> llm = get_llm_provider("gemini", model="gemini-2.5-flash")
-        >>> response = await llm.generate("Write a narrative summary...")
-        
-        >>> # Get with automatic fallback
-        >>> from app.core.config import get_settings
-        >>> settings = get_settings()
-        >>> llm = get_llm_provider(settings.llm_provider_query_orchestrator)
+        provider: ``"gemini"``/``"groq"`` for cloud inference, ``"local"``
+            for Ollama.
+        model: Optional model override. Defaults to the model configured for
+            that provider in settings.
     """
-    provider_str = provider.value if isinstance(provider, Enum) else provider
+    settings = get_settings()
 
-    if provider_str == "groq":
-        from .groq_provider import GroqProvider
-        # NOTE: only groq/compound is served on this account — legacy
-        # direct model IDs (llama-3.x, llama-4-scout) 404. Verified via SDK.
-        return GroqProvider(
-            model=model or "groq/compound",
-            **kwargs
-        )
-    elif provider_str == "gemini":
-        from .gemini_provider import GeminiProvider
-        return GeminiProvider(
-            model=model or "gemini-2.5-flash-lite",
-            **kwargs
-        )
-    elif provider_str == "openrouter":
-        from ..nlp.openrouter import OpenRouterClient
-        # Wrap OpenRouterClient to match BaseLLMProvider interface
-        return _wrap_openrouter_client(
-            model=model or "deepseek/deepseek-chat",
-            **kwargs
-        )
-    elif provider_str == "local":
+    if provider == PROVIDER_GEMINI:
+        from .gemini_provider import get_gemini_provider
+
+        client = get_gemini_provider(model or settings.gemini_default_model)
+    elif provider == PROVIDER_GROQ:
+        from .groq_provider import get_groq_provider
+
+        client = get_groq_provider(model or settings.groq_default_model)
+    elif provider == PROVIDER_LOCAL:
         from .ollama_provider import get_ollama_provider
-        model_name = model or getattr(get_settings(), "ollama_default_model", "qwen2.5:3b")
-        return get_ollama_provider(model=model_name)
+
+        client = get_ollama_provider(model or settings.ollama_default_model)
     else:
-        raise ValueError(f"Unknown provider: {provider_str}")
+        raise ValueError(
+            f"Unknown LLM provider {provider!r}; expected one of "
+            f"{', '.join(SUPPORTED_PROVIDERS)}"
+        )
+
+    if not client.is_available:
+        raise RuntimeError(
+            f"LLM provider {provider!r} is not available. "
+            "Check GEMINI_API_KEY / GROQ_API_KEY (cloud) or the Ollama server (local)."
+        )
+
+    logger.info("[LLM] Resolved provider=%s model=%s", provider, client.model_name)
+    return client
 
 
-def get_fast_llm(**kwargs) -> BaseLLMProvider:
-    """Get fastest available LLM (Groq preferred).
+def get_llm_for_mode(
+    mode: str | None = None,
+    *,
+    model: str | None = None,
+) -> BaseLLMProvider:
+    """Groq provider for ``cloud`` mode, Ollama for ``local`` mode.
 
-    Use for:
-    - Query planning (Node 1)
-    - Sentiment analysis (Node 4)
-    - Credibility analysis (Node 4)
-    - Theme agents (Node 6)
-
-    Returns:
-        Groq provider with Llama 3.1 8B (800+ tokens/sec, cheapest)
+    This is the default entry point for all pipeline call sites (Nodes 2-7).
+    A ``local`` request that cannot reach Ollama raises; it never falls back to
+    the cloud, because silently spending Groq/Gemini quota would defeat the
+    point of running locally.
     """
-    return get_llm_provider(LLMProvider.GROQ, **kwargs)
-
-
-def get_quality_llm(**kwargs) -> BaseLLMProvider:
-    """Get highest quality LLM (Gemini preferred).
-    
-    Use for:
-    - Narrative generation (Node 7)
-    - Complex reasoning tasks
-    - Long-form content generation
-    
-    Returns:
-        Gemini provider with Flash model
-    """
-    return get_llm_provider(LLMProvider.GEMINI, **kwargs)
-
-
-def get_balanced_llm(**kwargs) -> BaseLLMProvider:
-    """Get balanced speed/quality LLM.
-
-    Use for:
-    - General-purpose tasks
-    - When both speed and quality matter
-
-    Returns:
-        Groq provider with Llama 3.1 8B (best speed/cost ratio)
-    """
+    resolved = normalize_llm_mode(mode) if mode is not None else get_active_llm_mode()
     return get_llm_provider(
-        LLMProvider.GROQ,
-        model="groq/compound",
-        **kwargs
+        PROVIDER_LOCAL if resolved == "local" else PROVIDER_GROQ,
+        model=model,
     )
 
 
-def _wrap_openrouter_client(model: str, **kwargs) -> BaseLLMProvider:
-    """Wrap OpenRouterClient to match BaseLLMProvider interface.
-    
-    This is a temporary adapter until OpenRouterClient is refactored
-    to inherit from BaseLLMProvider.
-    """
-    from ..nlp.openrouter import OpenRouterClient
-    
-    class OpenRouterAdapter(BaseLLMProvider):
-        """Adapter to make OpenRouterClient compatible with BaseLLMProvider."""
-        
-        def __init__(self, model: str, **kwargs):
-            self._client = OpenRouterClient(model=model, **kwargs)
-        
-        @property
-        def is_available(self) -> bool:
-            return self._client.is_available
-        
-        @property
-        def model_name(self) -> str:
-            return self._client._model
-        
-        async def generate(self, prompt: str, **kwargs):
-            return await self._client.generate(prompt, **kwargs)
-        
-        async def generate_stream(self, prompt: str, **kwargs):
-            # OpenRouterClient doesn't support streaming yet
-            raise NotImplementedError("Streaming not supported for OpenRouter")
-        
-        async def generate_json(self, prompt: str, **kwargs):
-            return await self._client.generate_json(prompt, **kwargs)
-    
-    return OpenRouterAdapter(model, **kwargs)
+def get_cloud_llm(
+    node: str,
+    *,
+    model: str | None = None,
+    gemini_model: str | None = None,
+) -> BaseLLMProvider:
+    """Cloud-mode provider for a pipeline node, with Gemini reserved for Node 1.
 
+    Node 1 (query orchestration) gets Gemini 2.5 Flash Lite when a
+    ``GEMINI_API_KEY`` is configured: it is the cheapest and fastest-per-inference
+    backend for a multi-iteration ReAct loop, and Node 1 runs serially at the
+    head of every snapshot so it bounds total pipeline latency. Every other node
+    gets Groq ``groq/compound``.
 
-# Provider selection helpers for specific nodes
-def get_node_llm(node_name: str, **kwargs) -> BaseLLMProvider:
-    """Get LLM provider for a specific node based on configuration.
-    
-    Args:
-        node_name: Node identifier (query_orchestrator, sentiment, credibility, theme_agents, coordinator)
-        **kwargs: Provider-specific configuration
-    
-    Returns:
-        Configured LLM provider for the node
-        
-    Example:
-        >>> # In QueryOrchestratorAgent
-        >>> llm = get_node_llm("query_orchestrator")
-        >>> # Returns Groq if configured, falls back to Gemini
+    Degrades loudly, never silently: without a Gemini key the request is served
+    by Groq and the downgrade is logged. Local mode never calls this function.
     """
-    from ...core.config import get_settings
     settings = get_settings()
-    
-    # Map node names to config keys
-    config_map = {
-        "query_orchestrator": settings.llm_provider_query_orchestrator,
-        "sentiment": settings.llm_provider_sentiment,
-        "credibility": settings.llm_provider_credibility,
-        "theme_agents": settings.llm_provider_theme_agents,
-        "coordinator": getattr(settings, "llm_provider_coordinator", "groq"),
-    }
-    
-    provider = config_map.get(node_name, "groq")
-    
-    try:
-        return get_llm_provider(provider, **kwargs)
-    except Exception as e:
-        logger.warning(f"Failed to initialize {provider} for {node_name}, falling back to Gemini: {e}")
-        return get_llm_provider("gemini", **kwargs)
+    if node == "query_orchestrator":
+        if settings.gemini_api_key:
+            try:
+                return get_llm_provider(
+                    PROVIDER_GEMINI, model=gemini_model or settings.gemini_default_model
+                )
+            except Exception as exc:
+                logger.warning(
+                    "[LLM] Gemini unavailable for node=%s (%s); using Groq",
+                    node,
+                    exc,
+                )
+        else:
+            logger.warning(
+                "[LLM] GEMINI_API_KEY not set; node=%s using Groq instead of Gemini",
+                node,
+            )
+    return get_llm_provider(PROVIDER_GROQ, model=model)

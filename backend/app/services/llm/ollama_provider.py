@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from typing import Any, AsyncIterator
 
 import httpx
@@ -144,6 +145,56 @@ class OllamaProvider(BaseLLMProvider):
 
         content = data.get("message", {}).get("content", "")
         return content
+
+    def generate_sync(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4096,
+        **kwargs,
+    ) -> str:
+        """Synchronous generation for ThreadPoolExecutor call sites.
+
+        Node 6 (theme synthesis) runs in a worker thread and cannot use the async
+        provider. Uses a short-lived ``httpx.Client`` rather than holding a second
+        long-lived client on the shared singleton.
+        """
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self._model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+        }
+
+        last_exc: Exception | None = None
+        with httpx.Client(timeout=httpx.Timeout(self._timeout, connect=10.0)) as client:
+            for attempt in range(1, self._max_retries + 1):
+                try:
+                    response = client.post(f"{self._base_url}/api/chat", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    return data.get("message", {}).get("content", "")
+                except Exception as exc:
+                    last_exc = exc
+                    logger.warning(
+                        f"[Ollama] Sync attempt {attempt}/{self._max_retries} failed: {exc}"
+                    )
+                    if attempt < self._max_retries:
+                        time.sleep(2**attempt)
+
+        raise RuntimeError(
+            f"[Ollama] Sync generation failed after {self._max_retries} retries: {last_exc}"
+        )
 
     async def generate_stream(
         self,

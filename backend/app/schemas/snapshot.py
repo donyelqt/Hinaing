@@ -29,6 +29,19 @@ class SnapshotRequest(BaseModel):
     focus_areas: list[str] = Field(default_factory=list, description="User-selected themes")
     include_alerts: bool = True
     mode: str = Field(default="full", description="Analysis mode: full, sentiment, or credibility")
+    llm_mode: str = Field(
+        default="cloud",
+        description="LLM execution mode: cloud (Groq, or Gemini for query planning) or local (Ollama/Qwen)",
+    )
+
+    @field_validator("llm_mode")
+    @classmethod
+    def _validate_llm_mode(cls, v: str) -> str:
+        normalized = str(v).strip().lower()
+        if normalized not in ("cloud", "local"):
+            raise ValueError(f"llm_mode must be 'cloud' or 'local', got {v!r}")
+        return normalized
+
     include_sentiment: bool = Field(default=True, description="Include sentiment analysis")
     include_credibility: bool = Field(default=True, description="Include credibility scoring")
     

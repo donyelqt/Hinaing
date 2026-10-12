@@ -161,34 +161,10 @@ class GroqProvider(BaseLLMProvider):
                 
             except Exception as e:
                 logger.error(f"[Groq] Generation failed: {e}")
-                
-                # Don't fallback on transient errors - let them propagate
-                # The Groq SDK already retried 3 times with exponential backoff
-                # Fallback should only happen for persistent infrastructure issues
-                error_msg = str(e).lower()
-                is_transient = any(keyword in error_msg for keyword in [
-                    'connection', 'timeout', 'network', 'temporary'
-                ])
-                
-                if is_transient:
-                    # Transient error after 3 retries - propagate to caller
-                    # This allows higher-level retry logic or graceful degradation
-                    logger.warning(f"[Groq] Transient error after retries, propagating: {e}")
-                    raise
-                
-                # Non-transient error - try fallback if enabled
-                settings = get_settings()
-                if settings.llm_enable_fallback:
-                    logger.warning("[Groq] Attempting fallback to Gemini for non-transient error")
-                    from .factory import get_llm_provider
-                    fallback = get_llm_provider(settings.llm_fallback_provider)
-                    return await fallback.generate(
-                        prompt,
-                        system_prompt=system_prompt,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                    )
-                
+                # Surface every failure. The Groq SDK already retried transient
+                # errors 3x with exponential backoff, and answering a cloud
+                # request from a different provider/model would be invisible to
+                # the user. Higher-level callers own graceful degradation.
                 raise
     
     async def generate_stream(
