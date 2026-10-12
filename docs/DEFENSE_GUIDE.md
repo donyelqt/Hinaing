@@ -157,7 +157,7 @@ Just as a Tesla is not 'just a wrapper around an electric motor', our system pro
 ### Q: "Why use a Linear DAG instead of a Cyclic Graph?"
 **A:** "For decision support, **Latency Determinism** is critical. 
 - A **Cyclic Graph** (autonomous looping) introduces unbound latency. If the agent continually 'refines' its answer, a 3-minute analysis could drift to 20 minutes.
-- Our **DAG Architecture** enforces a strict 'Time Box'. Deep analysis takes time (3-5 minutes for 6 parallel themes is an 80x speedup over human analysis), but the DAG guarantees it *will* finish.
+- Our **DAG Architecture** enforces a strict 'Time Box'. Deep analysis takes time (3-5 minutes for 6 parallel themes, a ~10x speedup over manual analysis of the same 50-100+ document corpus, band 6-15x — derived from reading-rate modeling, see `thesis-docs/speedup-basis.md`), but the DAG guarantees it *will* finish.
 
 We mitigate the 'brittleness' of a linear path via the **Query Orchestrator Agent (Node 1)**. Instead of looping *after* a failure, the Orchestrator uses **Context Engineering (Keyword Clusters)** to ensure the search is robust *before* it begins, maximizing success probability in a single pass."
 
