@@ -1,4 +1,10 @@
-"""Groq-powered LangChain agent for sentiment reasoning."""
+"""Groq/Ollama-powered LangChain ReAct analysis agent.
+
+The historical "gemini" name is legacy: this module now runs on the shared LLM
+providers via ProviderChatModel (Groq in cloud mode, Ollama/Qwen in local
+mode). langchain_groq was removed because it is incompatible with the pinned
+langchain-core.
+"""
 from __future__ import annotations
 
 import logging
@@ -8,10 +14,9 @@ from typing import Any
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.tools import Tool
 from langchain_core.prompts import PromptTemplate
-from langchain_groq import ChatGroq
-#from langchain_google_genai import ChatGoogleGenerativeAI
-
 from ...core.config import get_settings
+from ..llm.factory import get_llm_for_mode
+from ..llm.langchain_adapter import ProviderChatModel
 
 logger = logging.getLogger(__name__)
 
@@ -129,21 +134,14 @@ Thought:{agent_scratchpad}"""
     return PromptTemplate.from_template(template)
 
 
-def _build_llm() -> ChatGroq:
-    settings = get_settings()
-    if not settings.groq_api_key:
-        raise RuntimeError("GROQ_API_KEY is missing. Unable to initialize Groq agent.")
-
-    return ChatGroq(
-        model="llama-3.3-70b-versatile",
-        temperature=0.2,
-        groq_api_key=settings.groq_api_key,
-    )
+def _build_llm(llm_mode: str | None = None) -> ProviderChatModel:
+    provider = get_llm_for_mode(llm_mode)
+    return ProviderChatModel(provider=provider, temperature=0.2, max_tokens=8192)
 
 
-def get_gemini_agent() -> AgentExecutor:
-    """Get Groq-powered agent executor (name kept for backward compatibility)."""
-    llm = _build_llm()
+def get_gemini_agent(llm_mode: str | None = None) -> AgentExecutor:
+    """Get the ReAct agent executor (name kept for backward compatibility)."""
+    llm = _build_llm(llm_mode)
     tools = _build_tools()
     prompt = _build_prompt()
     agent_runnable = create_react_agent(llm, tools, prompt)
@@ -162,8 +160,9 @@ def run_gemini_agent(
     *,
     documents: list[dict[str, Any]] | None = None,
     system_instruction: str | None = None,
+    llm_mode: str | None = None,
 ) -> str:
-    executor = get_gemini_agent()
+    executor = get_gemini_agent(llm_mode)
     if documents:
         doc_lines = []
         for doc in documents[:120]:  # Process up to 120 documents (full context)

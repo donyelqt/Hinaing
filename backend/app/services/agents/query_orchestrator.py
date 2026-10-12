@@ -356,25 +356,30 @@ class QueryOrchestratorAgent:
     max_iterations: int = 6
     fallback_focus: str = "public services"
     _llm: ChatGoogleGenerativeAI | None = field(default=None, init=False)
-    _executor: AgentExecutor | None = field(default=None, init=False)
+    _executors: dict[str, AgentExecutor] = field(default_factory=dict, init=False)
 
-    def _get_llm(self) -> ChatGoogleGenerativeAI:
-        """Get Gemini 2.5 Flash Lite for ultra-fast agentic query synthesis.
+    def _resolve_chat_model(self, llm_mode: str | None = None):
+        """LangChain chat model for the request's LLM mode.
 
-        Using Gemini 2.5 Flash Lite:
-        - 2x FASTER than Groq Compound (200-400ms vs 500-800ms per inference)
-        - Lower latency from Asia-Pacific
-        - Optimized for ReAct patterns with tool calls
-        - Cost: $0.075/1M tokens (very low usage)
+        cloud -> Gemini 2.5 Flash Lite (fastest/cheapest for ReAct iterations)
+        local -> Ollama Qwen via ProviderChatModel (fully offline)
         """
-        if self._llm is None:
-            self._llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash-lite",
-                google_api_key=settings.gemini_api_key,
-                temperature=0.4,  # Balanced: creative enough for novel queries
-            )
-            logger.info("[QueryOrchestrator] Using Gemini 2.5 Flash Lite for agentic query synthesis")
-        return self._llm
+        from ..llm.mode import normalize_llm_mode
+        from ..llm.factory import get_llm_for_mode
+        from ..llm.langchain_adapter import ProviderChatModel
+
+        mode = normalize_llm_mode(llm_mode)
+        if mode == "cloud":
+            if self._llm is None:
+                self._llm = ChatGoogleGenerativeAI(
+                    model=getattr(settings, "gemini_default_model", "gemini-2.5-flash-lite"),
+                    google_api_key=settings.gemini_api_key,
+                    temperature=0.4,  # Balanced: creative enough for novel queries
+                )
+                logger.info("[QueryOrchestrator] Using Gemini 2.5 Flash Lite for cloud-mode agentic query synthesis")
+            return self._llm
+        provider = get_llm_for_mode("local")
+        return ProviderChatModel(provider=provider, temperature=0.4, max_tokens=8192)
 
     def _get_tools(self) -> list[Tool]:
         """Information-provider tools (NOT query generators).
@@ -412,12 +417,15 @@ class QueryOrchestratorAgent:
             ),
         ]
 
-    def _build_executor(self) -> AgentExecutor:
-        if self._executor is None:
-            llm = self._get_llm()
+    def _build_executor(self, llm_mode: str | None = None) -> AgentExecutor:
+        from ..llm.mode import normalize_llm_mode
+
+        mode = normalize_llm_mode(llm_mode)
+        if mode not in self._executors:
+            llm = self._resolve_chat_model(mode)
             tools = self._get_tools()
             agent = create_react_agent(llm, tools, REACT_PROMPT)
-            self._executor = AgentExecutor(
+            self._executors[mode] = AgentExecutor(
                 agent=agent,
                 tools=tools,
                 max_iterations=self.max_iterations,
@@ -425,7 +433,7 @@ class QueryOrchestratorAgent:
                 handle_parsing_errors=True,
                 return_intermediate_steps=True,
             )
-        return self._executor
+        return self._executors[mode]
 
     @measure_performance(component="QueryOrchestratorAgent", operation="run_planning")
     async def run(
@@ -449,6 +457,7 @@ class QueryOrchestratorAgent:
         """
         focus_values = request.focus_areas or [self.fallback_focus]
         time_window = request.time_window or "24h"
+        llm_mode = getattr(request, "llm_mode", None)
         if ablation_config and ablation_config.get("temporal_enabled") is False:
             logger.info("[query_orchestrator] Ablation: temporal context disabled")
         time_suffix = _get_time_search_suffix(time_window)
@@ -460,11 +469,11 @@ class QueryOrchestratorAgent:
         )
 
         # Background: populate memory for future context enrichment
-        await self._populate_memory_if_needed(focus_values)
+        await self._populate_memory_if_needed(focus_values, llm_mode=llm_mode)
 
         # Run the ReAct agent
         try:
-            executor = self._build_executor()
+            executor = self._build_executor(llm_mode)
 
             target_count = min(len(focus_values) * 3, self.max_queries)
             agent_input = (
@@ -509,8 +518,12 @@ class QueryOrchestratorAgent:
         logger.info("[query_orchestrator] Using fallback query generation")
         return self._fallback_plan(focus_values, time_window)
 
-    async def _populate_memory_if_needed(self, focus_values: list[str]) -> None:
+    async def _populate_memory_if_needed(
+        self, focus_values: list[str], llm_mode: str | None = None
+    ) -> None:
         """Populate concerns memory if stale (for future context enrichment)."""
+        from ..llm.factory import get_llm_for_mode
+
         try:
             memory = get_concerns_memory()
             cached = memory.recall_concerns(
@@ -520,11 +533,7 @@ class QueryOrchestratorAgent:
                 return  # Memory is fresh, no action needed
 
             # Generate and store new concern keywords via lightweight LLM call
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash-lite",
-                google_api_key=settings.gemini_api_key,
-                temperature=0.7,
-            )
+            llm = get_llm_for_mode(llm_mode)
 
             prompt = (
                 f"Generate 4 diverse emerging concern keyword clusters for each "
@@ -533,8 +542,7 @@ class QueryOrchestratorAgent:
                 f'Return JSON: {{"focus_area": [["kw1", "kw2", "kw3"], ...], ...}}'
             )
 
-            response = await llm.ainvoke(prompt)
-            content = response.content if hasattr(response, 'content') else str(response)
+            content = await llm.generate(prompt)
 
             if "{" in content:
                 start = content.find("{")
