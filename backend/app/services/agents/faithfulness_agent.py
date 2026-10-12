@@ -39,12 +39,14 @@ class FaithfulnessAgent:
         self,
         summary: str,
         documents: list[dict[str, Any]],
+        llm_mode: str | None = None,
     ) -> dict[str, Any]:
         """Verify claims and citations in summary against source documents.
 
         Args:
             summary: Generated narrative summary with citations
             documents: Source documents used for generation
+            llm_mode: Requested LLM mode ("cloud" or "local"); None uses the active mode
 
         Returns:
             Comprehensive verification report:
@@ -62,19 +64,38 @@ class FaithfulnessAgent:
         )
 
         # Phase 1: Extract claims
-        claims = await self._claim_extractor.extract_claims(summary)
+        claims = await self._claim_extractor.extract_claims(summary, llm_mode=llm_mode)
 
         if not claims:
             logger.warning("[FaithfulnessAgent] No claims extracted")
+            empty_analysis = {
+                "hallucination_count": 0,
+                "hallucination_details": [],
+                "hallucination_rate": 0.0,
+                "hallucination_types": {
+                    "fabricated_claim": 0,
+                    "contradicted_claim": 0,
+                    "numerical_hallucination": 0,
+                },
+                "is_hallucination_free": True,
+            }
             return {
                 "total_claims": 0,
                 "verified_claims": 0,
                 "unverified_claims": 0,
                 "faithfulness_score": 0.0,
                 "claim_details": [],
-                "hallucination_analysis": None,
-                "misattribution_analysis": None,
-                "numerical_hallucinations": None,
+                "hallucination_analysis": empty_analysis,
+                "misattribution_analysis": {
+                    "misattribution_count": 0,
+                    "misattribution_details": [],
+                    "misattribution_rate": 0.0,
+                },
+                "numerical_hallucinations": {
+                    "count": 0,
+                    "details": [],
+                    "rate": 0.0,
+                },
                 "citation_verification": None,
             }
 

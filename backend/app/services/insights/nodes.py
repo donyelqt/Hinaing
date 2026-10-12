@@ -242,6 +242,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     raw_docs = state.get("documents", [])
     internal_docs = state.get("internal_documents", [])
     request = state["request"]
+    llm_mode = getattr(request, "llm_mode", "cloud")
     start_time = time.perf_counter()
     metrics = get_metrics_collector()
     
@@ -400,7 +401,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         
         metrics.start_timer("sentiment")
         async with node4_ml_semaphore:
-            result = await asyncio.to_thread(sentiment_agent.run, docs)
+            result = await asyncio.to_thread(sentiment_agent.run, docs, llm_mode)
             gc.collect()
             metrics.stop_timer("sentiment")
             return result
@@ -422,7 +423,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             logger.info("[ABLA] Node 4: VSEE disabled for credibility scoring")
 
         metrics.start_timer("credibility")
-        result = await credibility_agent_node.run(docs, disable_vsee=disable_vsee)
+        result = await credibility_agent_node.run(docs, disable_vsee=disable_vsee, llm_mode=llm_mode)
         metrics.stop_timer("credibility")
         return result
 
@@ -676,7 +677,7 @@ async def consolidate_memory(state: SnapshotState) -> SnapshotState:
 # NODE 6: Theme Agents (Parallel)
 # --------------------------------------------------------------------------
 def theme_agents(state: SnapshotState) -> SnapshotState:
-    """Run Gemini mini-agents per theme in parallel threads.
+    """Run LLM mini-agents per theme in parallel threads.
     
     ABLATION STUDY: If parallel_enabled is False, run theme agents sequentially.
     """
@@ -684,6 +685,7 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
     request = state["request"]
     contexts = {} # unused
     start_time = time.perf_counter()
+    llm_mode = getattr(request, "llm_mode", "cloud")
     
     # ABLATION: Check if parallel execution is disabled
     ablation = state.get("ablation_config", {})
@@ -715,7 +717,7 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
         from concurrent.futures import as_completed
 
         futures = {
-            GLOBAL_EXECUTOR.submit(_synthesize_single_theme, theme_key, docs, contexts): theme_key
+            GLOBAL_EXECUTOR.submit(_synthesize_single_theme, theme_key, docs, contexts, llm_mode): theme_key
             for theme_key, docs in tasks
         }
 
@@ -734,7 +736,7 @@ def theme_agents(state: SnapshotState) -> SnapshotState:
         logger.info("[ABLA] Node 6: Parallel theme execution disabled - running sequentially")
         for theme_key, docs in tasks:
             try:
-                result = _synthesize_single_theme(theme_key, docs, contexts)
+                result = _synthesize_single_theme(theme_key, docs, contexts, llm_mode)
                 if isinstance(result, list):
                     insights.extend(result)
                 elif isinstance(result, Insight):
@@ -758,6 +760,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
     - Phase 3: Assemble (SnapshotResponse)
     """
     request = state["request"]
+    llm_mode = getattr(request, "llm_mode", "cloud")
     # Use enriched docs if available (full/sentiment modes), otherwise use raw docs (epistemic mode)
     docs = state.get("enriched", []) or state.get("documents", [])
 
@@ -798,6 +801,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 documents=[doc.model_dump() for doc in docs_for_coordinator],
                 theme_insights=[i.model_dump() for i in state.get("theme_insights", [])],
                 sentiment_distribution=scores,  # Pass sentiment breakdown to coordinator
+                llm_mode=llm_mode,
             )
         except Exception as exc:
             logger.exception("[snapshot] CoordinatorAgent failed: %s", exc)
@@ -848,6 +852,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             verification_report = await verifier.verify(
                 summary=summary_text,
                 documents=[doc.model_dump() for doc in docs],
+                llm_mode=llm_mode,
             )
             hallucination_count = (
                 verification_report.get("hallucination_analysis") or {}
@@ -1134,11 +1139,11 @@ def _parse_theme_insights(output: str, theme_label: str) -> list[dict]:
         logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
         return []
 
-def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any) -> list[Insight]:
+def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any, llm_mode: str | None = None) -> list[Insight]:
     """Helper for Theme Agent execution - spawns true sub-agents.
     
-    RATE LIMIT PROTECTION: Uses semaphore to prevent hitting Groq's 30 RPM limit
-    when 6 theme agents fire simultaneously.
+    RATE LIMIT PROTECTION: Uses semaphore to prevent exceeding the hosted
+    provider's rate limit when 6 theme agents fire simultaneously.
     """
     from app.services.agents.theme_agent import get_theme_agent  # type: ignore
     
@@ -1169,18 +1174,20 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         logger.info(f"[ThemeAgent] Spawned {type(agent).__name__} for '{label}'")
         
         # FIXED: Don't use asyncio.run() inside ThreadPoolExecutor!
-        # Instead, run the agent synchronously using sync_groq_generate
-        # This prevents "Event loop is closed" error when Groq retries
-        from ..llm.groq_provider import get_groq_provider
+        # Instead, run the provider's sync generate to avoid event-loop issues.
+        # Build context and prompt (same as agent.run() does)
+        context = _build_theme_context(enriched_docs)
+        prompt = _build_theme_prompt(label, agent.theme_focus if hasattr(agent, 'theme_focus') else f"Focus on {label}", context, len(enriched_docs))
+        
+        # Use LLM synchronously to avoid event loop issues
+        from ..llm.factory import get_llm_for_mode
         
         # Build context and prompt (same as agent.run() does)
         context = _build_theme_context(enriched_docs)
         prompt = _build_theme_prompt(label, agent.theme_focus if hasattr(agent, 'theme_focus') else f"Focus on {label}", context, len(enriched_docs))
         
-        # Use Groq synchronously to avoid event loop issues
-        # NOTE: groq/compound is the only model served on this account.
-        llm = get_groq_provider()
-        logger.info(f"[ThemeAgent] Running synchronous Groq for '{label}' with {len(enriched_docs)} docs")
+        llm = get_llm_for_mode(llm_mode)
+        logger.info(f"[ThemeAgent] Running synchronous LLM (mode={llm_mode or 'active'}, model={llm.model_name}) for '{label}' with {len(enriched_docs)} docs")
         
         try:
             # Use synchronous generate method
@@ -1197,9 +1204,9 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
             # Parse the response
             insights = _parse_theme_insights(output, label)
             
-        except Exception as groq_err:
-            logger.warning(f"[ThemeAgent] Groq sync failed for {label}: {groq_err}, using fallback")
-            raise ValueError("Groq failed, using fallback")
+        except Exception as llm_err:
+            logger.warning(f"[ThemeAgent] LLM sync failed for {label}: {llm_err}, using fallback")
+            raise ValueError("LLM failed, using fallback")
         
         # Convert to Insight objects
         evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]

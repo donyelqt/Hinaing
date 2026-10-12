@@ -2,7 +2,7 @@
 
 This agent is responsible for Node 7 of the 7-Node Self-Learning Pipeline:
 - Receives theme insights from the 6 Theme Agents
-- Generates a comprehensive narrative summary using Groq LLMs
+- Generates a comprehensive narrative summary using the configured LLM provider
 - Assembles the final SnapshotResponse
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..nlp.gemini import LLMNarrativeClient, llm_narrative_client
+from ..nlp.narrative import LLMNarrativeClient, llm_narrative_client
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class CoordinatorAgent:
     """Agent that coordinates final response generation.
     
     Wraps LLMNarrativeClient to provide a consistent agent interface for Node 7.
-    Uses Groq compound for comprehensive narrative generation.
+    The LLM provider (cloud Groq or local Ollama) is resolved per request.
     """
     
     def __init__(self, client: LLMNarrativeClient | None = None):
@@ -43,6 +43,7 @@ class CoordinatorAgent:
         documents: list[dict[str, Any]],
         theme_insights: list[dict[str, Any]] | None = None,
         sentiment_distribution: dict[str, float] | None = None,
+        llm_mode: str | None = None,
     ) -> tuple[str | None, list[dict[str, str]]]:
         """Generate narrative summary and insights.
         
@@ -52,6 +53,7 @@ class CoordinatorAgent:
             documents: List of enriched documents with sentiment/credibility
             theme_insights: Optional pre-generated theme insights
             sentiment_distribution: Sentiment breakdown (e.g., {"positive": 0.17, "neutral": 0.83, "negative": 0.0})
+            llm_mode: Requested LLM mode ("cloud" or "local"); None uses the active mode
             
         Returns:
             Tuple of (narrative_summary, insights_list)
@@ -78,6 +80,7 @@ class CoordinatorAgent:
                 documents=documents,
                 theme_insights=theme_insights, # Pass summarized insights
                 sentiment_distribution=sentiment_distribution,
+                llm_mode=llm_mode,
             )
             logger.info("[CoordinatorAgent] Narrative generation complete")
             return summary, insights
