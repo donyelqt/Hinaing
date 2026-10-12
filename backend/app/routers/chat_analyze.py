@@ -32,13 +32,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..services.insights.graph import generate_snapshot
 from ..schemas.snapshot import SnapshotRequest, SnapshotResponse
 from ..services.agents.chat_agent import run_chat_agent
 from ..services.task_manager import get_task_manager, TaskStatus
-from ..services.llm.groq_provider import get_groq_provider
+from ..services.llm.factory import get_llm_for_mode
 from ..services.langsearch import LangSearchClient
 from ..services.metrics.collector import get_metrics_collector, PipelineMetrics
 
@@ -83,6 +83,16 @@ class ChatAnalyzeRequest(BaseModel):
 
     # ABLATION STUDY: Binary toggle for empirical validation
     ablation_preset: str = Field(default="full", description="Ablation study toggle: 'full' or 'ablated'")
+
+    llm_mode: str = Field(default="cloud", description="LLM execution mode: cloud (Groq, or Gemini for query planning) or local (Ollama/Qwen)")
+
+    @field_validator("llm_mode")
+    @classmethod
+    def _validate_llm_mode(cls, v: str) -> str:
+        normalized = str(v).strip().lower()
+        if normalized not in ("cloud", "local"):
+            raise ValueError(f"llm_mode must be 'cloud' or 'local', got {v!r}")
+        return normalized
 
 
 class ChatProgress(BaseModel):
@@ -294,8 +304,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
             
             if eval_mode == "llm_only":
                 # Baseline 1: Single LLM (no retrieval)
-                from ..services.llm.groq_provider import get_groq_provider
-                llm = get_groq_provider("llama-3.1-8b-instant")
+                llm = get_llm_for_mode(request.llm_mode)
                 response = await llm.generate(
                     prompt=request.message,
                     system_prompt="Answer concisely based on your training data.",
@@ -318,6 +327,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                 
                 # Build context from search results
                 context = "\n\n".join([f"{r.title}: {r.snippet}" for r in search_results[:5]])
+                llm = get_llm_for_mode(request.llm_mode)
                 response_text = await llm.generate(
                     prompt=f"Based on these search results:\n{context}\n\nQuestion: {request.message}",
                     system_prompt="Answer based only on the provided search results.",
@@ -330,7 +340,8 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                 response_text, sources_list = await run_chat_agent(
                     message=request.message,
                     history=request.history,
-                    jurisdiction="Baguio City"
+                    jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode
                 )
                 sources = sources_list
                 docs_fresh = len(sources_list) if sources_list else 1
@@ -422,7 +433,8 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
             response_text, sources = await run_chat_agent(
                 message=request.message,
                 history=request.history,
-                jurisdiction="Baguio City"
+                jurisdiction="Baguio City",
+                llm_mode=request.llm_mode
             )
             
             # Log metrics for AgenticHinaing mode (simple intent)
@@ -514,6 +526,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                     message=augmented_message,
                     history=request.history,
                     jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode,
                     system_instruction=(
                         "You are the **Synthesis Agent** (Node 7) of the Hinaing Multi-Agent System. "
                         "You represent the collective insights of the full 7-node architecture (Sentiment, Credibility, etc.). "
@@ -577,7 +590,8 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                 response_text, sources = await run_chat_agent(
                     message=request.message,
                     history=request.history,
-                    jurisdiction="Baguio City"
+                    jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode
                 )
 
                 # Log metrics for fallback
@@ -625,6 +639,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                     message=request.message,
                     history=request.history,
                     jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode,
                     system_instruction="You are an intelligent Agentic RAG assistant. The user is asking a follow-up, but the previous analysis context is lost. You MUST use your 'search_civic_data' tool to find the answer. Do NOT apologize. Do NOT say you cannot access the internet. USE THE TOOL."
                 )
                 
@@ -662,6 +677,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         time_window=time_window,
         mode=request.mode,
         ablation_preset=request.ablation_preset,
+        llm_mode=request.llm_mode,
     )
     
     # Queue for progress updates from the pipeline
@@ -862,6 +878,7 @@ async def chat_analyze_sync(request: ChatAnalyzeRequest):
         time_window=time_window,
         mode=request.mode,
         ablation_preset=request.ablation_preset,
+        llm_mode=request.llm_mode,
     )
     
     try:
@@ -1053,7 +1070,7 @@ async def start_analysis(request: ChatAnalyzeRequest):
 
             if eval_mode == "llm_only":
                 # Baseline 1: Single LLM (no retrieval)
-                llm = get_groq_provider("llama-3.1-8b-instant")
+                llm = get_llm_for_mode(request.llm_mode)
                 response = await llm.generate(
                     prompt=request.message,
                     system_prompt="Answer concisely based on your training data.",
@@ -1075,7 +1092,7 @@ async def start_analysis(request: ChatAnalyzeRequest):
                 docs_fresh = len(search_results)
 
                 context = "\n\n".join([f"{r.title}: {r.snippet}" for r in search_results[:5]])
-                llm = get_groq_provider("llama-3.1-8b-instant")
+                llm = get_llm_for_mode(request.llm_mode)
                 response_text = await llm.generate(
                     prompt=f"Based on these search results:\n{context}\n\nQuestion: {request.message}",
                     system_prompt="Answer based only on the provided search results.",
@@ -1088,7 +1105,8 @@ async def start_analysis(request: ChatAnalyzeRequest):
                 response_text, sources_list = await run_chat_agent(
                     message=request.message,
                     history=request.history,
-                    jurisdiction="Baguio City"
+                    jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode
                 )
                 sources = sources_list
                 docs_fresh = len(sources_list) if sources_list else 1
@@ -1172,7 +1190,8 @@ async def start_analysis(request: ChatAnalyzeRequest):
                 response_text, sources = await run_chat_agent(
                     message=request.message,
                     history=request.history,
-                    jurisdiction="Baguio City"
+                    jurisdiction="Baguio City",
+                    llm_mode=request.llm_mode
                 )
                 return {
                     "task_id": None,
@@ -1201,13 +1220,15 @@ async def start_analysis(request: ChatAnalyzeRequest):
                     response_text, sources = await run_chat_agent(
                         message=augmented_message,
                         history=request.history,
-                        jurisdiction="Baguio City"
+                        jurisdiction="Baguio City",
+                        llm_mode=request.llm_mode
                     )
                 else:
                     response_text, sources = await run_chat_agent(
                         message=request.message,
                         history=request.history,
-                        jurisdiction="Baguio City"
+                        jurisdiction="Baguio City",
+                        llm_mode=request.llm_mode
                     )
                 
                 return {
@@ -1236,6 +1257,7 @@ async def start_analysis(request: ChatAnalyzeRequest):
         time_window=time_window,
         mode=request.mode,
         ablation_preset=request.ablation_preset,
+        llm_mode=request.llm_mode,
     )
     
     # Progress callback that updates task manager

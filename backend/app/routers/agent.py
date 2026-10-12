@@ -15,6 +15,7 @@ async def invoke_gemini_agent(payload: GeminiAgentRequest) -> GeminiAgentRespons
         output = run_gemini_agent(
             payload.message,
             documents=[doc.model_dump() for doc in (payload.documents or [])] or None,
+            llm_mode=payload.llm_mode,
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
