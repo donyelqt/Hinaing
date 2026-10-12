@@ -223,11 +223,9 @@ async def run_chat_agent(
             "7. **Be Helpful:** If the exact answer isn't found, share RELATED information that might be useful. Don't just say 'no results' - explain what WAS found and how it relates to the question."
         )
     
-    # Use llama-3.1-8b-instant for fast, cheap chat responses
-    # 8B is sufficient for grounded Q&A (search results do the heavy lifting)
-    # 10x cheaper and 60% faster than 70B, fixes 413 Request Too Large errors
-    from ..llm.groq_provider import get_groq_provider
-    llm = get_groq_provider("llama-3.1-8b-instant")
+    # Use configured LLM provider (supports local/Ollama via env vars)
+    from ..llm.factory import get_node_llm
+    llm = get_node_llm("query_orchestrator")
     
     # Safety check: Ensure LLM was properly initialized
     if llm is None or not hasattr(llm, 'generate'):
