@@ -82,8 +82,8 @@ export function TechniquesSection() {
     },
     {
       id: "CIT-10",
-      title: "Epistemic Authority Encoding (Neuro-Symbolic)",
-      description: "Neuro-symbolic constrained generation: Symbolic rules (VSEE thresholds, prompt constraints) prioritize AI-verified sources (Tavily AI web search, VSEE consensus) for neural LLM generation. Citations include source URL, credibility score, and sentiment: [Src: pia.gov.ph | Cred: 0.95 | Sent: Positive].",
+      title: "Credibility-Weighted Attribution (Neuro-Symbolic)",
+      description: "Neuro-symbolic constrained generation: sources ranked by the 5-signal credibility ensemble (Tavily web verification, Google Fact Check, VSEE consensus) are prioritized by the narrative generator, and every citation carries its provenance: [Src: pia.gov.ph | Cred: 0.95 | Sent: Positive | Verified].",
       icon: Quote,
       isNovel: true,
       color: "text-teal-500 bg-teal-50 border-teal-100",
