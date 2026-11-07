@@ -14,7 +14,7 @@
 | **RAGAS** | GPT-4 LLM-judge | ❌ Different (self-judgment) |
 | **Self-RAG** | GPT-4 self-critique | ❌ Different (self-bias) |
 | **GraphRAG** | Human evaluation | ⚠️ Partially (subjective) |
-| **Prolog-GraphRAG** | NLI + rules | ✅ Similar (NLI-based) |
+| **Logic-infused KG** | NLI + rules | ✅ Similar (NLI-based) |
 | **AgenticHinaing** | DeBERTa NLI + 5-signal | ✅ Our method |
 
 **This comparison is qualitative.** For fair comparison, run same dataset through all systems.
@@ -29,7 +29,7 @@
 | Advanced RAG | 0.60-0.75 | RAGAS (LLM-judge) | RAGAS paper (2023) |
 | Self-RAG | 0.78-0.82 | GPT-4 self-critique | ICLR 2024 paper |
 | GraphRAG | 0.80-0.85 | Human evaluation | Microsoft Research |
-| Prolog-GraphRAG | 0.82-0.88 | NLI + rules | DKE journal (2025) |
+| Logic-infused KG | 0.82-0.88 | NLI + rules | DKE journal (2025) |
 | **AgenticHinaing** | **1.00** | **DeBERTa NLI + 5-signal** | **This work** |
 
 ---
@@ -170,10 +170,9 @@ To enable direct comparison:
 |--------|----------------------------|
 | Standard RAG | 0.55-0.65 |
 | GraphRAG | 0.70-0.80 |
-| Prolog-GraphRAG | 0.75-0.85 |
+| Logic-infused KG | 0.75-0.85 |
 | AgenticHinaing | 0.90-1.00 |
 ```
-
 ---
 
 ## 🏅 Conclusion
@@ -196,7 +195,7 @@ To enable direct comparison:
 1. **RAGAS Paper:** Es et al. "RAGAS: Automated Evaluation of RAG Systems." arXiv:2309.15217 (2023)
 2. **Self-RAG:** Asai et al. "Self-RAG: Learning to Retrieve, Generate, and Critique." ICLR 2024
 3. **GraphRAG:** Microsoft Research. "GraphRAG: Improving RAG with Knowledge Graphs." (2024)
-4. **Prolog-GraphRAG:** Bashir et al. "Logic-infused knowledge graph QA." Data & Knowledge Engineering (2025)
+4. **Logic-infused KG:** Bashir et al. "Logic-infused knowledge graph QA." Data & Knowledge Engineering (2025)
 
 ---
 
