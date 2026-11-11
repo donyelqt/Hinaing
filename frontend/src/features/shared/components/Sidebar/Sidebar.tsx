@@ -1,7 +1,17 @@
 import { useState } from "react";
-import { BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles, Cpu, HelpCircle } from "lucide-react";
+import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+const PIPELINE_NODES = [
+  { icon: Radar, label: "Node 1: Query Orchestrator", sub: "ReAct Planning" },
+  { icon: FileSearch, label: "Node 2: Document Retrieval", sub: "Multi-Source" },
+  { icon: Database, label: "Node 3: RAG Memory Recall", sub: "Qdrant Vector DB" },
+  { icon: Zap, label: "Node 4: Parallel Analysis", sub: "Sentiment + Credibility + Theme" },
+  { icon: BrainCircuit, label: "Node 5: Memory Consolidation", sub: "Self-Learning Loop" },
+  { icon: Target, label: "Node 6: 6 Theme Agents", sub: "Domain Specialists" },
+  { icon: ShieldCheck, label: "Node 7: NLI Verification", sub: "100% Faithfulness" },
+] satisfies { icon: LucideIcon; label: string; sub: string }[];
 
 type SidebarProps = {
   onOpenMobileFilters: () => void;
@@ -126,55 +136,17 @@ export function Sidebar({
               <TooltipContent side="right" align="start" className="w-72 bg-white z-[9999]">
                 <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
                 <div className="space-y-1.5 text-slate-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">📡</span>
-                    <div>
-                      <div className="font-medium">Node 1: Query Orchestrator</div>
-                      <div className="text-slate-500 text-[10px]">ReAct Planning</div>
+                  {PIPELINE_NODES.map(({ icon: Icon, label, sub }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <div className="font-medium">{label}</div>
+                        <div className="text-slate-500 text-[10px]">{sub}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🔍</span>
-                    <div>
-                      <div className="font-medium">Node 2: Document Retrieval</div>
-                      <div className="text-slate-500 text-[10px]">Multi-Source</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🔗</span>
-                    <div>
-                      <div className="font-medium">Node 3: RAG Memory Recall</div>
-                      <div className="text-slate-500 text-[10px]">Qdrant Vector DB</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">⚡</span>
-                    <div>
-                      <div className="font-medium">Node 4: Parallel Analysis</div>
-                      <div className="text-slate-500 text-[10px]">Sentiment + Credibility + Theme</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">💾</span>
-                    <div>
-                      <div className="font-medium">Node 5: Memory Consolidation</div>
-                      <div className="text-slate-500 text-[10px]">Self-Learning Loop</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🎯</span>
-                    <div>
-                      <div className="font-medium">Node 6: 6 Theme Agents</div>
-                      <div className="text-slate-500 text-[10px]">Domain Specialists</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">✅</span>
-                    <div>
-                      <div className="font-medium">Node 7: NLI Verification</div>
-                      <div className="text-slate-500 text-[10px]">100% Faithfulness</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
                   <div className="flex items-center justify-between">
