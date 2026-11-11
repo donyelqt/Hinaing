@@ -16,11 +16,11 @@ This directory houses the thesis documentation for **Hinaing**, a **Hierarchical
 
 ## License
 
-Copyright (c) 2025 Doniele Arys Antonio
+Copyright (c) 2025 Doniele Arys Antonio (AI Research Developer), Krisha May Cutiam (AI Researcher), & Justine Mae Macario (AI Researcher)
 
 This thesis project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) License. See the [LICENSE](../LICENSE) file in the project root for full license text.
 
-Under this license, others are free to share and adapt this work for non-commercial purposes as long as they give appropriate attribution. This means that anyone can use, distribute, and build upon this work for academic and non-commercial purposes while properly crediting the original author.
+Under this license, others are free to share and adapt this work for non-commercial purposes as long as they give appropriate attribution. This means that anyone can use, distribute, and build upon this work for academic and non-commercial purposes while properly crediting the original authors.
 
 ## System Classification
 
