@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, AlertTriangle, Ghost, XCircle, Hash } from "lucide-react";
+import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
 import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-parser";
@@ -578,7 +578,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Analysis Suggestions */}
-            <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">Run Epistemic Truth Discovery & Civic Social Listening</p>
+            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full"><BrainCircuit className="h-3.5 w-3.5" aria-hidden="true" />Run Epistemic Truth Discovery & Civic Social Listening</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full mb-3 sm:mb-4">
                 {analysisSuggestions.map((prompt: string, i: number) => (
                     <button
@@ -594,7 +594,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Simple Q&A Suggestions */}
-            <p className="text-[10px] sm:text-xs font-semibold text-emerald-600 mb-1.5 sm:mb-2 w-full">Quick Q&A</p>
+            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-emerald-600 mb-1.5 sm:mb-2 w-full"><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />Quick Q&A</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
                 {simpleSuggestions.map((prompt: string, i: number) => (
                     <button
