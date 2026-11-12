@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight } from "lucide-react";
+import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, AlertTriangle, Ghost, XCircle, Hash } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
 import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-parser";
@@ -340,9 +340,9 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                                                 key={type}
                                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-medium"
                                             >
-                                                {type === "fabricated_claim" && "🎭"}
-                                                {type === "contradicted_claim" && "❌"}
-                                                {type === "numerical_hallucination" && "🔢"}
+                                                {type === "fabricated_claim" && <Ghost className="h-3 w-3" aria-hidden="true" />}
+                                                {type === "contradicted_claim" && <XCircle className="h-3 w-3" aria-hidden="true" />}
+                                                {type === "numerical_hallucination" && <Hash className="h-3 w-3" aria-hidden="true" />}
                                                 {type.replace("_", " ")}: {count}
                                             </span>
                                         ))}
@@ -354,8 +354,8 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                         {data.verification.numerical_hallucinations &&
                          data.verification.numerical_hallucinations.count > 0 && (
                             <div className="bg-rose-50/50 border border-rose-200 rounded-lg p-2">
-                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5">
-                                    ⚠ Numerical Hallucinations Detected
+                                <p className="text-[9px] sm:text-[10px] font-semibold uppercase text-rose-700 mb-1.5 flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3" aria-hidden="true" /> Numerical Hallucinations Detected
                                 </p>
                                 <div className="space-y-1">
                                     {data.verification.numerical_hallucinations.details?.slice(0, 3).map((detail, idx) => (
@@ -527,7 +527,7 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
             {data.alerts && data.alerts.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4">
                     <h4 className="text-xs sm:text-sm font-semibold text-amber-800 mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
-                        ⚠️ Alerts
+                        <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" /> Alerts
                     </h4>
                     <ul className="space-y-0.5 sm:space-y-1">
                         {data.alerts.map((alert, i) => (
@@ -578,7 +578,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Analysis Suggestions */}
-            <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">📊 Run Epistemic Truth Discovery & Civic Social Listening</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full">Run Epistemic Truth Discovery & Civic Social Listening</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full mb-3 sm:mb-4">
                 {analysisSuggestions.map((prompt: string, i: number) => (
                     <button
@@ -594,7 +594,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Simple Q&A Suggestions */}
-            <p className="text-[10px] sm:text-xs font-semibold text-emerald-600 mb-1.5 sm:mb-2 w-full">💬 Quick Q&A</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-emerald-600 mb-1.5 sm:mb-2 w-full">Quick Q&A</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
                 {simpleSuggestions.map((prompt: string, i: number) => (
                     <button
@@ -696,7 +696,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {(msg.data?.mode === "simple" || msg.data?.mode === "simple_fallback") && msg.data.sources && msg.data.sources.length > 0 && (
                     <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100/50">
                         <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                            {(msg.data.sources as SimpleSource[]).some(s => s.type === "SENTIMENT") ? "📊 Sentiment Sources" : "Sources"}
+                            {(msg.data.sources as SimpleSource[]).some(s => s.type === "SENTIMENT") ? "Sentiment Sources" : "Sources"}
                         </p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {(msg.data.sources as SimpleSource[]).slice(0, 12).map((source, idx) => (
@@ -718,9 +718,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                                         )}
                                     >
                                         {source.sentiment && (
-                                            <span className="shrink-0">
-                                                {source.sentiment === "positive" ? "🟢" : source.sentiment === "negative" ? "🔴" : "⚪"}
-                                            </span>
+                                            <span className={clsx("h-2 w-2 rounded-full shrink-0", source.sentiment === "positive" ? "bg-emerald-500" : source.sentiment === "negative" ? "bg-rose-500" : "bg-slate-300")} aria-hidden="true" />
                                         )}
                                         <span className="truncate max-w-[100px] sm:max-w-[150px]">{source.title}</span>
                                         <ArrowRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-50 shrink-0" />
@@ -808,7 +806,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
       if (!backendStatus || backendError) {
         setMessages((prev) => [...prev, {
           role: "model",
-          content: "❌ System is still initializing. Please wait a moment and try again.",
+          content: "System is still initializing. Please wait a moment and try again.",
           isStreaming: false
         }]);
         return;
@@ -822,7 +820,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         // Add initial streaming message with thinking animation
         setMessages((prev) => [...prev, {
             role: "model",
-            content: "💭 Thinking...",
+            content: "Thinking...",
             isStreaming: true,
             streamProgress: 0.1,
             streamStage: "start"
@@ -874,7 +872,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     if (updated[lastIdx]?.isStreaming) {
                         updated[lastIdx] = {
                             ...updated[lastIdx],
-                            content: "🔍 Searching for relevant information...",
+                            content: "Searching for relevant information...",
                             streamProgress: 0.4,
                             streamStage: "retrieval"
                         };
@@ -890,7 +888,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     if (updated[lastIdx]?.isStreaming) {
                         updated[lastIdx] = {
                             ...updated[lastIdx],
-                            content: "✨ Generating response...",
+                            content: "Generating response...",
                             streamProgress: 0.8,
                             streamStage: "themes"
                         };
@@ -933,7 +931,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 if (updated[lastIdx]?.isStreaming) {
                     updated[lastIdx] = {
                         ...updated[lastIdx],
-                        content: "🔄 Starting multi-agent analysis...",
+                        content: "Starting multi-agent analysis...",
                         streamProgress: 0.1,
                         streamStage: "query_orchestrator"
                     };
@@ -1030,7 +1028,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 if (updated[lastIdx]?.isStreaming) {
                     updated[lastIdx] = {
                         role: "model",
-                        content: `❌ ${errorMessage}. Please try again.`,
+                        content: `${errorMessage}. Please try again.`,
                         isStreaming: false
                     };
                 }
@@ -1183,7 +1181,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                                     : "bg-gradient-to-r from-amber-500 to-amber-600 text-white"
                                             )}
                                         >
-                                            <span className="text-xs">{systemMode === 'agentic_hinaing' ? '🟢' : '⚪'}</span>
+                                            <span className={clsx("h-2 w-2 rounded-full", systemMode === 'agentic_hinaing' ? "bg-emerald-400" : "bg-white/40")} aria-hidden="true" />
                                             <span className="hidden sm:inline">{systemMode === 'agentic_hinaing' ? 'AgenticHinaing' : 'Evaluation'}</span>
                                             <span className="sm:hidden">{systemMode === 'agentic_hinaing' ? 'AH' : 'Eval'}</span>
                                         </button>
