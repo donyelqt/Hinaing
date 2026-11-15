@@ -16,23 +16,47 @@ export function HeroSection(_props: HeroSectionProps) {
           0%, 100% { transform: translate3d(0, 3px, 0) scale(1.035, 0.96) rotate(-1.2deg); }
           50% { transform: translate3d(0, -7px, 0) scale(0.97, 1.05) rotate(1.4deg); }
         }
+        @keyframes hinaing-wave {
+          0%, 55% { transform: rotate(0deg); }
+          62% { transform: rotate(-17deg); }
+          69% { transform: rotate(-1deg); }
+          76% { transform: rotate(-17deg); }
+          83% { transform: rotate(-1deg); }
+          90% { transform: rotate(-11deg); }
+          100%, 96% { transform: rotate(0deg); }
+        }
         .hinaing-breathe {
           animation: hinaing-breathe 2.9s cubic-bezier(0.77, 0, 0.175, 1) infinite;
           transform-origin: 50% 88%;
           will-change: transform;
         }
-        @media (prefers-reduced-motion: reduce) { .hinaing-breathe { animation: none; } }
+        .hinaing-wave {
+          animation: hinaing-wave 5.6s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+          transform-origin: 21.9% 53.7%;
+          will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) { .hinaing-breathe, .hinaing-wave { animation: none; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.09),transparent_45%)]" aria-hidden="true" />
       <div className="relative flex items-center gap-3 sm:gap-6">
-        <Image
-          src="/hinaing-mascot.webp"
-          alt="Himp, the HinAing lion mascot, waving hello"
-          width={512}
-          height={628}
-          priority
-          className="hinaing-breathe h-32 w-auto shrink-0 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)] sm:h-40 md:h-44"
-        />
+        <div className="hinaing-breathe relative h-32 w-auto shrink-0 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)] sm:h-40 md:h-44">
+          <Image
+            src="/hinaing-body.webp"
+            alt=""
+            width={512}
+            height={628}
+            priority
+            className="h-32 w-auto sm:h-40 md:h-44"
+          />
+          <Image
+            src="/hinaing-arm.webp"
+            alt="Himp, the HinAing lion mascot, waving hello"
+            width={512}
+            height={628}
+            priority
+            className="hinaing-wave absolute inset-0 h-32 w-auto sm:h-40 md:h-44"
+          />
+        </div>
 
         <div className="relative min-w-0 rounded-2xl bg-white/95 p-4 text-slate-900 shadow-[0_12px_28px_-14px_rgba(15,23,42,0.45)] sm:p-5">
           <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-white/95" />
