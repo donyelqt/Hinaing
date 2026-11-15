@@ -11,16 +11,27 @@ type HeroSectionProps = {
 export function HeroSection(_props: HeroSectionProps) {
   return (
     <div className="relative overflow-hidden rounded-xl brand-gradient p-6 text-white shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.35),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-white/10 md:p-7" role="banner">
+      <style>{`
+        @keyframes hinaing-mascot-bob {
+          0%, 100% { transform: translate3d(0, 3px, 0) rotate(-1.1deg); }
+          50% { transform: translate3d(0, -7px, 0) rotate(1.3deg); }
+        }
+        .hinaing-mascot { animation: hinaing-mascot-bob 2.9s ease-in-out infinite; transform-origin: 50% 90%; will-change: transform; }
+        @media (prefers-reduced-motion: reduce) { .hinaing-mascot { animation: none; } }
+      `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.09),transparent_45%)]" aria-hidden="true" />
-      <div className="relative flex items-center gap-4 sm:gap-6">
-        <Image
-          src="/hinaing-mascot.webp"
-          alt="Himp, the HinAing lion mascot, waving hello"
-          width={512}
-          height={628}
-          priority
-          className="h-28 w-auto shrink-0 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)] sm:h-32 md:h-36"
-        />
+      <div className="relative flex items-center gap-3 sm:gap-6">
+        <div className="hinaing-mascot relative h-28 w-28 shrink-0 overflow-hidden sm:h-36 sm:w-36 md:h-40 md:w-40">
+          <Image
+            src="/hinaing-mascot.webp"
+            alt="Himp, the HinAing lion mascot, waving hello"
+            width={512}
+            height={628}
+            priority
+            className="absolute left-1/2 top-0 h-[150%] w-auto max-w-none -translate-x-1/2 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)]"
+          />
+        </div>
+
         <div className="relative min-w-0 rounded-2xl bg-white/95 p-4 text-slate-900 shadow-[0_12px_28px_-14px_rgba(15,23,42,0.45)] sm:p-5">
           <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-white/95" />
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-from sm:text-[11px]">Hi! I&apos;m Himp.</p>
