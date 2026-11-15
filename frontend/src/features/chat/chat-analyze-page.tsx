@@ -65,7 +65,7 @@ function SegmentedControl({
             role="radiogroup"
             aria-label={ariaLabel}
             onKeyDown={handleKeyDown}
-            className="inline-flex flex-wrap items-center gap-0.5 rounded-lg bg-slate-100 p-1"
+            className="inline-flex flex-wrap items-center gap-0 rounded-lg bg-slate-100 p-0.5"
         >
             {options.map((option) => {
                 const active = option.value === value;
@@ -78,7 +78,7 @@ function SegmentedControl({
                         tabIndex={active ? 0 : -1}
                         onClick={() => onChange(option.value)}
                         className={clsx(
-                            "h-9 sm:h-10 min-w-[44px] rounded-md px-3 text-[11px] sm:text-xs font-medium transition-[background-color,color,box-shadow,transform] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 active:scale-[0.98]",
+                            "h-7 sm:h-8 min-w-[44px] rounded-md px-2 py-1 text-[10px] sm:text-[11px] font-medium transition-[background-color,color,box-shadow,transform] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 active:scale-[0.98]",
                             active
                                 ? "bg-white text-slate-900 shadow-sm"
                                 : "text-slate-500 hover:text-slate-800 hover:bg-white/70"
@@ -1177,10 +1177,10 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto space-y-2">
                                     {/* Controls */}
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                                         {/* Mode */}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-semibold text-slate-400 select-none">Mode</span>
+                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-400 select-none">Mode</span>
                                             {systemMode === 'agentic_hinaing' ? (
                                                 <SegmentedControl
                                                     ariaLabel="Analysis mode"
@@ -1200,7 +1200,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
 
                                         {/* LLM engine */}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-semibold text-slate-400 select-none">Engine</span>
+                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-400 select-none">Engine</span>
                                             <SegmentedControl
                                                 ariaLabel="LLM engine"
                                                 value={llmMode}
