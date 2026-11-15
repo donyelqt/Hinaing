@@ -565,7 +565,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 {greeting}, Baguio.
             </h2>
             <p className="text-sm sm:text-base text-slate-600 text-center mb-2 max-w-md px-2 text-pretty">
-                I <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text font-semibold text-transparent">intelligently route</span> your questions to the right system.
+                I <span className="brand-gradient bg-clip-text font-semibold text-transparent">intelligently route</span> your questions to the right system.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-1.5 mb-5 sm:mb-8 max-w-md">
                 <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">Civic listening <span className="text-slate-300">→</span> 7-agent + 11 sub</span>
