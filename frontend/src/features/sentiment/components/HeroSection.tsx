@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import type { ToggleOption } from "../types";
 
 type HeroSectionProps = {
@@ -8,7 +11,55 @@ type HeroSectionProps = {
   focusSummaryLabel: string;
 };
 
+const NARRATIVES = [
+  "I read every Baguio post so you don't have to.",
+  "Tell me the window. I'll do the digging.",
+  "Ask me what Baguio is saying today.",
+  "Every complaint counts. I keep score.",
+  "Grounded briefings, straight from Baguio streets.",
+];
+
+function pickNarrative(): string {
+  if (typeof window === "undefined") {
+    return NARRATIVES[0];
+  }
+  try {
+    const stored = window.sessionStorage.getItem("bronny-narrative-index");
+    const prev = stored !== null ? Number(stored) : -1;
+    let index = Math.floor(Math.random() * NARRATIVES.length);
+    if (!Number.isFinite(index) || (NARRATIVES.length > 1 && index === prev)) {
+      index = (prev + 1 + NARRATIVES.length) % NARRATIVES.length;
+    }
+    window.sessionStorage.setItem("bronny-narrative-index", String(index));
+    return NARRATIVES[index];
+  } catch {
+    return NARRATIVES[Math.floor(Math.random() * NARRATIVES.length)];
+  }
+}
+
 export function HeroSection(_props: HeroSectionProps) {
+  const [narrative] = useState(pickNarrative);
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setTyped(narrative);
+      setDone(true);
+      return;
+    }
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 1;
+      setTyped(narrative.slice(0, i));
+      if (i >= narrative.length) {
+        window.clearInterval(id);
+        setDone(true);
+      }
+    }, 28);
+    return () => window.clearInterval(id);
+  }, [narrative]);
+
   return (
     <div className="relative overflow-hidden rounded-xl brand-gradient p-6 text-white shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.35),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-white/10 md:p-7" role="banner">
       <style>{`
@@ -43,6 +94,24 @@ export function HeroSection(_props: HeroSectionProps) {
           73% { transform: rotate(-0.8deg); }
           85% { transform: rotate(0deg); }
         }
+        @keyframes bronny-caret {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        .bronny-caret {
+          display: inline-block;
+          width: 0.55em;
+          background: currentColor;
+          height: 1em;
+          margin-left: 2px;
+          vertical-align: -0.12em;
+          animation: bronny-caret 0.95s steps(1) infinite;
+        }
+        .bronny-caret[data-done="true"] {
+          animation: none;
+          opacity: 0;
+          transition: opacity 300ms ease 1100ms;
+        }
         .hinaing-breathe {
           animation: hinaing-breathe 2.9s cubic-bezier(0.77, 0, 0.175, 1) infinite;
           transform-origin: 50% 88%;
@@ -65,6 +134,7 @@ export function HeroSection(_props: HeroSectionProps) {
         }
         @media (prefers-reduced-motion: reduce) {
           .hinaing-breathe, .hinaing-wave, .hinaing-sleeve, .hinaing-lean { animation: none; }
+          .bronny-caret { animation: none; opacity: 0; }
         }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.09),transparent_45%)]" aria-hidden="true" />
@@ -102,7 +172,17 @@ export function HeroSection(_props: HeroSectionProps) {
           <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-white/95" />
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-from sm:text-[11px]">Hi! I&apos;m Bronny.</p>
           <h1 className="mt-1 text-base font-semibold tracking-tight text-slate-900 text-balance sm:text-lg">Hinaing — Baguio City</h1>
-          <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-600 text-pretty sm:text-sm">Public sentiment console. Configure and generate a grounded briefing.</p>
+          <p
+            className="mt-1.5 min-h-[2.25rem] max-w-md text-xs leading-relaxed text-slate-600 text-pretty sm:min-h-[1.5rem] sm:text-sm"
+            aria-live="polite"
+          >
+            <span aria-hidden="true">
+              {typed}
+              <span className="bronny-caret text-brand-from" data-done={done} />
+            </span>
+            <span className="sr-only">{narrative}</span>
+          </p>
+          <p className="mt-1 hidden text-[11px] font-medium text-slate-400 sm:block">Public sentiment console. Configure and generate a grounded briefing.</p>
         </div>
       </div>
     </div>
