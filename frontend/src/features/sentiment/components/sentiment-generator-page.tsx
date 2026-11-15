@@ -1,4 +1,5 @@
 "use client";
+import { HinaingLogo } from "@/components/ui/hinaing-logo";
 
 import * as React from "react";
 import clsx from "clsx";
@@ -1026,9 +1027,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </>
                   ) : (
                     <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center" role="status" aria-live="polite">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl brand-gradient">
-                        <span className="text-sm font-bold tracking-tight text-white">H</span>
-                      </div>
+                      <HinaingLogo alt="" className="h-14 w-auto opacity-90" />
                       <div className="mt-3 flex items-center gap-1.5">
                         <span className="text-sm font-bold tracking-tight text-slate-900">Hinaing</span>
                         <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Baguio</span>
