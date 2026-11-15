@@ -17,13 +17,31 @@ export function HeroSection(_props: HeroSectionProps) {
           50% { transform: translate3d(0, -7px, 0) scale(0.97, 1.05) rotate(1.4deg); }
         }
         @keyframes hinaing-wave {
-          0%, 48% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
-          52% { transform: rotate(-13deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-          56.5% { transform: rotate(-3deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-          61.5% { transform: rotate(-13deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-          66% { transform: rotate(-3deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-          76.5% { transform: rotate(-10deg) translate3d(0, -1.5px, 0); animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+          0%, 47% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+          52% { transform: rotate(-9deg) translate3d(0, -1.5px, 0); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          56% { transform: rotate(2.5deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          60.5% { transform: rotate(-13.5deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          64.5% { transform: rotate(-4deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          68.5% { transform: rotate(-12.5deg) translate3d(0, -2.5px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          72.5% { transform: rotate(-6deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          77.5% { transform: rotate(-10deg) translate3d(0, -1px, 0); animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
           92%, 100% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+        }
+        @keyframes hinaing-sleeve {
+          0%, 47%, 100% { transform: rotate(0deg); }
+          52% { transform: rotate(-2.3deg); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          57% { transform: rotate(0.4deg); }
+          62% { transform: rotate(-1.8deg); }
+          72% { transform: rotate(-1deg); }
+          82% { transform: rotate(0deg); }
+        }
+        @keyframes hinaing-lean {
+          0%, 47%, 100% { transform: rotate(0deg); }
+          53% { transform: rotate(-1.5deg); }
+          57% { transform: rotate(-0.2deg); }
+          64% { transform: rotate(-1.3deg); }
+          73% { transform: rotate(-0.8deg); }
+          85% { transform: rotate(0deg); }
         }
         .hinaing-breathe {
           animation: hinaing-breathe 2.9s cubic-bezier(0.77, 0, 0.175, 1) infinite;
@@ -31,31 +49,53 @@ export function HeroSection(_props: HeroSectionProps) {
           will-change: transform;
         }
         .hinaing-wave {
-          animation: hinaing-wave 6.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
-          transform-origin: 20.4% 58.3%;
+          animation: hinaing-wave 7s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+          transform-origin: 21.9% 57.0%;
           will-change: transform;
         }
-        @media (prefers-reduced-motion: reduce) { .hinaing-breathe, .hinaing-wave { animation: none; } }
+        .hinaing-sleeve {
+          animation: hinaing-sleeve 7s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+          transform-origin: 20.5% 64.8%;
+          will-change: transform;
+        }
+        .hinaing-lean {
+          animation: hinaing-lean 7s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+          transform-origin: 50% 82%;
+          will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hinaing-breathe, .hinaing-wave, .hinaing-sleeve, .hinaing-lean { animation: none; }
+        }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.09),transparent_45%)]" aria-hidden="true" />
       <div className="relative flex items-center gap-3 sm:gap-6">
-        <div className="hinaing-breathe relative h-32 w-auto shrink-0 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)] sm:h-40 md:h-44">
-          <Image
-            src="/hinaing-body.webp"
-            alt=""
-            width={512}
-            height={628}
-            priority
-            className="h-32 w-auto sm:h-40 md:h-44"
-          />
-          <Image
-            src="/hinaing-arm.webp"
-            alt="Himp, the HinAing lion mascot, waving hello"
-            width={512}
-            height={628}
-            priority
-            className="hinaing-wave absolute inset-0 h-32 w-auto sm:h-40 md:h-44"
-          />
+        <div className="hinaing-lean h-32 w-auto shrink-0 drop-shadow-[0_10px_16px_rgba(15,23,42,0.35)] sm:h-40 md:h-44">
+          <div className="hinaing-breathe relative h-full w-auto">
+            <Image
+              src="/hinaing-body.webp"
+              alt="Himp, the HinAing lion mascot, waving hello"
+              width={512}
+              height={628}
+              priority
+              className="h-32 w-auto sm:h-40 md:h-44"
+            />
+            <Image
+              src="/hinaing-forearm.webp"
+              alt=""
+              width={512}
+              height={628}
+              priority
+              className="hinaing-sleeve absolute inset-0 h-32 w-auto sm:h-40 md:h-44"
+            />
+            <Image
+              src="/hinaing-paw.webp"
+              alt=""
+              width={512}
+              height={628}
+              priority
+              className="hinaing-wave absolute inset-0 h-32 w-auto sm:h-40 md:h-44"
+            />
+          </div>
         </div>
 
         <div className="relative min-w-0 rounded-2xl bg-white/95 p-4 text-slate-900 shadow-[0_12px_28px_-14px_rgba(15,23,42,0.45)] sm:p-5">
