@@ -18,7 +18,7 @@ export function LandingHeader() {
           className="inline-flex items-center gap-2.5"
           aria-label="Hinaing home"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-[11px] font-semibold tracking-tight text-white shadow-sm">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full brand-gradient text-[11px] font-semibold tracking-tight text-white shadow-sm">
             H
           </span>
           <div className="flex items-baseline gap-1">
