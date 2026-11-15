@@ -4,6 +4,7 @@ import React from "react";
 import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle, Radar, FileSearch, Zap, Database, Target } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
+import { HinaingLogo } from "@/components/ui/hinaing-logo";
 import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-parser";
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
@@ -90,19 +91,6 @@ type SystemMode = 'agentic_hinaing' | 'evaluation';
 type EvalMode = 'llm_only' | 'rag' | 'agentic_rag';
 
 // --- Components ---
-
-function HLogo({ className }: { className?: string }) {
-    return (
-        <span
-            className={clsx(
-                "flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] font-semibold tracking-tight text-white shadow-subtle shrink-0",
-                className
-            )}
-        >
-            H
-        </span>
-    );
-}
 
 function ProgressIndicator({ stage, progress, message }: { stage: string; progress: number; message?: string }) {
     // Stage icons reuse the Agentic Orchestrator pipeline glyph set
@@ -570,7 +558,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
             <div className="mb-5 sm:mb-8 relative">
                 <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
-                <HLogo className="h-12 w-12 sm:h-16 sm:w-16 text-xl sm:text-2xl relative z-10 shadow-none" />
+                <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto relative z-10" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
@@ -629,7 +617,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             {/* AI Avatar */}
             {!isUser && (
                 <div className="mt-1 shrink-0">
-                    <HLogo className={clsx("h-7 w-7 sm:h-8 sm:w-8 text-[10px] sm:text-xs", msg.isStreaming && "animate-pulse")} />
+                    <HinaingLogo alt="" className={clsx("h-7 sm:h-8 w-auto", msg.isStreaming && "motion-safe:animate-pulse")} />
                 </div>
             )}
 
