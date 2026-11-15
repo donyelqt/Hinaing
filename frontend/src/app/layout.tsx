@@ -39,9 +39,6 @@ const robotoMono = localFont({
 export const metadata: Metadata = {
   title: "Hinaing – Public Sentiment Monitor",
   description: "Generate actionable public sentiment insights for Baguio City in real-time.",
-  icons: {
-    icon: "/icon.svg",
-  },
 };
 
 export default function RootLayout({
