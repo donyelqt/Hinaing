@@ -23,7 +23,7 @@ export function LivePreviewSection() {
 
             <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl leading-tight">
               A briefing that feels like a colleague, <br className="hidden lg:block" />
-              <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text text-transparent">not a dashboard.</span>
+              <span className="brand-gradient bg-clip-text text-transparent">not a dashboard.</span>
             </h2>
 
             <p className="text-lg text-slate-600 leading-relaxed max-w-xl">
@@ -46,7 +46,7 @@ export function LivePreviewSection() {
 
           <div className="relative perspective-1000">
             <div
-              className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-gradient-to-br from-[#3348b8]/20 via-[#3348b8]/20 to-[#5b3cc8]/20 blur-2xl"
+              className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-gradient-to-br from-brand-from/20 via-brand-from/20 to-brand-to/20 blur-2xl"
               aria-hidden="true"
             />
 
