@@ -20,9 +20,6 @@ const NARRATIVES = [
 ];
 
 function pickNarrative(): string {
-  if (typeof window === "undefined") {
-    return NARRATIVES[0];
-  }
   try {
     const stored = window.sessionStorage.getItem("bronny-narrative-index");
     const prev = stored !== null ? Number(stored) : -1;
@@ -38,11 +35,16 @@ function pickNarrative(): string {
 }
 
 export function HeroSection(_props: HeroSectionProps) {
-  const [narrative] = useState(pickNarrative);
+  const [narrative, setNarrative] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    setNarrative(pickNarrative());
+  }, []);
+
+  useEffect(() => {
+    if (!narrative) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setTyped(narrative);
       setDone(true);
@@ -176,11 +178,15 @@ export function HeroSection(_props: HeroSectionProps) {
             className="mt-1.5 min-h-[2.25rem] max-w-md text-xs leading-relaxed text-slate-600 text-pretty sm:min-h-[1.5rem] sm:text-sm"
             aria-live="polite"
           >
-            <span aria-hidden="true">
-              {typed}
-              <span className="bronny-caret text-brand-from" data-done={done} />
-            </span>
-            <span className="sr-only">{narrative}</span>
+            {narrative !== null && (
+              <>
+                <span aria-hidden="true">
+                  {typed}
+                  <span className="bronny-caret text-brand-from" data-done={done} />
+                </span>
+                <span className="sr-only">{narrative}</span>
+              </>
+            )}
           </p>
           <p className="mt-1 hidden text-[11px] font-medium text-slate-400 sm:block">Public sentiment console. Configure and generate a grounded briefing.</p>
         </div>
