@@ -5,6 +5,7 @@ import { Send, StopCircle, RefreshCw, Sparkles, User, ArrowRight, Menu, X } from
 import clsx from "clsx";
 import { apiPost } from "@/lib/api";
 import { Sidebar } from "../shared/components";
+import { HinaingLogo } from "@/components/ui/hinaing-logo";
 import { ActivePage } from "../shared/types/navigation";
 
 // --- Types ---
@@ -21,19 +22,6 @@ interface ChatPageProps {
 
 // --- Components ---
 
-function HLogo({ className }: { className?: string }) {
-    return (
-        <span
-            className={clsx(
-                "flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] font-semibold tracking-tight text-white shadow-subtle shrink-0",
-                className
-            )}
-        >
-            H
-        </span>
-    );
-}
-
 function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) => void }) {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -49,7 +37,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
             <div className="mb-5 sm:mb-8 relative">
                 <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
-                <HLogo className="h-12 w-12 sm:h-16 sm:w-16 text-xl sm:text-2xl relative z-10 shadow-none" />
+                <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto relative z-10" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
@@ -85,7 +73,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             {/* AI Avatar */}
             {!isUser && (
                 <div className="mt-1 shrink-0">
-                    <HLogo className="h-7 w-7 sm:h-8 sm:w-8 text-[10px] sm:text-xs" />
+                    <HinaingLogo alt="" className="h-7 sm:h-8 w-auto" />
                 </div>
             )}
 
@@ -337,7 +325,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                         {isLoading && (
                                             <div className="flex gap-2 sm:gap-4 w-full max-w-3xl mx-auto mb-4 sm:mb-6">
                                                 <div className="mt-1 shrink-0">
-                                                    <HLogo className="h-7 w-7 sm:h-8 sm:w-8 text-[10px] sm:text-xs animate-pulse" />
+                                                    <HinaingLogo alt="" className="h-7 sm:h-8 w-auto motion-safe:animate-pulse" />
                                                 </div>
                                                 <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-xs sm:text-sm italic pt-2">
                                                     <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-blue-400" />
