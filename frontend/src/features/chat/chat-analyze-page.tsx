@@ -673,15 +673,15 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Simple Q&A Suggestions */}
-            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-emerald-600 mb-1.5 sm:mb-2 w-full"><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />Quick Q&A</p>
+            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-[#0A2540] mb-1.5 sm:mb-2 w-full"><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />Quick Q&A</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full">
                 {simpleSuggestions.map((prompt: string, i: number) => (
                     <button
                         key={`simple-${i}`}
                         onClick={() => onPromptSelect(prompt)}
-                        className="text-left p-3 sm:p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:border-emerald-400 hover:shadow-none active:scale-[0.98] transition-all group"
+                        className="text-left p-3 sm:p-4 rounded-xl border border-[#0A2540]/15 bg-[#0A2540]/5 hover:border-[#0A2540]/30 hover:shadow-none active:scale-[0.98] transition-all group"
                     >
-                        <p className="text-xs sm:text-sm font-medium text-emerald-700 group-hover:text-emerald-900 transition-colors">
+                        <p className="text-xs sm:text-sm font-medium text-[#0A2540] group-hover:text-[#06203A] transition-colors">
                             {prompt}
                         </p>
                     </button>
