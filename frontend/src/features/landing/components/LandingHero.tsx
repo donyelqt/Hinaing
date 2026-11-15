@@ -261,7 +261,7 @@ export function LandingHero() {
                   {/* Main ribbon body */}
                   <div className="relative flex items-stretch">
                     {/* Ribbon tail left - stitched edge */}
-                    <div className="relative w-5 bg-[linear-gradient(180deg,#2e3da8_0%,#3348b8_100%)]" style={{ clipPath: 'polygon(0 0, 100% 0, 80% 50%, 100% 100%, 0 100%)' }}>
+                    <div className="relative w-5 bg-[linear-gradient(180deg,color-mix(in_srgb,rgb(var(--brand-from-rgb))_65%,black)_0%,rgb(var(--brand-from-rgb))_100%)]" style={{ clipPath: 'polygon(0 0, 100% 0, 80% 50%, 100% 100%, 0 100%)' }}>
                       <div className="absolute inset-0 border-r-2 border-dashed border-white/20" />
                     </div>
                     {/* Ribbon body with stitched border effect - center text vertically */}
@@ -273,7 +273,7 @@ export function LandingHero() {
                       </span>
                     </div>
                     {/* Ribbon tail right - stitched edge */}
-                    <div className="relative w-5 bg-[linear-gradient(180deg,#5b3cc8_0%,#6b4db8_100%)]" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 20% 50%, 0 100%)' }}>
+                    <div className="relative w-5 bg-[linear-gradient(180deg,color-mix(in_srgb,rgb(var(--brand-to-rgb))_65%,black)_0%,rgb(var(--brand-to-rgb))_100%)]" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 20% 50%, 0 100%)' }}>
                       <div className="absolute inset-0 border-l-2 border-dashed border-white/20" />
                     </div>
                   </div>
