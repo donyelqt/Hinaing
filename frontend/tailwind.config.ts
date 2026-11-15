@@ -27,6 +27,14 @@ const config: Config = {
           from: 'rgb(var(--brand-from-rgb) / <alpha-value>)',
           to: 'rgb(var(--brand-to-rgb) / <alpha-value>)',
         },
+        smooth: {
+          from: 'rgb(var(--smooth-from-rgb) / <alpha-value>)',
+          to: 'rgb(var(--smooth-to-rgb) / <alpha-value>)',
+        },
+        royal: {
+          from: 'rgb(var(--royal-from-rgb) / <alpha-value>)',
+          to: 'rgb(var(--royal-to-rgb) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ["var(--font-roboto)", "system-ui", "sans-serif"],
