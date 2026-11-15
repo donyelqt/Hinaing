@@ -62,8 +62,8 @@ export function KeyboardButton({
   // Variant-specific classes — premium gradient main + black edges for real keyboard
   const variantClasses = {
     primary: {
-      shadow: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] opacity-90",
-      keycap: "bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] text-white border-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.15)]",
+      shadow: "brand-gradient opacity-90",
+      keycap: "brand-gradient text-white border-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_0_rgba(0,0,0,0.15)]",
       gloss: "from-white/30",
       icon: "text-white/90",
       badge: "text-white/80 border-white/20 bg-white/10",
