@@ -36,12 +36,12 @@ function BaguioTeamsPill() {
   return (
     <div className="group relative inline-flex cursor-default">
       <div
-        className={`pointer-events-none absolute -inset-4 rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] opacity-[0.18] blur-xl transition-opacity duration-500 group-hover:opacity-30 ${isAutoPulse ? "opacity-25" : "opacity-0"
+        className={`pointer-events-none absolute -inset-4 rounded-full brand-gradient opacity-[0.18] blur-xl transition-opacity duration-500 group-hover:opacity-30 ${isAutoPulse ? "opacity-25" : "opacity-0"
           }`}
         aria-hidden="true"
       />
       <div
-        className={`relative z-10 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] px-4 py-1.5 text-xs font-medium text-white shadow-[0_8px_20px_-12px_rgba(51,72,184,0.35)] ring-1 ring-white/10 transition-all duration-300 hover:brightness-[1.04] hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.35)] ${isAutoPulse ? "brightness-[1.04]" : ""
+        className={`relative z-10 inline-flex items-center gap-2 rounded-full brand-gradient px-4 py-1.5 text-xs font-medium text-white shadow-[0_8px_20px_-12px_rgb(var(--brand-from-rgb)_/_0.35)] ring-1 ring-white/10 transition-all duration-300 hover:brightness-[1.04] hover:shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.35)] ${isAutoPulse ? "brightness-[1.04]" : ""
           }`}
       >
         <span className="relative flex h-2 w-2">
@@ -74,15 +74,15 @@ function DataScientistBadge() {
     <div className="group relative w-full">
       {/* Hover glow — premium */}
       <div
-        className="pointer-events-none absolute -inset-2 rounded-2xl bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] opacity-[0.12] blur-lg transition-opacity duration-500 group-hover:opacity-20"
+        className="pointer-events-none absolute -inset-2 rounded-2xl brand-gradient opacity-[0.12] blur-lg transition-opacity duration-500 group-hover:opacity-20"
         aria-hidden="true"
       />
       {/* Gradient border wrapper — full width */}
-      <div className="relative w-full rounded-2xl bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] p-[1.5px] shadow-[0_8px_20px_-12px_rgba(51,72,184,0.25)] transition-all duration-300">
+      <div className="relative w-full rounded-2xl brand-gradient p-[1.5px] shadow-[0_8px_20px_-12px_rgb(var(--brand-from-rgb)_/_0.25)] transition-all duration-300">
         {/* Inner content */}
         <div className="flex w-full items-center gap-3 rounded-[14px] bg-white px-4 py-2.5">
           {/* Number badge */}
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] shadow-sm">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl brand-gradient shadow-sm">
             <span className="text-sm font-black text-white tabular-nums tracking-tight">
               {count}
             </span>
@@ -102,7 +102,7 @@ function DataScientistBadge() {
             </span>
           </div>
           {/* Bot icon */}
-          <Bot className="h-4 w-4 text-violet-400 group-hover:text-[#3348b8] transition-colors shrink-0" />
+          <Bot className="h-4 w-4 text-violet-400 group-hover:text-brand-from transition-colors shrink-0" />
         </div>
       </div>
     </div>
@@ -170,7 +170,7 @@ export function LandingHero() {
         <div className="flex flex-col justify-center space-y-6 lg:max-w-2xl z-10">
           <div className="flex flex-wrap gap-3 items-center">
             <BaguioTeamsPill />
-            <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] active:scale-95">
+            <div className="group relative inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/50 px-4 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-100/50 hover:shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.25)] active:scale-95">
               <Sparkles className="h-3 w-3 text-emerald-500 animate-pulse" />
               <span>Thesis Grade Research Novel AI Architecture</span>
             </div>
@@ -179,7 +179,7 @@ export function LandingHero() {
           <div className="space-y-4">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl leading-[1.1]">
               Monitor public sentiment <br />
-              <span className="bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] bg-clip-text text-transparent">
+              <span className="brand-gradient bg-clip-text text-transparent">
                 before it becomes a crisis.
               </span>
             </h1>
@@ -188,26 +188,26 @@ export function LandingHero() {
               Hinaing turns noisy Web, Facebook, and Reddit conversations into clear, actionable briefings so Baguio City
               decision-makers can respond faster and plan better.
             </p>
-            <p className="max-w-lg text-[12px] font-bold uppercase tracking-[0.2em] text-[#3348b8]/80 animate-pulse">
+            <p className="max-w-lg text-[12px] font-bold uppercase tracking-[0.2em] text-brand-from/80 animate-pulse">
               The agentic AI that actually works for your better future — not just hard-coded logic
             </p>
 
             <div className="grid gap-2.5 sm:grid-cols-3 pt-2">
-              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1">
-                <div className="mb-1.5 inline-flex rounded-lg bg-violet-100 p-1.5 text-[#3348b8] group-hover:scale-110 transition-transform">
+              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.25)] hover:-translate-y-1">
+                <div className="mb-1.5 inline-flex rounded-lg bg-violet-100 p-1.5 text-brand-from group-hover:scale-110 transition-transform">
                   <MessageSquare className="h-3 w-3" />
                 </div>
                 <p className="text-lg font-bold text-slate-900">4.3k+</p>
                 <p className="text-[9px] font-medium text-slate-500 uppercase tracking-wide">Conversations</p>
               </div>
-              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1">
+              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.25)] hover:-translate-y-1">
                 <div className="mb-1.5 inline-flex rounded-lg bg-blue-100 p-1.5 text-blue-600 group-hover:scale-110 transition-transform">
                   <MapPin className="h-3 w-3" />
                 </div>
                 <p className="text-lg font-bold text-slate-900">40+</p>
                 <p className="text-[9px] font-medium text-slate-500 uppercase tracking-wide">Barangays</p>
               </div>
-              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgba(51,72,184,0.25)] hover:-translate-y-1">
+              <div className="group rounded-2xl border border-white/50 bg-white/40 p-2.5 shadow-lg shadow-slate-200/50 backdrop-blur-sm transition-all hover:bg-white/60 hover:shadow-[0_12px_32px_-16px_rgb(var(--brand-from-rgb)_/_0.25)] hover:-translate-y-1">
                 <div className="mb-1.5 inline-flex rounded-lg bg-cyan-100 p-1.5 text-cyan-600 group-hover:scale-110 transition-transform">
                   <Share2 className="h-3 w-3" />
                 </div>
@@ -252,10 +252,10 @@ export function LandingHero() {
             <div className={`relative transform transition-all duration-700 ${hoveredElement === 'card' ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'
               }`}>
               {/* Animated Rainbow Border - Subtle Glow */}
-              <div className="absolute -inset-[6px] rounded-[2.2rem] bg-gradient-to-r from-[#3348b8] via-blue-600 to-[#5b3cc8] opacity-30 blur-lg animate-rainbow-border" />
+              <div className="absolute -inset-[6px] rounded-[2.2rem] bg-gradient-to-r from-brand-from via-blue-600 to-brand-to opacity-30 blur-lg animate-rainbow-border" />
 
               {/* Gradient Border Wrapper */}
-              <div className="relative rounded-[2rem] bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] p-[1.5px]">
+              <div className="relative rounded-[2rem] brand-gradient p-[1.5px]">
                 {/* Classic Ribbon Style with Stitched Look - Positioned at top corner */}
                 <div className="absolute -top-3 -right-1 z-20">
                   {/* Main ribbon body */}
@@ -265,7 +265,7 @@ export function LandingHero() {
                       <div className="absolute inset-0 border-r-2 border-dashed border-white/20" />
                     </div>
                     {/* Ribbon body with stitched border effect - center text vertically */}
-                    <div className="relative flex items-center bg-[linear-gradient(135deg,#3348b8_0%,#5b3cc8_100%)] px-5 py-3 shadow-lg">
+                    <div className="relative flex items-center brand-gradient px-5 py-3 shadow-lg">
                       {/* Stitched border effect */}
                       <div className="absolute inset-1 border-2 border-dashed border-white/30 rounded-sm" />
                       <span className="relative z-10 text-[9px] font-bold uppercase tracking-wider text-white whitespace-nowrap">
