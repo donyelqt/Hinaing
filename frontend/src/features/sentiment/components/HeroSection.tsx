@@ -73,7 +73,7 @@ export function HeroSection(_props: HeroSectionProps) {
           <div className="hinaing-breathe relative h-full w-auto">
             <Image
               src="/hinaing-body.webp"
-              alt="Himp, the HinAing lion mascot, waving hello"
+              alt="Bronny, the HinAing lion mascot, waving hello"
               width={512}
               height={628}
               priority
@@ -100,7 +100,7 @@ export function HeroSection(_props: HeroSectionProps) {
 
         <div className="relative min-w-0 rounded-2xl bg-white/95 p-4 text-slate-900 shadow-[0_12px_28px_-14px_rgba(15,23,42,0.45)] sm:p-5">
           <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 bg-white/95" />
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-from sm:text-[11px]">Hi! I&apos;m Himp.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-from sm:text-[11px]">Hi! I&apos;m Bronny.</p>
           <h1 className="mt-1 text-base font-semibold tracking-tight text-slate-900 text-balance sm:text-lg">Hinaing — Baguio City</h1>
           <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-600 text-pretty sm:text-sm">Public sentiment console. Configure and generate a grounded briefing.</p>
         </div>
