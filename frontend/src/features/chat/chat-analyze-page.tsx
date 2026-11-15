@@ -9,6 +9,89 @@ import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-pa
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 
+const AGENTIC_MODE_OPTIONS = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'full', label: 'Full' },
+    { value: 'sentiment', label: 'Sentiment' },
+    { value: 'credibility', label: 'Credibility' },
+] as const;
+
+const EVAL_MODE_OPTIONS = [
+    { value: 'llm_only', label: 'LLM Only' },
+    { value: 'rag', label: 'Simple RAG' },
+    { value: 'agentic_rag', label: 'Agentic RAG' },
+] as const;
+
+const LLM_OPTIONS = [
+    { value: 'cloud', label: 'Cloud (Groq)' },
+    { value: 'local', label: 'Local (Qwen)' },
+] as const;
+
+const SYSTEM_MODE_OPTIONS = [
+    { value: 'agentic_hinaing', label: 'AgenticHinaing' },
+    { value: 'evaluation', label: 'Evaluation' },
+] as const;
+
+function SegmentedControl({
+    ariaLabel,
+    value,
+    onChange,
+    options,
+}: {
+    ariaLabel: string;
+    value: string;
+    onChange: (value: string) => void;
+    options: readonly { value: string; label: string }[];
+}) {
+    const selectedIndex = Math.max(
+        options.findIndex((option) => option.value === value),
+        0,
+    );
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        let nextIndex = selectedIndex;
+        if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = options.length - 1;
+        else if (event.key === 'ArrowLeft') nextIndex = (selectedIndex - 1 + options.length) % options.length;
+        else nextIndex = (selectedIndex + 1) % options.length;
+        onChange(options[nextIndex].value);
+    };
+
+    return (
+        <div
+            role="radiogroup"
+            aria-label={ariaLabel}
+            onKeyDown={handleKeyDown}
+            className="inline-flex flex-wrap items-center gap-0.5 rounded-lg bg-slate-100 p-1"
+        >
+            {options.map((option) => {
+                const active = option.value === value;
+                return (
+                    <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        tabIndex={active ? 0 : -1}
+                        onClick={() => onChange(option.value)}
+                        className={clsx(
+                            "h-9 sm:h-10 min-w-[44px] rounded-md px-3 text-[11px] sm:text-xs font-medium transition-[background-color,color,box-shadow,transform] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 active:scale-[0.98]",
+                            active
+                                ? "bg-white text-slate-900 shadow-sm"
+                                : "text-slate-500 hover:text-slate-800 hover:bg-white/70"
+                        )}
+                    >
+                        {option.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 // --- Types ---
 
 // Import new best-practice types from sentiment types
@@ -1093,94 +1176,46 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             {/* Input Area - Safe area padding for mobile */}
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto space-y-2">
-                                    {/* Mode Row with System Toggle */}
-                                    <div className="flex items-center justify-between gap-2">
-                                        {/* Left: Mode Selector */}
-                                        <div className="flex items-center gap-1 sm:gap-1.5">
-                                            <span className="text-[10px] sm:text-xs text-slate-500 font-medium">Mode:</span>
+                                    {/* Controls */}
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                        {/* Mode */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-semibold text-slate-400 select-none">Mode</span>
                                             {systemMode === 'agentic_hinaing' ? (
-                                                // AgenticHinaing Modes (Auto, Full, Sentiment, Credibility)
-                                                [
-                                                    { value: 'auto', label: 'Auto' },
-                                                    { value: 'full', label: 'Full' },
-                                                    { value: 'sentiment', label: 'Sentiment' },
-                                                    { value: 'credibility', label: 'Credibility' }
-                                                ].map((option) => (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
-                                                        onClick={() => setMode(option.value as AnalysisMode)}
-                                                        className={clsx(
-                                                            "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
-                                                            mode === option.value
-                                                                ? "bg-blue-100 text-blue-700 border border-blue-200"
-                                                                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))
+                                                <SegmentedControl
+                                                    ariaLabel="Analysis mode"
+                                                    value={mode}
+                                                    onChange={(next) => setMode(next as AnalysisMode)}
+                                                    options={AGENTIC_MODE_OPTIONS}
+                                                />
                                             ) : (
-                                                // Evaluation Modes (LLM Only, Simple RAG, Agentic RAG)
-                                                [
-                                                    { value: 'llm_only', label: 'LLM Only' },
-                                                    { value: 'rag', label: 'Simple RAG' },
-                                                    { value: 'agentic_rag', label: 'Agentic RAG' }
-                                                ].map((option) => (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
-                                                        onClick={() => setEvalMode(option.value as EvalMode)}
-                                                        className={clsx(
-                                                            "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
-                                                            evalMode === option.value
-                                                                ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                                                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))
+                                                <SegmentedControl
+                                                    ariaLabel="Evaluation mode"
+                                                    value={evalMode}
+                                                    onChange={(next) => setEvalMode(next as EvalMode)}
+                                                    options={EVAL_MODE_OPTIONS}
+                                                />
                                             )}
                                         </div>
 
-                                        {/* Right: LLM Mode Toggle (Cloud vs Local) */}
-                                        <div className="flex items-center gap-1">
-                                            {([
-                                                { value: 'cloud', label: 'Cloud (Groq)' },
-                                                { value: 'local', label: 'Local (Qwen)' }
-                                            ] as const).map((option) => (
-                                                <button
-                                                    key={option.value}
-                                                    type="button"
-                                                    onClick={() => setLlmMode(option.value)}
-                                                    className={clsx(
-                                                        "px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all",
-                                                        llmMode === option.value
-                                                            ? "bg-violet-100 text-violet-700 border border-violet-200"
-                                                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    {option.label}
-                                                </button>
-                                            ))}
+                                        {/* LLM engine */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-semibold text-slate-400 select-none">Engine</span>
+                                            <SegmentedControl
+                                                ariaLabel="LLM engine"
+                                                value={llmMode}
+                                                onChange={(next) => setLlmMode(next as 'cloud' | 'local')}
+                                                options={LLM_OPTIONS}
+                                            />
                                         </div>
 
-                                        {/* Right: System Toggle (Minimalist Pill) */}
-                                        <button
-                                            type="button"
-                                            onClick={() => setSystemMode(systemMode === 'agentic_hinaing' ? 'evaluation' : 'agentic_hinaing')}
-                                            className={clsx(
-                                                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold transition-all shadow-none",
-                                                systemMode === 'agentic_hinaing'
-                                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white"
-                                                    : "bg-gradient-to-r from-amber-500 to-amber-600 text-white"
-                                            )}
-                                        >
-                                            <span className={clsx("h-2 w-2 rounded-full", systemMode === 'agentic_hinaing' ? "bg-emerald-400" : "bg-white/40")} aria-hidden="true" />
-                                            <span className="hidden sm:inline">{systemMode === 'agentic_hinaing' ? 'AgenticHinaing' : 'Evaluation'}</span>
-                                            <span className="sm:hidden">{systemMode === 'agentic_hinaing' ? 'AH' : 'Eval'}</span>
-                                        </button>
+                                        {/* System */}
+                                        <SegmentedControl
+                                            ariaLabel="System mode"
+                                            value={systemMode}
+                                            onChange={(next) => setSystemMode(next as SystemMode)}
+                                            options={SYSTEM_MODE_OPTIONS}
+                                        />
                                     </div>
 
                                     <div className="relative group">
