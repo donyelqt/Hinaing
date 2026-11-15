@@ -657,15 +657,15 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             </div>
 
             {/* Analysis Suggestions */}
-            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-violet-600 mb-1.5 sm:mb-2 w-full"><BrainCircuit className="h-3.5 w-3.5" aria-hidden="true" />Run Epistemic Truth Discovery & Civic Social Listening</p>
+            <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-brand-from mb-1.5 sm:mb-2 w-full"><BrainCircuit className="h-3.5 w-3.5" aria-hidden="true" />Run Epistemic Truth Discovery & Civic Social Listening</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full mb-3 sm:mb-4">
                 {analysisSuggestions.map((prompt: string, i: number) => (
                     <button
                         key={`analysis-${i}`}
                         onClick={() => onPromptSelect(prompt)}
-                        className="text-left p-3 sm:p-4 rounded-xl border border-violet-200 bg-violet-50/50 hover:border-violet-400 hover:shadow-none active:scale-[0.98] transition-all group"
+                        className="text-left p-3 sm:p-4 rounded-xl border border-brand-from/20 bg-brand-from/5 hover:border-brand-from/30 hover:shadow-none active:scale-[0.98] transition-all group"
                     >
-                        <p className="text-xs sm:text-sm font-medium text-violet-700 group-hover:text-violet-900 transition-colors">
+                        <p className="text-xs sm:text-sm font-medium text-brand-from group-hover:text-brand-to transition-colors">
                             {prompt}
                         </p>
                     </button>
