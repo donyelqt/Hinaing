@@ -23,6 +23,10 @@ const config: Config = {
           900: "#1e3572",
         },
         "hinaing-gold": "#f59f0b",
+        brand: {
+          from: 'rgb(var(--brand-from-rgb) / <alpha-value>)',
+          to: 'rgb(var(--brand-to-rgb) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ["var(--font-roboto)", "system-ui", "sans-serif"],
