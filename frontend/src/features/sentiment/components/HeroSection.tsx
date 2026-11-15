@@ -17,13 +17,13 @@ export function HeroSection(_props: HeroSectionProps) {
           50% { transform: translate3d(0, -7px, 0) scale(0.97, 1.05) rotate(1.4deg); }
         }
         @keyframes hinaing-wave {
-          0%, 55% { transform: rotate(0deg); }
-          62% { transform: rotate(-17deg); }
-          69% { transform: rotate(-1deg); }
-          76% { transform: rotate(-17deg); }
-          83% { transform: rotate(-1deg); }
-          90% { transform: rotate(-11deg); }
-          100%, 96% { transform: rotate(0deg); }
+          0%, 48% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+          52% { transform: rotate(-13deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          56.5% { transform: rotate(-3deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          61.5% { transform: rotate(-13deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          66% { transform: rotate(-3deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
+          76.5% { transform: rotate(-10deg) translate3d(0, -1.5px, 0); animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+          92%, 100% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
         }
         .hinaing-breathe {
           animation: hinaing-breathe 2.9s cubic-bezier(0.77, 0, 0.175, 1) infinite;
@@ -31,8 +31,8 @@ export function HeroSection(_props: HeroSectionProps) {
           will-change: transform;
         }
         .hinaing-wave {
-          animation: hinaing-wave 5.6s cubic-bezier(0.77, 0, 0.175, 1) infinite;
-          transform-origin: 21.9% 53.7%;
+          animation: hinaing-wave 6.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+          transform-origin: 20.4% 58.3%;
           will-change: transform;
         }
         @media (prefers-reduced-motion: reduce) { .hinaing-breathe, .hinaing-wave { animation: none; } }
