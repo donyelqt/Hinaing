@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Menu, X, Command } from "lucide-react";
 import { useState } from "react";
+import { HinaingLogo } from "@/components/ui/hinaing-logo";
 import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 export function LandingHeader() {
@@ -18,9 +19,7 @@ export function LandingHeader() {
           className="inline-flex items-center gap-2.5"
           aria-label="Hinaing home"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full brand-gradient text-[11px] font-semibold tracking-tight text-white shadow-sm">
-            H
-          </span>
+          <HinaingLogo alt="" priority className="h-7 w-auto sm:h-8" />
           <div className="flex items-baseline gap-1">
             <span className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
               Hinaing
