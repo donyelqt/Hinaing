@@ -5,9 +5,9 @@
 @layer base {
   :root {
     color-scheme: light;
-    /* active brand palette: smooth (logo canon). Switch to --royal-* values to revert. */
-    --brand-from-rgb: 0 128 255;
-    --brand-to-rgb: 140 82 255;
+    /* active brand palette: royal (civic canon). Switch to --smooth-* values to revert. */
+    --brand-from-rgb: 51 72 184;
+    --brand-to-rgb: 91 60 200;
     --smooth-from-rgb: 0 128 255;
     --smooth-to-rgb: 140 82 255;
     --royal-from-rgb: 51 72 184;
