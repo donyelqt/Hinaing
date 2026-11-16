@@ -45,6 +45,10 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState<boolean>(() => (moduleCollapsedHint !== null ? moduleCollapsedHint : false));
 
   useLayoutEffect(() => {
+    document.documentElement.dataset.sidebarCollapsed = collapsed ? 'true' : 'false';
+  }, [collapsed]);
+
+  useLayoutEffect(() => {
     try {
       const stored = window.localStorage.getItem('hinaing.sidebar.collapsed') === '1';
       if (moduleCollapsedHint === null) {
