@@ -33,7 +33,7 @@ export function FocusAreaSelector({ focusAreas, onToggle, setFocusAreas, error }
               className={clsx(
                 "rounded-xl border px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-to focus-visible:ring-offset-2 touch-manipulation",
                 isActive
-                  ? "border-transparent brand-gradient text-white shadow-sm"
+                  ? "border-transparent brand-gradient-y text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-500 hover:border-brand-to/40 hover:bg-[linear-gradient(135deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)]",
               )}
               aria-label={`${isActive ? 'Remove' : 'Add'} ${option.label} focus area`}
