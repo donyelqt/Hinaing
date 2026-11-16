@@ -530,7 +530,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full brand-gradient text-white shadow-sm">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white shadow-sm">
                         <Settings className="h-4 w-4" />
                       </div>
                       <h2 id="config-heading" className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">Configuration</h2>
@@ -546,19 +546,19 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                   <div className="absolute left-[15px] top-3 bottom-6 w-px bg-gradient-to-b from-brand-from/20 via-brand-to/20 to-slate-200 hidden sm:block" aria-hidden />
                   <div className="space-y-4">
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">1</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">1</span></div>
                       <div className="flex-1"><PlatformSelector platforms={state.platforms} onToggle={actions.toggleSelection} setPlatforms={actions.setPlatforms} error={validation.errors.platforms} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">2</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">2</span></div>
                       <div className="flex-1"><TimeWindowSelector timeWindow={state.timeWindow} setTimeWindow={actions.setTimeWindow} error={validation.errors.timeWindow} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">3</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">3</span></div>
                       <div className="flex-1"><FocusAreaSelector focusAreas={state.focusAreas} onToggle={actions.toggleSelection} setFocusAreas={actions.setFocusAreas} error={validation.errors.focusAreas} /></div>
                     </div>
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis mode</span><span className="text-[11px] text-slate-400">Depth</span></div>
                         <div className="grid gap-2 sm:grid-cols-3">
@@ -578,7 +578,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </div>
 
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">LLM Mode</span><span className="text-[11px] text-slate-400">Engine</span></div>
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -597,7 +597,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     </div>
 
                     <div className="relative flex gap-4 sm:pl-10">
-                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">6</span></div>
+                      <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">6</span></div>
                       <label className="flex flex-1 cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 hover:bg-white">
                         <input
                           type="checkbox"
