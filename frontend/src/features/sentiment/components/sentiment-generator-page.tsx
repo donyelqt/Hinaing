@@ -537,7 +537,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
               />
             </section>
 
-            <section className={clsx("grid gap-4 xl:gap-x-6 xl:items-stretch", isSidebarCollapsed ? "xl:grid-cols-[minmax(0,1.65fr)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,420px)]")} role="main" aria-label="Sentiment analysis configuration">
+            <section className={clsx("grid gap-4 xl:gap-x-6 xl:items-stretch", isSidebarCollapsed ? "xl:grid-cols-[minmax(0,642px)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,420px)]")} role="main" aria-label="Sentiment analysis configuration">
               <div className="flex h-full flex-col space-y-4 rounded-xl border border-slate-200/60 bg-white p-6" role="form" aria-labelledby="config-heading">
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
