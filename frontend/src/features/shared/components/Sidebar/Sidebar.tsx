@@ -134,7 +134,7 @@ export function Sidebar({
           )}
           <div className={collapsed ? 'lg:hidden' : 'block'}>
             <HinaingLogo className="h-5 w-auto sm:h-6" alt="Hinaing" priority />
-            <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
+            <h1 className="mt-1 whitespace-nowrap text-lg font-semibold tracking-tight text-slate-900 lg:mt-1.5 sm:text-xl">
               Public Sentiment Suite
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
