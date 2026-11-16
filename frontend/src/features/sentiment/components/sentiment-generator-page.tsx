@@ -323,6 +323,18 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [isTypingSummary, setIsTypingSummary] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [hoveredCardIndex, setHoveredCardIndex] = React.useState<number | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.dataset.sidebarCollapsed === 'true';
+  });
+  React.useEffect(() => {
+    const sync = () => setIsSidebarCollapsed(document.documentElement.dataset.sidebarCollapsed === 'true');
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-sidebar-collapsed'] });
+    return () => observer.disconnect();
+  }, []);
+
   const [mode, setMode] = React.useState<AnalysisMode>('full');
 
   // Removed auto-hover effect as requested
@@ -525,7 +537,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
               />
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,420px)] xl:gap-x-6 xl:items-stretch" role="main" aria-label="Sentiment analysis configuration">
+            <section className={clsx("grid gap-4 xl:gap-x-6 xl:items-stretch", isSidebarCollapsed ? "xl:grid-cols-[minmax(0,1fr)_minmax(420px,1fr)]" : "xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,420px)]")} role="main" aria-label="Sentiment analysis configuration">
               <div className="flex h-full flex-col space-y-4 rounded-xl border border-slate-200/60 bg-white p-6" role="form" aria-labelledby="config-heading">
                 <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-6">
                   <div className="space-y-2">
