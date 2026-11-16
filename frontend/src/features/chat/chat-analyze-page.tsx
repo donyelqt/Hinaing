@@ -660,11 +660,11 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 className="absolute rounded-full will-change-transform"
                 style={{
                   inset: '5%',
-                  background: 'conic-gradient(from 0deg, transparent 0deg 296deg, rgba(139,92,246,0.5) 318deg, rgba(34,211,238,0.72) 338deg, transparent 360deg)',
-                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 4.5px))',
-                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 4.5px))',
-                  filter: 'blur(1px)',
-                  animation: 'hinaing-sweep 13s linear infinite',
+                  background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
+                  filter: 'blur(0.7px)',
+                  animation: 'hinaing-sweep 17s linear infinite',
                 }}
                 aria-hidden="true"
               />
@@ -672,12 +672,12 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 className="absolute rounded-full will-change-transform"
                 style={{
                   inset: '12%',
-                  background: 'conic-gradient(from 180deg, transparent 0deg 250deg, rgba(56,189,248,0.3) 278deg, rgba(168,85,247,0.62) 310deg, transparent 330deg)',
-                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 5.5px))',
-                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 5.5px))',
-                  filter: 'blur(5px)',
-                  animation: 'hinaing-sweep 8.6s linear infinite reverse',
-                  opacity: 0.8,
+                  background: 'conic-gradient(from 150deg, transparent 0deg 240deg, rgba(56,189,248,0.22) 260deg, rgba(168,85,247,0.92) 292deg, rgba(232,121,249,0.7) 318deg, transparent 338deg)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
+                  filter: 'blur(1.2px)',
+                  animation: 'hinaing-sweep 23s linear infinite reverse',
+                  opacity: 0.9,
                 }}
                 aria-hidden="true"
               />
