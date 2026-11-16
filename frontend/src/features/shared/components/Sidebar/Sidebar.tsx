@@ -192,10 +192,10 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('sentiment')}
             data-active={activePage === 'sentiment' ? 'true' : 'false'}
-            className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
-            <Cpu className={`${collapsed ? 'h-7 w-7' : 'h-5 w-5'} flex-shrink-0`} aria-hidden="true" />
+            <Cpu className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'} flex-shrink-0`} aria-hidden="true" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -253,10 +253,10 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('dashboard')}
             data-active={activePage === 'dashboard' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
           >
-            <PieChart className={`${collapsed ? 'h-7 w-7' : 'h-5 w-5'}`} aria-hidden="true" />
+            <PieChart className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Dashboard</p>
@@ -271,10 +271,10 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('chat')}
             data-active={activePage === 'chat' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
           >
-            <Sparkles className={`${collapsed ? 'h-7 w-7' : 'h-5 w-5'}`} aria-hidden="true" />
+            <Sparkles className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Agentic RAG</p>
@@ -289,10 +289,10 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('analyze')}
             data-active={activePage === 'analyze' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
           >
-            <BarChart3 className={`${collapsed ? 'h-7 w-7' : 'h-5 w-5'}`} aria-hidden="true" />
+            <BarChart3 className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>AgenticHinaing</p>
@@ -307,10 +307,10 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('reports')}
             data-active={activePage === 'reports' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
           >
-            <Save className={`${collapsed ? 'h-7 w-7' : 'h-5 w-5'}`} aria-hidden="true" />
+            <Save className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Saved Reports</p>
