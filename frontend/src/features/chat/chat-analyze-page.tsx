@@ -640,94 +640,66 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
             <style>{`
-              @keyframes hinaing-float { 0%, 100% { transform: translate3d(0, 4px, 0); } 50% { transform: translate3d(0, -7px, 0); } }
-              @keyframes hinaing-orbit-a { from { transform: rotateZ(0deg); } to { transform: rotateZ(360deg); } }
-              @keyframes hinaing-orbit-b { from { transform: rotateZ(360deg); } to { transform: rotateZ(0deg); } }
-              @keyframes hinaing-spec { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.95; } }
-              @keyframes hinaing-atmo { 0%, 100% { opacity: 0.55; transform: scale(0.96); } 50% { opacity: 0.9; transform: scale(1.05); } }
+              @keyframes hinaing-halo { 0%, 100% { transform: scale(0.9); opacity: 0.45; } 50% { transform: scale(1.1); opacity: 0.85; } }
+              @keyframes hinaing-float { 0%, 100% { transform: translate3d(0, 5px, 0); } 50% { transform: translate3d(0, -8px, 0); } }
+              @keyframes hinaing-orbit { from { transform: rotateX(64deg) rotateZ(0deg); } to { transform: rotateX(64deg) rotateZ(360deg); } }
+              @keyframes hinaing-orbit-rev { from { transform: rotateX(64deg) rotateZ(360deg); } to { transform: rotateX(64deg) rotateZ(0deg); } }
+              @keyframes hinaing-wobble { 0%, 100% { transform: rotateY(-12deg) rotateX(2deg); } 50% { transform: rotateY(12deg) rotateX(-2deg); } }
               @media (prefers-reduced-motion: reduce) {
                 .hinaing-welcome-live, .hinaing-welcome-live * { animation: none !important; }
               }
             `}</style>
             <div className="hinaing-welcome-live relative mb-5 sm:mb-8 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56" style={{ perspective: '760px' }}>
               <div
-                className="absolute rounded-full"
-                style={{
-                  inset: '-9%',
-                  background: 'radial-gradient(circle at 50% 50%, rgba(139,92,246,0.3) 0%, rgba(139,92,246,0.12) 44%, transparent 72%)',
-                  filter: 'blur(16px)',
-                  animation: 'hinaing-atmo 6.4s ease-in-out infinite',
-                }}
+                className="absolute rounded-full bg-gradient-to-br from-violet-400/50 via-blue-500/25 to-cyan-300/20 blur-3xl"
+                style={{ inset: '24%', animation: 'hinaing-halo 5.6s ease-in-out infinite' }}
                 aria-hidden="true"
               />
               <div
-                className="absolute overflow-hidden rounded-full"
-                style={{
-                  inset: '5%',
-                  background:
-                    'radial-gradient(circle at 34% 30%, #c4b5fd 0%, #8b5cf6 11%, #6d28d9 33%, #4c1d95 62%, #21073f 88%, #050110 100%)',
-                  boxShadow:
-                    'inset -16px -20px 34px rgba(2,6,23,0.6), inset 12px 15px 26px rgba(255,255,255,0.22), inset -3px -4px 12px rgba(2,6,23,0.4)',
-                }}
+                className="absolute inset-0"
+                style={{ transformStyle: 'preserve-3d', animation: 'hinaing-wobble 9s ease-in-out infinite' }}
                 aria-hidden="true"
               >
                 <div
-                  className="absolute rounded-full"
+                  className="absolute rounded-full will-change-transform"
                   style={{
-                    top: '9%', left: '13%', width: '34%', height: '30%',
-                    background: 'radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.18) 45%, transparent 70%)',
-                    filter: 'blur(5px)',
-                    animation: 'hinaing-spec 6.4s ease-in-out infinite',
+                    inset: '0%',
+                    background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                    WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
+                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
+                    filter: 'blur(0.7px)',
+                    animation: 'hinaing-orbit 17s linear infinite',
+                    transform: 'rotateX(64deg)',
                   }}
                 />
                 <div
-                  className="absolute rounded-full"
+                  className="absolute rounded-full will-change-transform"
                   style={{
-                    top: '58%', right: '8%', width: '26%', height: '22%',
-                    background: 'radial-gradient(ellipse at 50% 50%, rgba(34,211,238,0.35) 0%, transparent 68%)',
-                    filter: 'blur(9px)',
+                    inset: '12%',
+                    background: 'conic-gradient(from 150deg, transparent 0deg 240deg, rgba(56,189,248,0.22) 260deg, rgba(168,85,247,0.92) 292deg, rgba(232,121,249,0.7) 318deg, transparent 338deg)',
+                    WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
+                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
+                    filter: 'blur(1.2px)',
+                    animation: 'hinaing-orbit-rev 23s linear infinite',
+                    transform: 'rotateX(64deg)',
+                  }}
+                />
+                <div
+                  className="absolute rounded-full will-change-transform"
+                  style={{
+                    inset: '23%',
+                    background: 'conic-gradient(from 300deg, transparent 0deg 252deg, rgba(56,189,248,0.18) 270deg, rgba(125,211,252,0.72) 292deg, transparent 310deg)',
+                    WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3px))',
+                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3px))',
+                    filter: 'blur(2.4px)',
+                    animation: 'hinaing-orbit 30s linear infinite reverse',
+                    transform: 'rotateX(64deg)',
+                    opacity: 0.75,
                   }}
                 />
               </div>
-              <div
-                className="absolute rounded-full border border-white/10"
-                style={{ inset: '5%', transform: 'rotateX(66deg)' }}
-                aria-hidden="true"
-              />
-              <div
-                className="absolute rounded-full will-change-transform"
-                style={{
-                  inset: '5%',
-                  background: 'conic-gradient(from 0deg, transparent 0deg 235deg, rgba(139,92,246,0.25) 258deg, rgba(139,92,246,0.8) 282deg, rgba(34,211,238,0.95) 306deg, rgba(255,255,255,0.9) 315deg, rgba(139,92,246,0.4) 330deg, transparent 345deg)',
-                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 3.5px))',
-                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 3.5px))',
-                  filter: 'blur(0.6px)',
-                  transform: 'rotateX(66deg)',
-                  animation: 'hinaing-orbit-a 15s linear infinite',
-                }}
-                aria-hidden="true"
-              />
-              <div
-                className="absolute rounded-full"
-                style={{ inset: '5%', transform: 'rotateX(66deg)' }}
-                aria-hidden="true"
-              >
-                <div
-                  className="will-change-transform"
-                  style={{ position: 'absolute', inset: 0, animation: 'hinaing-orbit-a 15s linear infinite' }}
-                >
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      top: '-4px', left: 'calc(50% - 4px)', width: '8px', height: '8px',
-                      background: 'radial-gradient(circle at 38% 38%, #f8fafc, #cbd5e1 90%)',
-                      boxShadow: '0 0 8px 2px rgba(255,255,255,0.75)',
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="relative z-10" style={{ animation: 'hinaing-float 5.2s ease-in-out infinite' }}>
-                <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto drop-shadow-[0_18px_22px_rgba(2,6,23,0.6)]" />
+              <div className="relative z-10" style={{ animation: 'hinaing-float 5.8s ease-in-out infinite' }}>
+                <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto drop-shadow-[0_20px_24px_rgba(76,29,149,0.38)]" />
               </div>
             </div>
 
