@@ -33,7 +33,7 @@ export function TimeWindowSelector({ timeWindow, setTimeWindow, error }: TimeWin
                 "rounded-xl border px-4 py-3 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-to focus-visible:ring-offset-2 touch-manipulation",
                 isActive
                   ? "border-transparent brand-gradient-y text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-brand-to/40 hover:bg-[linear-gradient(135deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)]",
+                  : "border-slate-200 bg-white text-slate-600 hover:border-brand-to/40 hover:bg-[linear-gradient(180deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)]",
               )}
               aria-label={`Set time window to ${option.label}`}
             >
