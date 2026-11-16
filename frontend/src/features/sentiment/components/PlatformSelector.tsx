@@ -40,7 +40,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
                   ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
                   : isActive
                     ? "border-transparent brand-gradient-y text-white shadow-sm hover:brightness-[1.04] active:scale-[0.99]"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-brand-to/40 hover:bg-[linear-gradient(135deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)] active:scale-[0.99]",
+                    : "border-slate-200 bg-white text-slate-600 hover:border-brand-to/40 hover:bg-[linear-gradient(180deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)] active:scale-[0.99]",
               )}
               aria-label={`${isDisabled ? 'Unavailable' : isActive ? 'Disable' : 'Enable'} ${option.label} platform`}
             >
