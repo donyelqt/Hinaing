@@ -24,6 +24,10 @@ type SidebarProps = {
   onCloseSidebar?: () => void;
 };
 
+// Module-level pill position cache so remounts (page → page) animate
+// from the last known position instead of teleporting to the target slot.
+let lastPillState: { top: number; height: number } | null = null;
+
 export function Sidebar({
   onOpenMobileFilters,
   activePage = 'sentiment',
@@ -43,6 +47,7 @@ export function Sidebar({
       const active = nav.querySelector<HTMLElement>('[data-active="true"]');
       if (!active) return;
       setIndicator({ top: active.offsetTop, height: active.offsetHeight, ready: true });
+      lastPillState = { top: active.offsetTop, height: active.offsetHeight };
     };
     update();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
@@ -132,9 +137,12 @@ export function Sidebar({
           <motion.span
             aria-hidden="true"
             className="pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient will-change-transform"
-            initial={false}
-            style={{ height: indicator.height }}
-            animate={{ opacity: indicator.ready ? 1 : 0, y: indicator.top }}
+            initial={{
+              opacity: lastPillState ? 1 : 0,
+              y: lastPillState ? lastPillState.top : 0,
+            }}
+            style={{ height: lastPillState ? lastPillState.height : 0 }}
+            animate={{ opacity: indicator.ready ? 1 : 0, y: indicator.top, height: indicator.height }}
             transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.45 }}
           />
 
