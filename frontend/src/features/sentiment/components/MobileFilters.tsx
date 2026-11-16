@@ -51,7 +51,7 @@ export function MobileFilters({
           <button
             type="button"
             onClick={() => setShowMobileFilters(false)}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-600"
             aria-label="Close filters"
           >
             <X className="h-5 w-5" />
@@ -199,7 +199,7 @@ export function MobileFilters({
               />
               <span>
                 Include urgent alert summary
-                <span className="mt-1 block text-xs text-slate-400">Alerts surface in the briefing header and notification digest.</span>
+                <span className="mt-1 block text-xs text-slate-500">Alerts surface in the briefing header and notification digest.</span>
               </span>
             </label>
           </div>

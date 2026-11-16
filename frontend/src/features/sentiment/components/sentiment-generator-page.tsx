@@ -560,7 +560,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <div className="relative flex gap-4 sm:pl-10">
                       <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">4</span></div>
                       <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis mode</span><span className="text-[11px] text-slate-400">Depth</span></div>
+                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis mode</span><span className="text-[11px] text-slate-500">Depth</span></div>
                         <div className="grid gap-2 sm:grid-cols-3">
                         {[
                             { value: 'full', label: 'Full', desc: 'Sentiment + Credibility + Themes' },
@@ -580,7 +580,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <div className="relative flex gap-4 sm:pl-10">
                       <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
                       <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">LLM Mode</span><span className="text-[11px] text-slate-400">Engine</span></div>
+                        <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">LLM Mode</span><span className="text-[11px] text-slate-500">Engine</span></div>
                         <div className="grid gap-2 sm:grid-cols-2">
                         {[
                             { value: 'cloud', label: 'Cloud (Groq)', desc: 'Hosted, fastest results' },
@@ -608,7 +608,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         />
                         <span>
                           Include urgent alert summary (e.g., outages, floods, safety notices)
-                          <span id="alert-description" className="mt-1 block text-xs text-slate-400">Alerts surface in the briefing header and notification digest.</span>
+                          <span id="alert-description" className="mt-1 block text-xs text-slate-500">Alerts surface in the briefing header and notification digest.</span>
                         </span>
                       </label>
                     </div>
@@ -648,7 +648,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
               <div className="flex h-full min-h-[900px] w-full max-w-md flex-col space-y-6 rounded-xl border border-slate-200/60 bg-white p-6 sm:mx-0 sm:max-w-none md:min-h-[920px] md:rounded-xl xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
                 <header className="space-y-1">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     {state.timeWindow} • {computed.platformSummary.length} platform{computed.platformSummary.length === 1 ? '' : 's'}
                   </p>
                   {snapshotError ? (
@@ -782,7 +782,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                                   "block text-base sm:text-lg font-semibold",
                                   snapshot.verification.total_claims > 0
                                     ? toneForRate(snapshot.verification.verified_claims / snapshot.verification.total_claims)
-                                    : "text-slate-400"
+                                    : "text-slate-500"
                                 )}>
                                   {snapshot.verification.verified_claims}/{snapshot.verification.total_claims}
                                 </strong>
@@ -977,7 +977,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
                       <div className="space-y-4">
                         <div>
-                          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                             Actionable Insights
                           </h3>
                           {hasInsights ? (
@@ -1036,13 +1036,13 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       <p className="mt-1 max-w-[28ch] text-xs leading-relaxed text-slate-500">
                         {state.isGenerating ? "Analyzing fresh chatter — this will populate once calculations finish." : "Select channels, window & focus above, then Generate."}
                       </p>
-                      <p className="mt-1 text-[11px] text-slate-400">Example: Web · 48 hours · Infrastructure</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Example: Web · 48 hours · Infrastructure</p>
                       {state.isGenerating ? (
                         <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200">
                           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Generating…
                         </span>
                       ) : (
-                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> 18 + 1 agents idle</span>
+                        <span className="mt-3 inline-flex items-center gap-1 text-[11px] text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> 18 + 1 agents idle</span>
                       )}
                     </div>
                   )}

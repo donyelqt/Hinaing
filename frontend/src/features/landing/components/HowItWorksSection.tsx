@@ -46,7 +46,7 @@ export function HowItWorksSection() {
               <div className="hidden md:block flex-grow border-t-2 border-slate-400 relative">
                 <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0 h-0 border-y-8 border-l-8 border-r-0 border-solid border-transparent border-l-slate-400"></div>
               </div>
-              <div className="hidden md:flex items-center justify-center text-slate-400 mx-4">
+              <div className="hidden md:flex items-center justify-center text-slate-500 mx-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -73,7 +73,7 @@ export function HowItWorksSection() {
                     <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border bg-gradient-to-br from-brand-from to-brand-to text-sm font-bold text-white shadow-sm">
                       {index + 1}
                     </div>
-                    <span className="relative z-10 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span className="relative z-10 text-xs font-bold uppercase tracking-wider text-slate-500">
                       {step.label}
                     </span>
                   </div>

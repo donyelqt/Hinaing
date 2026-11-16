@@ -152,7 +152,7 @@ export function TechniquesSection() {
             <span>Complete Working System</span>
           </div>
           <div className="h-px w-8 bg-slate-200 hidden sm:block" />
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
             Verified by Researchers with Claude Opus 4.5 and Gemini 3.1 Pro
           </p>
         </div>

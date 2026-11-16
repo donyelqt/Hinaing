@@ -14,9 +14,9 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
       <div className="flex items-center justify-between">
         <legend className={clsx(
           "text-xs font-semibold uppercase tracking-wide",
-          error ? "text-rose-500" : "text-slate-400"
+          error ? "text-rose-500" : "text-slate-500"
         )}>Step 1 · Select channels</legend>
-        <span id="channels-hint" className="text-[11px] text-slate-400">Choose where the agent listens</span>
+        <span id="channels-hint" className="text-[11px] text-slate-500">Choose where the agent listens</span>
       </div>
       {error && (
         <p id="channels-error" role="alert" aria-live="polite" className="text-xs text-rose-500 font-medium">{error}</p>
@@ -37,7 +37,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
               className={clsx(
                 "flex flex-col rounded-xl border min-h-[44px] px-4 py-3 text-left touch-manipulation transition-[transform,box-shadow,border-color] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-to focus-visible:ring-offset-2",
                 isDisabled
-                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
+                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500 opacity-60"
                   : isActive
                     ? "border-transparent brand-gradient-y text-white shadow-sm hover:brightness-[1.04] active:scale-[0.99]"
                     : "border-slate-200 bg-white text-slate-600 hover:border-brand-to/40 hover:bg-[linear-gradient(180deg,rgb(var(--brand-from-rgb)_/_0.04)_0%,rgb(var(--brand-to-rgb)_/_0.06)_100%)] hover:shadow-[0_4px_12px_-4px_rgb(var(--brand-from-rgb)_/_0.12)] active:scale-[0.99]",
@@ -50,7 +50,7 @@ export function PlatformSelector({ platforms, onToggle, setPlatforms, error }: P
                   id={isDisabled ? `${option.value}-coming-soon` : undefined}
                   className={clsx(
                     "text-xs",
-                    isDisabled ? "text-slate-400" : isActive ? "text-white/80" : "text-slate-500",
+                    isDisabled ? "text-slate-500" : isActive ? "text-white/80" : "text-slate-500",
                   )}
                 >
                   {isDisabled ? "Coming soon" : option.hint}

@@ -135,7 +135,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {/* Sources Footer */}
                 {msg.sources && msg.sources.length > 0 && (
                     <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100/50">
-                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sources</p>
+                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sources</p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {msg.sources.slice(0, 4).map((source, idx) => (
                                 <a
@@ -327,7 +327,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                                 <div className="mt-1 shrink-0">
                                                     <HinaingLogo alt="" className="h-7 sm:h-8 w-auto motion-safe:animate-pulse" />
                                                 </div>
-                                                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 text-xs sm:text-sm italic pt-2">
+                                                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 text-xs sm:text-sm italic pt-2">
                                                     <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-blue-400" />
                                                     <span>Thinking...</span>
                                                 </div>
@@ -368,14 +368,14 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                         onSubmit={handleSubmit}
                                         className="relative flex items-center bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-100 p-1.5 sm:p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                                     >
-                                        <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-400">
+                                        <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-500">
                                             <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                                         </div>
                                         <input
                                             value={input}
                                             onChange={(e) => setInput(e.target.value)}
                                             placeholder="Ask about Baguio..."
-                                            className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
+                                            className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-500 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
                                             disabled={isLoading}
                                         />
                                         <button
@@ -405,7 +405,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                             )}
                                         </button>
                                     </form>
-                                    <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
+                                    <p className="text-center text-[9px] sm:text-[10px] text-slate-500 mt-1.5 sm:mt-2 font-medium">
                                         Verify important civic information.
                                     </p>
                                 </div>
