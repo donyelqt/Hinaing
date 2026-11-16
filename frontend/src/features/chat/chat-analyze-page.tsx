@@ -641,15 +641,12 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
             <style>{`
               @keyframes hinaing-halo { 0%, 100% { transform: scale(0.93); opacity: 0.62; } 50% { transform: scale(1.08); opacity: 1; } }
-              @keyframes hinaing-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
               @keyframes hinaing-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-              @keyframes hinaing-twinkle { 0%, 100% { opacity: 0.12; transform: scale(0.55) rotate(-12deg); } 55% { opacity: 0.95; transform: scale(1.02) rotate(14deg); } }
               @media (prefers-reduced-motion: reduce) {
                 .hinaing-welcome-live, .hinaing-welcome-live * { animation: none !important; }
               }
             `}</style>
             <div className="hinaing-welcome-live relative mb-5 sm:mb-8 flex h-40 w-40 items-center justify-center sm:h-52 sm:w-52">
-              <div className="absolute inset-2 rounded-full border border-dashed border-violet-300/40" aria-hidden="true" />
               <div
                 className="absolute rounded-full will-change-transform"
                 style={{
@@ -693,15 +690,6 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 style={{ inset: '26%', animation: 'hinaing-halo 5.4s ease-in-out infinite' }}
                 aria-hidden="true"
               />
-              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 26s linear infinite' }} aria-hidden="true">
-                <Sparkles className="absolute left-[12%] top-[7%] h-4 w-4 text-violet-400 motion-reduce:opacity-40" style={{ animation: 'hinaing-twinkle 4.6s ease-in-out infinite' }} />
-              </div>
-              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 34s linear infinite reverse' }} aria-hidden="true">
-                <Sparkles className="absolute right-[9%] top-[34%] h-3 w-3 text-sky-400" style={{ animation: 'hinaing-twinkle 3.8s ease-in-out 0.7s infinite' }} />
-              </div>
-              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 44s linear infinite' }} aria-hidden="true">
-                <Sparkles className="absolute bottom-[6%] left-[30%] h-3.5 w-3.5 text-fuchsia-400" style={{ animation: 'hinaing-twinkle 5.6s ease-in-out 1.4s infinite' }} />
-              </div>
               <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto relative z-10" />
             </div>
 
