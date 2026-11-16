@@ -192,7 +192,7 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
           <Card className="p-6 border border-slate-200/60 bg-white !shadow-none !backdrop-blur-none">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search reports by title, type, or date..."
@@ -276,19 +276,19 @@ export function SavedReportsPage({ activePage = 'reports', onNavigate }: SavedRe
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-slate-400 hover:text-hinaing-blue-600 hover:bg-hinaing-blue-50 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-500 hover:text-hinaing-blue-600 hover:bg-hinaing-blue-50 rounded-lg transition-colors">
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
                         <Download className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Share2 className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                      <button className="p-2 text-slate-500 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                     </div>

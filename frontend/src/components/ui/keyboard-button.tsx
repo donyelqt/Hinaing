@@ -72,8 +72,8 @@ export function KeyboardButton({
       shadow: "bg-slate-300",
       keycap: "bg-white text-slate-600 border-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_0_rgba(0,0,0,0.02)]",
       gloss: "from-white/80",
-      icon: "text-slate-400",
-      badge: "text-slate-400 border-slate-200 bg-slate-50",
+      icon: "text-slate-500",
+      badge: "text-slate-500 border-slate-200 bg-slate-50",
     },
   };
 

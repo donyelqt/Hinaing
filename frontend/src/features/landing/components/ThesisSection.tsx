@@ -122,7 +122,7 @@ export function ThesisSection() {
                   <div className="w-full p-3 rounded-lg border border-violet-200 bg-violet-50 text-center shadow-sm relative group cursor-default hover:border-brand-to/40 transition-colors">
                     <span className="text-xs font-bold text-violet-700 uppercase tracking-wide">1. Query Orchestrator</span>
                     <div className="absolute left-1/2 -bottom-4 w-px h-4 bg-slate-300 transform -translate-x-1/2"></div>
-                    <div className="absolute left-1/2 -bottom-4 text-slate-400 transform -translate-x-1/2 translate-y-1"><ArrowDown className="h-3 w-3" /></div>
+                    <div className="absolute left-1/2 -bottom-4 text-slate-500 transform -translate-x-1/2 translate-y-1"><ArrowDown className="h-3 w-3" /></div>
                   </div>
 
                   {/* Node 2: Retrieval & Context */}
@@ -140,7 +140,7 @@ export function ThesisSection() {
 
                   {/* Node 3: Parallel Processing */}
                   <div className="w-full p-4 rounded-xl border border-slate-200 bg-white shadow-sm space-y-2">
-                    <p className="text-[10px] text-center text-slate-400 font-mono mb-2">PARALLEL AGENTS</p>
+                    <p className="text-[10px] text-center text-slate-500 font-mono mb-2">PARALLEL AGENTS</p>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="p-2 rounded border border-emerald-100 bg-emerald-50 text-center">
                         <span className="text-[9px] font-bold text-emerald-700 block">Sentiment</span>

@@ -136,7 +136,7 @@ export function DashboardPage({ activePage = 'dashboard', onNavigate }: Dashboar
                 {/* Placeholder for chart */}
                 <div className="h-80 rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
                   <div className="text-center">
-                    <BarChart3 className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                    <BarChart3 className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                     <p className="text-slate-600 font-medium">Interactive Sentiment Chart</p>
                     <p className="text-sm text-slate-500">Chart visualization will be implemented here</p>
                   </div>

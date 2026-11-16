@@ -218,9 +218,9 @@ export function VerificationBadge({
         </div>
         <div className="flex-shrink-0">
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-slate-400" />
+            <ChevronUp className="h-4 w-4 text-slate-500" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-slate-400" />
+            <ChevronDown className="h-4 w-4 text-slate-500" />
           )}
         </div>
       </button>
@@ -360,7 +360,7 @@ export function VerificationBadge({
                     )
                   );
                 })}
-                <p className="mt-1.5 text-[9px] text-slate-400">
+                <p className="mt-1.5 text-[9px] text-slate-500">
                   Click to view the original articles
                 </p>
               </div>
@@ -417,7 +417,7 @@ export function VerificationBadge({
 
           {/* Verification Info Footer */}
           <div className="pt-2 border-t border-slate-200">
-            <p className="text-[9px] text-slate-400 leading-relaxed">
+            <p className="text-[9px] text-slate-500 leading-relaxed">
               Verification powered by 5-signal ensemble: Domain Trust, Internal Cross-Reference,
               Google Fact Check API, Gemini AI Analysis, and Tavily External Cross-Reference.
             </p>

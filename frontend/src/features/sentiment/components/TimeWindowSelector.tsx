@@ -13,9 +13,9 @@ export function TimeWindowSelector({ timeWindow, setTimeWindow, error }: TimeWin
       <div className="flex items-center justify-between">
         <span className={clsx(
           "text-xs font-semibold uppercase tracking-wide",
-          error ? "text-rose-500" : "text-slate-400"
+          error ? "text-rose-500" : "text-slate-500"
         )}>Step 2 · Monitoring window</span>
-        <span className="text-[11px] text-slate-400">Align with your reporting cadence</span>
+        <span className="text-[11px] text-slate-500">Align with your reporting cadence</span>
       </div>
       {error && (
         <p className="text-xs text-rose-500 font-medium">{error}</p>

@@ -24,7 +24,7 @@ export function FAQSection() {
                 <span className="text-base font-bold text-slate-900 group-hover:text-brand-from transition-colors">
                   {item.question}
                 </span>
-                <span className="shrink-0 rounded-full border border-slate-200 bg-white p-2 text-slate-400 transition-all group-hover:border-brand-to/40 group-hover:text-brand-from group-open:rotate-45 group-open:bg-violet-50 group-open:text-brand-from">
+                <span className="shrink-0 rounded-full border border-slate-200 bg-white p-2 text-slate-500 transition-all group-hover:border-brand-to/40 group-hover:text-brand-from group-open:rotate-45 group-open:bg-violet-50 group-open:text-brand-from">
                   <Plus className="h-4 w-4 block group-open:hidden" />
                   <Minus className="h-4 w-4 hidden group-open:block" />
                 </span>

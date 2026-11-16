@@ -188,7 +188,7 @@ export function HeroSection(_props: HeroSectionProps) {
               </>
             )}
           </p>
-          <p className="mt-1 hidden text-[11px] font-medium text-slate-400 sm:block">Public sentiment console. Configure and generate a grounded briefing.</p>
+          <p className="mt-1 hidden text-[11px] font-medium text-slate-500 sm:block">Public sentiment console. Configure and generate a grounded briefing.</p>
         </div>
       </div>
     </div>

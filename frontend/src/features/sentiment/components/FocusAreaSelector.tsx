@@ -14,9 +14,9 @@ export function FocusAreaSelector({ focusAreas, onToggle, setFocusAreas, error }
       <div className="flex items-center justify-between">
         <span className={clsx(
           "text-xs font-semibold uppercase tracking-wide",
-          error ? "text-rose-500" : "text-slate-400"
+          error ? "text-rose-500" : "text-slate-500"
         )}>Step 3 · Prioritize themes</span>
-        <span className="text-[11px] text-slate-400">Highlight topics for summarization</span>
+        <span className="text-[11px] text-slate-500">Highlight topics for summarization</span>
       </div>
       {error && (
         <p className="text-xs text-rose-500 font-medium">{error}</p>

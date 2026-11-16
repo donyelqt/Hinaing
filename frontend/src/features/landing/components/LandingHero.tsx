@@ -294,12 +294,12 @@ export function LandingHero() {
                         </span>
                         Live Snapshot
                       </span>
-                      <span className="text-xs font-medium text-slate-400">Just now</span>
+                      <span className="text-xs font-medium text-slate-500">Just now</span>
                     </div>
 
                     <div className="space-y-5">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Overall Sentiment</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Overall Sentiment</p>
                         <p className="text-xl font-bold text-slate-900 tracking-tight">Cautious but engaged</p>
                         <p className="mt-2 text-sm text-slate-600 leading-relaxed">
                           Infrastructure and transport issues dominate, but support remains high for cleanup and tourism efforts.
@@ -343,7 +343,7 @@ export function LandingHero() {
                       </div>
 
                       <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Tonight's Highlights</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Tonight's Highlights</p>
                         <ul className="space-y-2.5">
                           <li className="flex items-start gap-2.5 text-sm text-slate-600">
                             <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-rose-400 flex-shrink-0" />

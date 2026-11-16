@@ -61,7 +61,7 @@ export function LivePreviewSection() {
 
               <div className="space-y-5">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Overall summary</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Overall summary</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">
                     Public mood is strained around transport and water, but support remains strong for cleanup and
                     community initiatives.
@@ -84,7 +84,7 @@ export function LivePreviewSection() {
                 </div>
 
                 <div className="space-y-3 text-xs text-slate-700">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Actionable insights</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Actionable insights</p>
                   <ul className="space-y-2 list-disc pl-4">
                     <li>
                       Consider a focused update on water scheduling in barangays with repeated outage complaints over the

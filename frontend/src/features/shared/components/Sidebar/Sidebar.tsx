@@ -105,7 +105,7 @@ export function Sidebar({
       >
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Hinaing
             </span>
             <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
@@ -280,7 +280,7 @@ export function Sidebar({
               <LogOut className="h-4 w-4" aria-hidden="true" />
               <span>Log out</span>
             </span>
-            <span className="text-[11px] text-slate-400">End session</span>
+            <span className="text-[11px] text-slate-500">End session</span>
           </button>
 
           <div

@@ -213,14 +213,14 @@ function ProgressIndicator({ stage, progress, message }: { stage: string; progre
                                         ? "bg-blue-500 text-white ring-2 ring-blue-200 motion-safe:animate-pulse"
                                         : isActive
                                             ? "bg-blue-500 text-white"
-                                            : "bg-slate-200 text-slate-400"
+                                            : "bg-slate-200 text-slate-500"
                                 )}
                             >
                                 {s.icon}
                             </div>
                             <span className={clsx(
                                 "text-[7px] sm:text-[10px] font-medium transition-colors text-center leading-tight whitespace-nowrap",
-                                isActive ? "text-blue-600" : "text-slate-400"
+                                isActive ? "text-blue-600" : "text-slate-500"
                             )}>
                                 {s.label}
                             </span>
@@ -774,7 +774,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                 {/* Sources for Simple Q&A mode */}
                 {(msg.data?.mode === "simple" || msg.data?.mode === "simple_fallback") && msg.data.sources && msg.data.sources.length > 0 && (
                     <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100/50">
-                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="mb-1.5 sm:mb-2 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                             {(msg.data.sources as SimpleSource[]).some(s => s.type === "SENTIMENT") ? "Sentiment Sources" : "Sources"}
                         </p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
@@ -1180,7 +1180,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                                         {/* Mode */}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-400 select-none">Mode</span>
+                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-500 select-none">Mode</span>
                                             {systemMode === 'agentic_hinaing' ? (
                                                 <SegmentedControl
                                                     ariaLabel="Analysis mode"
@@ -1200,7 +1200,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
 
                                         {/* LLM engine */}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-400 select-none">Engine</span>
+                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-500 select-none">Engine</span>
                                             <SegmentedControl
                                                 ariaLabel="LLM engine"
                                                 value={llmMode}
@@ -1224,14 +1224,14 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             onSubmit={handleSubmit}
                                             className="relative flex items-center bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-100 p-1.5 sm:p-2 transition-all focus-within:ring-2 focus-within:ring-blue-100"
                                         >
-                                            <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-400">
+                                            <div className="pl-2 sm:pl-3 pr-1.5 sm:pr-2 text-slate-500">
                                                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
                                             </div>
                                             <input
                                                 value={input}
                                                 onChange={(e) => setInput(e.target.value)}
                                                 placeholder={systemMode === 'agentic_hinaing' ? "Ask about Baguio..." : "Enter question for baseline testing..."}
-                                                className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-400 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
+                                                className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-500 text-sm h-9 sm:h-10 px-1.5 sm:px-2"
                                                 disabled={isLoading}
                                             />
                                             <button
@@ -1257,7 +1257,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             </button>
                                         </form>
                                     </div>
-                                    <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-2 font-medium">
+                                    <p className="text-center text-[9px] sm:text-[10px] text-slate-500 mt-1.5 sm:mt-2 font-medium">
                                         {systemMode === 'agentic_hinaing' 
                                             ? "Smart routing: Civic social listening → 19 agents | Q&A → Fast search"
                                             : "Evaluation mode: Baseline metrics for API cost comparison"}
