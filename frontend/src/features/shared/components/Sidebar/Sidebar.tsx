@@ -182,9 +182,9 @@ export function Sidebar({
               opacity: lastPillState ? 1 : 0,
               y: lastPillState ? lastPillState.top : 0,
             }}
-            style={{ height: lastPillState ? lastPillState.height : 0 }}
-            animate={{ opacity: indicator.ready ? 1 : 0, y: indicator.top, height: indicator.height }}
-            transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.45 }}
+            style={{ height: indicator.height || (lastPillState ? lastPillState.height : 0) }}
+            animate={{ opacity: indicator.ready ? 1 : 0, y: indicator.top }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.12, duration: 0.6 }}
           />
 
           <TooltipProvider>
