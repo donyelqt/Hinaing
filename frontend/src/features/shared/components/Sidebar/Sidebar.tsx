@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,6 +32,7 @@ export function Sidebar({
   isSidebarOpen = false,
   onCloseSidebar
 }: SidebarProps & { onLogout?: () => void }) {
+  const reduceMotion = useReducedMotion();
   const navRef = useRef<HTMLDivElement | null>(null);
   const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
 
@@ -127,13 +129,13 @@ export function Sidebar({
           aria-label="Workspace navigation"
           role="navigation"
         >
-          <span
+          <motion.span
             aria-hidden="true"
-            className={`pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient transition-[transform,opacity] duration-[380ms] will-change-transform ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${indicator.ready ? 'opacity-100' : 'opacity-0'}`}
-            style={{
-              transform: `translateY(${indicator.top}px)`,
-              height: indicator.height,
-            }}
+            className="pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient will-change-transform"
+            initial={false}
+            style={{ height: indicator.height }}
+            animate={{ opacity: indicator.ready ? 1 : 0, y: indicator.top }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", bounce: 0.2, duration: 0.45 }}
           />
 
           <TooltipProvider>
