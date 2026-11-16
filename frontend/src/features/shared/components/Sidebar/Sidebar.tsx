@@ -136,7 +136,7 @@ export function Sidebar({
         >
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient will-change-transform"
+            className="pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient-y will-change-transform"
             initial={{
               opacity: lastPillState ? 1 : 0,
               y: lastPillState ? lastPillState.top : 0,
