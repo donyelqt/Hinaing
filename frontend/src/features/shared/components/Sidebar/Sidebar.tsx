@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
+import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck, ChevronsLeft, ChevronsRight } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HinaingLogo } from "@/components/ui/hinaing-logo";
@@ -28,6 +28,8 @@ type SidebarProps = {
 // Module-level pill position cache so remounts (page → page) animate
 // from the last known position instead of teleporting to the target slot.
 let lastPillState: { top: number; height: number } | null = null;
+// Survives page remounts within the session — prevents the rail snapping shut on every navigation.
+let moduleCollapsedHint: boolean | null = null;
 
 export function Sidebar({
   onOpenMobileFilters,
@@ -40,7 +42,17 @@ export function Sidebar({
   const reduceMotion = useReducedMotion();
   const navRef = useRef<HTMLDivElement | null>(null);
   const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
+  const [collapsed, setCollapsed] = useState<boolean>(() => (moduleCollapsedHint !== null ? moduleCollapsedHint : false));
 
+  useLayoutEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('hinaing.sidebar.collapsed') === '1';
+      if (moduleCollapsedHint === null) {
+        moduleCollapsedHint = stored;
+        setCollapsed(stored);
+      }
+    } catch { /* keep default expanded */ }
+  }, []);
   useLayoutEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -58,7 +70,7 @@ export function Sidebar({
       ro?.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [activePage]);
+  }, [activePage, collapsed]);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -70,14 +82,24 @@ export function Sidebar({
       window.location.href = "/";
     }
   };
-
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      moduleCollapsedHint = next;
+      try {
+        window.localStorage.setItem('hinaing.sidebar.collapsed', next ? '1' : '0');
+      } catch { /* storage unavailable */ }
+      return next;
+    });
+  };
   const handleNavClick = (page: ActivePage) => {
     onNavigate?.(page);
     onCloseSidebar?.();
   };
 
-  const buttonBase =
-    "relative flex items-center gap-3 rounded-xl border-2 border-transparent px-3 py-3 text-left text-sm font-medium transition-colors";
+  const buttonBase = collapsed
+    ? "relative flex items-center justify-center rounded-xl border-2 border-transparent p-3 text-left text-sm font-medium transition-colors"
+    : "relative flex items-center gap-3 rounded-xl border-2 border-transparent px-3 py-3 text-left text-sm font-medium transition-colors";
 
   return (
     <>
@@ -95,17 +117,22 @@ export function Sidebar({
         className={`
           fixed top-0 left-0 bottom-0 z-40 w-[85%] max-w-sm
           flex flex-col bg-white border-r border-slate-200 p-6
-          transform transition-transform duration-300 ease-in-out
+          transform transition-[transform,width] duration-300 ease-in-out motion-reduce:transition-none
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:relative lg:z-auto lg:w-[20rem] lg:flex-shrink-0
+          lg:translate-x-0 lg:relative lg:z-auto lg:flex-shrink-0
           lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:sticky lg:top-8
           lg:rounded-2xl lg:bg-white lg:border lg:border-slate-200/60
+          lg:transition-[width,padding] lg:duration-[350ms] lg:ease-[cubic-bezier(0.32,0.72,0,1)] lg:motion-reduce:transition-none
+          ${collapsed ? 'lg:w-[4.5rem] lg:p-4 lg:items-center' : 'lg:w-[20rem]'}
         `}
         role="complementary"
         aria-label="Navigation sidebar"
       >
-        <div className="flex items-center justify-between">
-          <div>
+        <div className={`flex w-full items-center ${collapsed ? 'lg:flex-col lg:gap-4 lg:items-center' : 'justify-between'}`}>
+          {collapsed && (
+            <HinaingLogo className="hidden h-9 w-auto lg:block" alt="Hinaing" priority />
+          )}
+          <div className={collapsed ? 'lg:hidden' : 'block'}>
             <HinaingLogo className="h-5 w-auto sm:h-6" alt="Hinaing" priority />
             <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
               Public Sentiment Suite
@@ -114,6 +141,21 @@ export function Sidebar({
               Live monitoring
             </p>
           </div>
+
+          {/* Collapse toggle (desktop rail) */}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hidden lg:inline-flex items-center justify-center rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:border-violet-300 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
 
           {/* Mobile Filters Button */}
           <button
@@ -154,52 +196,56 @@ export function Sidebar({
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
             <Cpu className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="truncate max-w-[180px]">Agentic Orchestrator</p>
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate max-w-[180px]">Agentic Orchestrator</p>
+                </div>
+                <p className={`text-xs mt-0.5 ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
+                  7-Node & 19 Agents
+                </p>
               </div>
-              <p className={`text-xs mt-0.5 ${activePage === 'sentiment' ? 'text-white/80' : 'text-slate-500'}`}>
-                7-Node & 19 Agents
-              </p>
-            </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="p-1 rounded hover:bg-white/20 transition-colors flex-shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                  tabIndex={0}
-                  role="button"
-                  aria-label="Show pipeline help"
-                >
-                  <HelpCircle className={`h-3.5 w-3.5 ${activePage === 'sentiment' ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="right" align="start" className="w-72 bg-white z-[9999]">
-                <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
-                <div className="space-y-1.5 text-slate-700">
-                  {PIPELINE_NODES.map(({ icon: Icon, label, sub }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </span>
-                      <div>
-                        <div className="font-medium">{label}</div>
-                        <div className="text-slate-500 text-[10px]">{sub}</div>
+            )}
+            {!collapsed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="p-1 rounded hover:bg-white/20 transition-colors flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Show pipeline help"
+                  >
+                    <HelpCircle className={`h-3.5 w-3.5 ${activePage === 'sentiment' ? 'text-white' : 'text-slate-500'}`} aria-hidden="true" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="start" className="w-72 bg-white z-[9999]">
+                  <div className="font-bold mb-2 text-slate-900 text-sm">7-Node Multi-Agent Pipeline</div>
+                  <div className="space-y-1.5 text-slate-700">
+                    {PIPELINE_NODES.map(({ icon: Icon, label, sub }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                          <Icon className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <div>
+                          <div className="font-medium">{label}</div>
+                          <div className="text-slate-500 text-[10px]">{sub}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
-                  <div className="flex items-center justify-between">
-                    <span>19 Agents</span>
-                    <span>•</span>
-                    <span>100% Faithfulness</span>
-                    <span>•</span>
-                    <span>81% API Savings</span>
+                    ))}
                   </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+                  <div className="mt-3 pt-3 border-t border-slate-200 text-slate-600 text-[10px] font-medium">
+                    <div className="flex items-center justify-between">
+                      <span>19 Agents</span>
+                      <span>•</span>
+                      <span>100% Faithfulness</span>
+                      <span>•</span>
+                      <span>81% API Savings</span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </button>
           </TooltipProvider>
 
@@ -211,12 +257,14 @@ export function Sidebar({
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
           >
             <PieChart className="h-5 w-5" aria-hidden="true" />
-            <div>
-              <p>Dashboard</p>
-              <p className={`text-xs mt-0.5 ${activePage === 'dashboard' ? 'text-white/80' : 'text-slate-500'}`}>
-                Real-time insights & trends
-              </p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p>Dashboard</p>
+                <p className={`text-xs mt-0.5 ${activePage === 'dashboard' ? 'text-white/80' : 'text-slate-500'}`}>
+                  Real-time insights & trends
+                </p>
+              </div>
+            )}
           </button>
 
           <button
@@ -227,12 +275,14 @@ export function Sidebar({
             aria-current={activePage === 'chat' ? 'page' : undefined}
           >
             <Sparkles className="h-5 w-5" aria-hidden="true" />
-            <div>
-              <p>Agentic RAG</p>
-              <p className={`text-xs mt-0.5 ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
-                Quick Q&A
-              </p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p>Agentic RAG</p>
+                <p className={`text-xs mt-0.5 ${activePage === 'chat' ? 'text-white/80' : 'text-slate-500'}`}>
+                  Quick Q&A
+                </p>
+              </div>
+            )}
           </button>
 
           <button
@@ -243,12 +293,14 @@ export function Sidebar({
             aria-current={activePage === 'analyze' ? 'page' : undefined}
           >
             <BarChart3 className="h-5 w-5" aria-hidden="true" />
-            <div>
-              <p>AgenticHinaing</p>
-              <p className={`text-xs mt-0.5 ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
-                7-Node & 19 Agents + Agentic RAG
-              </p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p>AgenticHinaing</p>
+                <p className={`text-xs mt-0.5 ${activePage === 'analyze' ? 'text-white/80' : 'text-slate-500'}`}>
+                  7-Node & 19 Agents + Agentic RAG
+                </p>
+              </div>
+            )}
           </button>
 
           <button
@@ -259,12 +311,14 @@ export function Sidebar({
             aria-current={activePage === 'reports' ? 'page' : undefined}
           >
             <Save className="h-5 w-5" aria-hidden="true" />
-            <div>
-              <p>Saved Reports</p>
-              <p className={`text-xs mt-0.5 ${activePage === 'reports' ? 'text-white/80' : 'text-slate-500'}`}>
-                Access generated reports
-              </p>
-            </div>
+            {!collapsed && (
+              <div>
+                <p>Saved Reports</p>
+                <p className={`text-xs mt-0.5 ${activePage === 'reports' ? 'text-white/80' : 'text-slate-500'}`}>
+                  Access generated reports
+                </p>
+              </div>
+            )}
           </button>
         </div>
 
@@ -272,22 +326,30 @@ export function Sidebar({
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            className={`inline-flex w-full items-center ${collapsed ? 'justify-center px-2' : 'justify-between px-3'} rounded-xl border border-slate-200 py-2 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700`}
             aria-label="Log out"
           >
-            <span className="flex items-center gap-2">
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span>Log out</span>
-            </span>
-            <span className="text-[11px] text-slate-500">End session</span>
+            {collapsed ? (
+              <LogOut className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <>
+                <span className="flex items-center gap-2">
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                  <span>Log out</span>
+                </span>
+                <span className="text-[11px] text-slate-500">End session</span>
+              </>
+            )}
           </button>
 
+          {!collapsed && (
           <div
             className="rounded-xl bg-[linear-gradient(135deg,rgb(var(--brand-from-rgb)_/_0.08)_0%,rgb(var(--brand-to-rgb)_/_0.08)_100%)] border border-slate-200/60 p-4 text-xs text-slate-700 sm:text-sm"
             role="note"
           >
             Keep track of emerging concerns from Web, Facebook, and Reddit to support rapid response planning for Baguio communities.
           </div>
+          )}
         </div>
       </aside>
     </>
