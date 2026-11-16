@@ -192,7 +192,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('sentiment')}
             data-active={activePage === 'sentiment' ? 'true' : 'false'}
-            className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+            className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
             <Cpu className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'} flex-shrink-0`} aria-hidden="true" />
@@ -253,7 +253,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('dashboard')}
             data-active={activePage === 'dashboard' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
           >
             <PieChart className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
@@ -271,7 +271,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('chat')}
             data-active={activePage === 'chat' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
           >
             <Sparkles className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
@@ -289,7 +289,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('analyze')}
             data-active={activePage === 'analyze' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
           >
             <BarChart3 className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
@@ -307,7 +307,7 @@ export function Sidebar({
             type="button"
             onClick={() => handleNavClick('reports')}
             data-active={activePage === 'reports' ? 'true' : 'false'}
-            className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 border-slate-100 bg-slate-50 hover:bg-slate-100'}`}
+            className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
           >
             <Save className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
