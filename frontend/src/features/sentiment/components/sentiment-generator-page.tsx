@@ -567,7 +567,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             { value: 'sentiment', label: 'Sentiment', desc: 'Only sentiment' },
                             { value: 'credibility', label: 'Credibility', desc: 'Only verification' }
                         ].map((option) => (
-                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${mode===option.value ? 'border-transparent bg-gradient-to-b from-brand-from to-brand-to text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
+                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${mode===option.value ? 'border-transparent brand-gradient-y text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
                             <input type="radio" className="sr-only" checked={mode === option.value} onChange={() => setMode(option.value as AnalysisMode)} value={option.value} name="analysis-mode" />
                             <span className={`text-sm font-semibold ${mode===option.value ? 'text-white' : 'text-slate-800'}`}>{option.label}</span>
                             <span className={`text-xs ${mode===option.value ? 'text-white/80' : 'text-slate-500'}`}>{option.desc}</span>
@@ -586,7 +586,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             { value: 'cloud', label: 'Cloud (Groq)', desc: 'Hosted, fastest results' },
                             { value: 'local', label: 'Local (Qwen)', desc: 'Offline, runs on-device' }
                         ].map((option) => (
-                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${llmMode===option.value ? 'border-transparent bg-gradient-to-b from-brand-from to-brand-to text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
+                          <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${llmMode===option.value ? 'border-transparent brand-gradient-y text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>
                             <input type="radio" className="sr-only" checked={llmMode === option.value} onChange={() => setLlmMode(option.value as LlmMode)} value={option.value} name="llm-mode" />
                             <span className={`text-sm font-semibold ${llmMode===option.value ? 'text-white' : 'text-slate-800'}`}>{option.label}</span>
                             <span className={`text-xs ${llmMode===option.value ? 'text-white/80' : 'text-slate-500'}`}>{option.desc}</span>
