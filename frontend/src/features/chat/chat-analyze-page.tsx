@@ -669,19 +669,6 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 aria-hidden="true"
               />
               <div
-                className="absolute rounded-full will-change-transform"
-                style={{
-                  inset: '12%',
-                  background: 'conic-gradient(from 150deg, transparent 0deg 240deg, rgba(56,189,248,0.22) 260deg, rgba(168,85,247,0.92) 292deg, rgba(232,121,249,0.7) 318deg, transparent 338deg)',
-                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
-                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
-                  filter: 'blur(1.2px)',
-                  animation: 'hinaing-sweep 23s linear infinite reverse',
-                  opacity: 0.9,
-                }}
-                aria-hidden="true"
-              />
-              <div
                 className="absolute inset-0"
                 style={{ transformStyle: 'preserve-3d', animation: 'hinaing-wobble 9s ease-in-out infinite' }}
                 aria-hidden="true"
