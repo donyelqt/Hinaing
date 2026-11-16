@@ -639,9 +639,57 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
 
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
-            <div className="mb-5 sm:mb-8 relative">
-                <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
-                <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto relative z-10" />
+            <style>{`
+              @keyframes hinaing-halo { 0%, 100% { transform: scale(0.93); opacity: 0.62; } 50% { transform: scale(1.08); opacity: 1; } }
+              @keyframes hinaing-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+              @keyframes hinaing-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+              @keyframes hinaing-twinkle { 0%, 100% { opacity: 0.12; transform: scale(0.55) rotate(-12deg); } 55% { opacity: 0.95; transform: scale(1.02) rotate(14deg); } }
+              @media (prefers-reduced-motion: reduce) {
+                .hinaing-welcome-live, .hinaing-welcome-live * { animation: none !important; }
+              }
+            `}</style>
+            <div className="hinaing-welcome-live relative mb-5 sm:mb-8 flex h-40 w-40 items-center justify-center sm:h-52 sm:w-52">
+              <div className="absolute inset-2 rounded-full border border-dashed border-violet-300/40" aria-hidden="true" />
+              <div
+                className="absolute rounded-full will-change-transform"
+                style={{
+                  inset: '6px',
+                  background: 'conic-gradient(from 0deg, transparent 0deg 296deg, rgba(139,92,246,0.42) 322deg, rgba(34,211,238,0.55) 339deg, transparent 360deg)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 2.5px))',
+                  filter: 'blur(0.6px)',
+                  animation: 'hinaing-sweep 13s linear infinite',
+                }}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute rounded-full"
+                style={{
+                  inset: '11px',
+                  background: 'conic-gradient(from 180deg, transparent 0deg 250deg, rgba(56,189,248,0.25) 285deg, rgba(168,85,247,0.4) 320deg, transparent 360deg)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 4.5px))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 4.5px))',
+                  filter: 'blur(5px)',
+                  animation: 'hinaing-sweep 9s linear infinite reverse',
+                  opacity: 0.85,
+                }}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute rounded-full bg-gradient-to-br from-violet-400/45 via-blue-500/25 to-cyan-300/20 blur-3xl"
+                style={{ inset: '26%', animation: 'hinaing-halo 5.4s ease-in-out infinite' }}
+                aria-hidden="true"
+              />
+              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 26s linear infinite' }} aria-hidden="true">
+                <Sparkles className="absolute left-[12%] top-[7%] h-4 w-4 text-violet-400 motion-reduce:opacity-40" style={{ animation: 'hinaing-twinkle 4.6s ease-in-out infinite' }} />
+              </div>
+              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 34s linear infinite reverse' }} aria-hidden="true">
+                <Sparkles className="absolute right-[9%] top-[34%] h-3 w-3 text-sky-400" style={{ animation: 'hinaing-twinkle 3.8s ease-in-out 0.7s infinite' }} />
+              </div>
+              <div className="absolute inset-0 will-change-transform" style={{ animation: 'hinaing-orbit 44s linear infinite' }} aria-hidden="true">
+                <Sparkles className="absolute bottom-[6%] left-[30%] h-3.5 w-3.5 text-fuchsia-400" style={{ animation: 'hinaing-twinkle 5.6s ease-in-out 1.4s infinite' }} />
+              </div>
+              <HinaingLogo alt="" priority className="h-14 sm:h-20 w-auto relative z-10" />
             </div>
 
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 mb-1.5 sm:mb-2 text-center">
