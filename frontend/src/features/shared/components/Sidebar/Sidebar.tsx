@@ -98,7 +98,7 @@ export function Sidebar({
   };
 
   const buttonBase = collapsed
-    ? "relative flex items-center justify-center rounded-xl border-2 border-transparent p-3.5 text-left text-sm font-medium transition-colors"
+    ? "relative flex items-center justify-center rounded-xl border-2 border-transparent px-1 py-4 text-left text-sm font-medium transition-colors"
     : "relative flex items-center gap-3 rounded-xl border-2 border-transparent px-3 py-3 text-left text-sm font-medium transition-colors";
 
   return (
@@ -123,14 +123,14 @@ export function Sidebar({
           lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:overflow-x-hidden lg:sticky lg:top-8
           lg:rounded-2xl lg:bg-white lg:border lg:border-slate-200/60
           lg:transition-[width,padding] lg:duration-[350ms] lg:ease-[cubic-bezier(0.32,0.72,0,1)] lg:motion-reduce:transition-none
-          ${collapsed ? 'lg:w-[4.5rem] lg:p-4 lg:items-center' : 'lg:w-[20rem]'}
+          ${collapsed ? 'lg:w-[5.5rem] lg:p-4 lg:items-center' : 'lg:w-[20rem]'}
         `}
         role="complementary"
         aria-label="Navigation sidebar"
       >
-        <div className={`flex w-full items-center ${collapsed ? 'lg:flex-col lg:gap-4 lg:items-center' : 'justify-between'}`}>
+        <div className={`flex w-full items-center ${collapsed ? 'lg:flex-col lg:gap-4 lg:items-center lg:px-3' : 'justify-between'}`}>
           {collapsed && (
-            <HinaingLogo className="hidden h-9 w-auto lg:block" alt="Hinaing" priority />
+            <HinaingLogo className="hidden h-5 w-auto sm:h-6 lg:block" alt="Hinaing" priority />
           )}
           <div className={collapsed ? 'lg:hidden' : 'block'}>
             <HinaingLogo className="h-5 w-auto sm:h-6" alt="Hinaing" priority />
@@ -171,13 +171,13 @@ export function Sidebar({
 
         <div
           ref={navRef}
-          className="relative mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8 isolate"
+          className={`relative mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8 isolate ${collapsed ? 'lg:px-3' : ''}`}
           aria-label="Workspace navigation"
           role="navigation"
         >
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient-y will-change-transform"
+            className={`pointer-events-none absolute z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient-y will-change-transform ${collapsed ? 'left-3 right-3' : 'left-0 right-0'}`}
             initial={{
               opacity: lastPillState ? 1 : 0,
               y: lastPillState ? lastPillState.top : 0,
@@ -195,7 +195,7 @@ export function Sidebar({
             className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
-            <Cpu className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'} flex-shrink-0`} aria-hidden="true" />
+            <Cpu className={`${collapsed ? 'h-6 w-6' : 'h-5 w-5'} flex-shrink-0`} aria-hidden="true" />
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export function Sidebar({
             className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
           >
-            <PieChart className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
+            <PieChart className={`${collapsed ? 'h-6 w-6' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Dashboard</p>
@@ -274,7 +274,7 @@ export function Sidebar({
             className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
           >
-            <Sparkles className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
+            <Sparkles className={`${collapsed ? 'h-6 w-6' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Agentic RAG</p>
@@ -292,7 +292,7 @@ export function Sidebar({
             className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
           >
-            <BarChart3 className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
+            <BarChart3 className={`${collapsed ? 'h-6 w-6' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>AgenticHinaing</p>
@@ -310,7 +310,7 @@ export function Sidebar({
             className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:text-slate-800'}`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
           >
-            <Save className={`${collapsed ? 'h-8 w-8' : 'h-5 w-5'}`} aria-hidden="true" />
+            <Save className={`${collapsed ? 'h-6 w-6' : 'h-5 w-5'}`} aria-hidden="true" />
             {!collapsed && (
               <div>
                 <p>Saved Reports</p>
@@ -330,7 +330,7 @@ export function Sidebar({
             aria-label="Log out"
           >
             {collapsed ? (
-              <LogOut className={`${collapsed ? 'h-7 w-7' : 'h-4 w-4'}`} aria-hidden="true" />
+              <LogOut className={`${collapsed ? 'h-6 w-6' : 'h-4 w-4'}`} aria-hidden="true" />
             ) : (
               <>
                 <span className="flex items-center gap-2">
