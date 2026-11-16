@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Menu, X, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
+"use client";
+
+import { useLayoutEffect, useRef, useState } from "react";
+import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -29,7 +31,26 @@ export function Sidebar({
   isSidebarOpen = false,
   onCloseSidebar
 }: SidebarProps & { onLogout?: () => void }) {
-  console.log('🔍 Sidebar Debug - activePage:', activePage, 'onNavigate:', !!onNavigate);
+  const navRef = useRef<HTMLDivElement | null>(null);
+  const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const update = () => {
+      const active = nav.querySelector<HTMLElement>('[data-active="true"]');
+      if (!active) return;
+      setIndicator({ top: active.offsetTop, height: active.offsetHeight, ready: true });
+    };
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    if (ro) ro.observe(nav);
+    window.addEventListener("resize", update);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [activePage]);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -46,6 +67,9 @@ export function Sidebar({
     onNavigate?.(page);
     onCloseSidebar?.();
   };
+
+  const buttonBase =
+    "relative flex items-center gap-3 rounded-xl border-2 border-transparent px-3 py-3 text-left text-sm font-medium transition-colors";
 
   return (
     <>
@@ -97,19 +121,27 @@ export function Sidebar({
           </button>
         </div>
 
-        <nav
-          className="mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8 isolate"
+        <div
+          ref={navRef}
+          className="relative mt-6 grid gap-2 sm:grid-cols-1 lg:mt-8 isolate"
           aria-label="Workspace navigation"
           role="navigation"
         >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-0 right-0 z-0 rounded-xl border-2 border-hinaing-blue-700 brand-gradient transition-[transform,opacity] duration-[380ms] will-change-transform ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${indicator.ready ? 'opacity-100' : 'opacity-0'}`}
+            style={{
+              transform: `translateY(${indicator.top}px)`,
+              height: indicator.height,
+            }}
+          />
+
           <TooltipProvider>
           <button
             type="button"
             onClick={() => handleNavClick('sentiment')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors group ${activePage === 'sentiment'
-              ? 'brand-gradient text-white border-2 border-hinaing-blue-700'
-              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-              }`}
+            data-active={activePage === 'sentiment' ? 'true' : 'false'}
+            className={`${buttonBase} group ${activePage === 'sentiment' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             aria-current={activePage === 'sentiment' ? 'page' : undefined}
           >
             <Cpu className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
@@ -165,10 +197,8 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('dashboard')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'dashboard'
-              ? 'brand-gradient text-white border-2 border-hinaing-blue-700'
-              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-              }`}
+            data-active={activePage === 'dashboard' ? 'true' : 'false'}
+            className={`${buttonBase} ${activePage === 'dashboard' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             aria-current={activePage === 'dashboard' ? 'page' : undefined}
           >
             <PieChart className="h-5 w-5" aria-hidden="true" />
@@ -183,10 +213,8 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('chat')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'chat'
-              ? 'brand-gradient text-white border-2 border-hinaing-blue-700'
-              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-              }`}
+            data-active={activePage === 'chat' ? 'true' : 'false'}
+            className={`${buttonBase} ${activePage === 'chat' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             aria-current={activePage === 'chat' ? 'page' : undefined}
           >
             <Sparkles className="h-5 w-5" aria-hidden="true" />
@@ -201,10 +229,8 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('analyze')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'analyze'
-              ? 'brand-gradient text-white border-2 border-hinaing-blue-700'
-              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-              }`}
+            data-active={activePage === 'analyze' ? 'true' : 'false'}
+            className={`${buttonBase} ${activePage === 'analyze' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             aria-current={activePage === 'analyze' ? 'page' : undefined}
           >
             <BarChart3 className="h-5 w-5" aria-hidden="true" />
@@ -219,10 +245,8 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => handleNavClick('reports')}
-            className={`relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors ${activePage === 'reports'
-              ? 'brand-gradient text-white border-2 border-hinaing-blue-700'
-              : 'text-slate-600 hover:bg-slate-100 border-2 border-transparent'
-              }`}
+            data-active={activePage === 'reports' ? 'true' : 'false'}
+            className={`${buttonBase} ${activePage === 'reports' ? 'text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             aria-current={activePage === 'reports' ? 'page' : undefined}
           >
             <Save className="h-5 w-5" aria-hidden="true" />
@@ -233,7 +257,7 @@ export function Sidebar({
               </p>
             </div>
           </button>
-        </nav>
+        </div>
 
         <div className="mt-auto space-y-3 pt-6">
           <button
@@ -260,5 +284,3 @@ export function Sidebar({
     </>
   );
 }
-
-
