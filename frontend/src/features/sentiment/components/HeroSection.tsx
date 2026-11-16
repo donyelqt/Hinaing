@@ -71,9 +71,9 @@ export function HeroSection(_props: HeroSectionProps) {
         }
         @keyframes hinaing-wave {
           0%, 47% { transform: rotate(0deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
-          52% { transform: rotate(-9deg) translate3d(0, -1.5px, 0); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          52% { transform: rotate(-9deg) translate3d(0, -1.5px, 0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
           56% { transform: rotate(2.5deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
-          60.5% { transform: rotate(-13.5deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          60.5% { transform: rotate(-13.5deg) translate3d(0, -3px, 0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
           64.5% { transform: rotate(-4deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
           68.5% { transform: rotate(-12.5deg) translate3d(0, -2.5px, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
           72.5% { transform: rotate(-6deg) translate3d(0, 0, 0); animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1); }
@@ -82,7 +82,7 @@ export function HeroSection(_props: HeroSectionProps) {
         }
         @keyframes hinaing-sleeve {
           0%, 47%, 100% { transform: rotate(0deg); }
-          52% { transform: rotate(-2.3deg); animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+          52% { transform: rotate(-2.3deg); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
           57% { transform: rotate(0.4deg); }
           62% { transform: rotate(-1.8deg); }
           72% { transform: rotate(-1deg); }
