@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { type LucideIcon, BarChart3, Settings, Save, PieChart, LogOut, Sparkles, Cpu, HelpCircle, Radar, FileSearch, Database, Zap, BrainCircuit, Target, ShieldCheck } from "lucide-react";
 import type { ActivePage } from "../../types/navigation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HinaingLogo } from "@/components/ui/hinaing-logo";
 
 const PIPELINE_NODES = [
   { icon: Radar, label: "Node 1: Query Orchestrator", sub: "ReAct Planning" },
@@ -105,9 +106,7 @@ export function Sidebar({
       >
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Hinaing
-            </span>
+            <HinaingLogo className="h-5 w-auto sm:h-6" alt="Hinaing" priority />
             <h1 className="mt-1 text-lg font-semibold text-slate-900 lg:mt-2 lg:text-2xl">
               Public Sentiment Suite
             </h1>
