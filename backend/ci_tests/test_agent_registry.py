@@ -10,7 +10,8 @@ layers are checked.
     Node 3  ContextAugmentationAgent      (wraps app.services.rag)
     Node 4  SentimentAgent                (backs to EnsembleSentimentAgent)
             CredibilityAgent              (backs to credibility_agent.CredibilityAgent + 5 workers)
-    Node 6  ThemeRouterAgent              (backs to SemanticThemeRouterAgent)
+            ThemeRouterAgent              (backs to SemanticThemeRouterAgent)
+    Node 6  Theme synthesis               (get_theme_agent -> domain agents below)
     Node 7  CoordinatorAgent
 
   Cred 5 (credibility_agent.py)
