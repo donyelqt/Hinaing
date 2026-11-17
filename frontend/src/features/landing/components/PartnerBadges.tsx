@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
-import { CheckCircle, Award } from "lucide-react";
+import { Shield, CheckCircle, Award } from "lucide-react";
 
 export function PartnerBadges() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -121,13 +121,7 @@ export function PartnerBadges() {
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-lg bg-cyan-300/40 blur-md" />
                   <div className="relative flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-lg bg-white shadow-lg shadow-blue-900/20">
-                    <img
-                      src="/ibm-8bar.svg"
-                      alt="IBM"
-                      width={46}
-                      height={17}
-                      className="h-4 sm:h-5 w-auto"
-                    />
+                    <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600 fill-blue-100" aria-hidden="true" />
                   </div>
                   {/* Small check badge overlay */}
                   <div className="absolute -bottom-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-emerald-500 border-2 border-blue-600 shadow-sm">
