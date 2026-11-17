@@ -1,41 +1,27 @@
-"""AST registry of the specialist agent workforce.
+"""Workforce AST registry — the paper's count, machine-checked.
 
-The paper counts the implementation as 18 asserted specialist modules plus
-the optional FaithfulnessAgent = 19 when the verity pipeline runs.
-Boundary-level subscriptions below — agent may be a thin wrapper or the
-backing class that actually executes; both layers are checked so a reader
-can see exactly which file owns which behavior:
+Every module-level class is asserted exactly where it is declared. Thin
+wrapper classes bind pipeline nodes; backing classes do the work. Both
+layers are checked.
 
-  Core 7 (pipeline order)                 class                 backing impl
-  1. Node 1 query orchestration       QueryOrchestratorAgent  (self-contained)
-  2. Node 2 retrieval                 RetrievalAgent          (insights/agents.py
-                                                              wraps app.services
-                                                              .agents' retrieval)
-  3. Node 3 internal RAG recall     ContextAugmentationAgent  (self-contained,
-                                                              wraps app.services
-                                                              .rag.*)
-  4. Node 4 sentiment + credibility  SentimentAgent           backs to
-                                                              EnsembleSentimentAgent
-                                                              (RoBERTa + LLM ensemble);
-                                                              CredibilityAgent backs to
-                                                              services/agents/credibility
-  6. Node 6 theme routing           ThemeRouterAgent          backs to
-                                                              SemanticThemeRouterAgent
-                                                              (embeddings + keywords)
-  7. Node 7 coordination           CoordinatorAgent           self-contained
-                                                              (Node 7 runs it)
+  Core 7 (pipeline order, self-binding unless noted)
+    Node 1  QueryOrchestratorAgent
+    Node 2  RetrievalAgent                (insights/agents.py -> app.services retrieval)
+    Node 3  ContextAugmentationAgent      (wraps app.services.rag)
+    Node 4  SentimentAgent                (backs to EnsembleSentimentAgent)
+            CredibilityAgent              (backs to credibility_agent.CredibilityAgent + 5 workers)
+    Node 6  ThemeRouterAgent              (backs to SemanticThemeRouterAgent)
+    Node 7  CoordinatorAgent
 
-  Cred 5 (Node 4 credibility workers, services/agents/credibility_agent.py):
-      DomainTrustAgent · CrossReferenceAgent · FactCheckAgent ·
-      LLMAnalysisAgent · TavilyAgent
-  Theme 6 (Node 6 synthesis sub-agents, services/agents/theme_agent.py):
-      InfrastructureAgent · HealthAgent · SafetyAgent · TourismAgent ·
-      EconomyAgent · EnvironmentAgent
+  Cred 5 (credibility_agent.py)
+    DomainTrustAgent · CrossReferenceAgent · FactCheckAgent · LLMAnalysisAgent · TavilyAgent
 
-  Optional verity pipeline: FaithfulnessAgent (services/agents/faithfulness_agent.py),
-      making the workforce 18 + 1 = 19 when enabled.
+  Theme 6 (theme_agent.py)
+    InfrastructureAgent · HealthAgent · SafetyAgent · TourismAgent · EconomyAgent · EnvironmentAgent
 
-Every entry below is an existence assertion at the module level (AST) — no LLM call, no network.
+  Optional verity: FaithfulnessAgent (faithfulness_agent.py) — workforce = 18 + 1 = 19 when enabled.
+
+Module-level AST only. No LLM, no network. Each assertion names its pipeline node.
 """
 from __future__ import annotations
 
