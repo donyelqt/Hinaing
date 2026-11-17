@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle, Radar, FileSearch, Zap, Database, Target } from "lucide-react";
+import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, ArrowDown, ArrowUp, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle, Radar, FileSearch, Zap, Database, Target } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
 import { HinaingLogo } from "@/components/ui/hinaing-logo";
@@ -931,6 +931,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [controlsOpen, setControlsOpen] = React.useState(true);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
@@ -1240,7 +1241,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
             </button>
 
             <div className="h-[100dvh] bg-slate-50 bg-grid-pattern font-sans selection:bg-blue-100 overflow-hidden fixed inset-0">
-                <div className="mx-auto flex w-full h-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-10 xl:px-12">
+                <div className="mx-auto flex w-full h-full max-w-[1600px] flex-col gap-4 sm:gap-6 px-0 sm:px-6 lg:flex-row lg:gap-8 lg:px-8 lg:py-8 xl:px-12">
 
                     <Sidebar
                         activePage="analyze"
@@ -1276,8 +1277,30 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             {/* Input Area - Safe area padding for mobile */}
                             <div className="p-3 sm:p-4 md:p-6 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 md:pb-6 bg-white/90 backdrop-blur-sm border-t border-slate-100 z-10">
                                 <div className="max-w-3xl mx-auto space-y-2">
-                                    {/* Controls */}
-                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                                    {/* Controls toggle */}
+                                    <div className="flex items-center justify-between h-5">
+                                        <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-400 select-none">Controls</span>
+                                        <button
+                                            type="button"
+                                            aria-expanded={controlsOpen}
+                                            aria-controls="analyze-controls"
+                                            onClick={() => setControlsOpen((v) => !v)}
+                                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-slate-500 hover:text-slate-800 hover:border-slate-300 active:scale-95 transition-colors"
+                                        >
+                                            {controlsOpen ? (
+                                                <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                                            ) : (
+                                                <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                                            )}
+                                            <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold">{controlsOpen ? "Hide" : "Show"}</span>
+                                        </button>
+                                    </div>
+                                    <div
+                                        id="analyze-controls"
+                                        className={clsx("grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none", controlsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
+                                    >
+                                        <div className="overflow-hidden min-h-0">
+                                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-1.5">
                                         {/* Mode */}
                                         <div className="flex items-center gap-2">
                                             <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold text-slate-500 select-none">Mode</span>
@@ -1316,6 +1339,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             onChange={(next) => setSystemMode(next as SystemMode)}
                                             options={SYSTEM_MODE_OPTIONS}
                                         />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="relative group">
