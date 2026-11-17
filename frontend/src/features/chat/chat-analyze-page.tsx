@@ -1288,9 +1288,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-slate-500 hover:text-slate-800 hover:border-slate-300 active:scale-95 transition-colors"
                                         >
                                             {controlsOpen ? (
-                                                <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-                                            ) : (
                                                 <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                                            ) : (
+                                                <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                                             )}
                                             <span className="text-[9px] sm:text-[10px] uppercase tracking-widest font-semibold">{controlsOpen ? "Hide" : "Show"}</span>
                                         </button>
