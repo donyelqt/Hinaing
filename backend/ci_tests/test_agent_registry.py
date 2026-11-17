@@ -19,9 +19,6 @@ can see exactly which file owns which behavior:
                                                               (RoBERTa + LLM ensemble);
                                                               CredibilityAgent backs to
                                                               services/agents/credibility
-                                                              _agent.CredibilityAgent
-  5. Node 5 memory consolidation     (non-agentic step)        covered by the
-                                                              topology test
   6. Node 6 theme routing           ThemeRouterAgent          backs to
                                                               SemanticThemeRouterAgent
                                                               (embeddings + keywords)
@@ -31,7 +28,6 @@ can see exactly which file owns which behavior:
   Cred 5 (Node 4 credibility workers, services/agents/credibility_agent.py):
       DomainTrustAgent · CrossReferenceAgent · FactCheckAgent ·
       LLMAnalysisAgent · TavilyAgent
-
   Theme 6 (Node 6 synthesis sub-agents, services/agents/theme_agent.py):
       InfrastructureAgent · HealthAgent · SafetyAgent · TourismAgent ·
       EconomyAgent · EnvironmentAgent
@@ -39,9 +35,7 @@ can see exactly which file owns which behavior:
   Optional verity pipeline: FaithfulnessAgent (services/agents/faithfulness_agent.py),
       making the workforce 18 + 1 = 19 when enabled.
 
-Node 5 (consolidate_memory) intentionally has no agent class — it is a plain
-pipeline function and is covered by test_topology_wiring. Every entry below
-is an existence assertion at the module level (AST) — no LLM call, no network.
+Every entry below is an existence assertion at the module level (AST) — no LLM call, no network.
 """
 from __future__ import annotations
 
