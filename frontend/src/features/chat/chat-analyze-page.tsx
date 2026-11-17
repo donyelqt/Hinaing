@@ -655,7 +655,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
             `}</style>
             <div className="hinaing-welcome-live relative mb-5 sm:mb-8 flex h-44 w-44 items-center justify-center sm:h-56 sm:w-56" style={{ perspective: '760px' }}>
               <div
-                className="absolute rounded-full bg-gradient-to-br from-violet-400/50 via-blue-500/25 to-cyan-300/20 blur-3xl"
+                className="absolute rounded-full bg-gradient-to-br from-violet-400/50 via-blue-500/25 to-pink-400/20 blur-3xl"
                 style={{ inset: '24%', animation: 'hinaing-halo 5.6s ease-in-out infinite' }}
                 aria-hidden="true"
                 />
@@ -663,7 +663,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 className="absolute rounded-full will-change-transform"
                 style={{
                   inset: '5%',
-                  background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                  background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(244,114,182,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
                   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   filter: 'blur(0.7px)',
@@ -675,7 +675,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                 className="absolute rounded-full will-change-transform"
                 style={{
                   inset: '5%',
-                  background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                  background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(244,114,182,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
                   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   filter: 'blur(0.7px)',
@@ -693,7 +693,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   className="absolute rounded-full will-change-transform"
                   style={{
                     inset: '0%',
-                    background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                    background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(244,114,182,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
                     WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                     mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                     filter: 'blur(0.7px)',
@@ -705,7 +705,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   className="absolute rounded-full will-change-transform"
                   style={{
                     inset: '0%',
-                    background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(34,211,238,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
+                    background: 'conic-gradient(from 20deg, transparent 0deg 225deg, rgba(139,92,246,0.3) 246deg, rgba(139,92,246,0.9) 272deg, rgba(244,114,182,1) 294deg, rgba(255,255,255,0.96) 302deg, rgba(139,92,246,0.4) 322deg, transparent 342deg)',
                     WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                     mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                     filter: 'blur(0.7px)',
@@ -717,7 +717,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   className="absolute rounded-full will-change-transform"
                   style={{
                     inset: '12%',
-                    background: 'conic-gradient(from 150deg, transparent 0deg 240deg, rgba(56,189,248,0.22) 260deg, rgba(168,85,247,0.92) 292deg, rgba(232,121,249,0.7) 318deg, transparent 338deg)',
+                    background: 'conic-gradient(from 150deg, transparent 0deg 240deg, rgba(251,113,133,0.24) 260deg, rgba(168,85,247,0.92) 292deg, rgba(232,121,249,0.7) 318deg, transparent 338deg)',
                     WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
                     mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 2.5px))',
                     filter: 'blur(1.2px)',
@@ -729,7 +729,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   className="absolute rounded-full will-change-transform"
                   style={{
                     inset: '23%',
-                    background: 'conic-gradient(from 300deg, transparent 0deg 252deg, rgba(56,189,248,0.18) 270deg, rgba(125,211,252,0.72) 292deg, transparent 310deg)',
+                    background: 'conic-gradient(from 300deg, transparent 0deg 252deg, rgba(251,113,133,0.18) 270deg, rgba(248,165,210,0.72) 292deg, transparent 310deg)',
                     WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3px))',
                     mask: 'radial-gradient(farthest-side, transparent calc(100% - 4.5px), #000 calc(100% - 3px))',
                     filter: 'blur(2.4px)',
