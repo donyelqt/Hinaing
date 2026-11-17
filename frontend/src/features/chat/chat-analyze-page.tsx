@@ -646,6 +646,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
               @keyframes hinaing-orbit-rev { from { transform: rotateX(64deg) rotateZ(360deg); } to { transform: rotateX(64deg) rotateZ(0deg); } }
               @keyframes hinaing-wobble { 0%, 100% { transform: rotateY(-8deg) rotateX(1.5deg); } 50% { transform: rotateY(8deg) rotateX(-1.5deg); } }
               @keyframes hinaing-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+              @keyframes hinaing-hue { 0%, 100% { filter: hue-rotate(-14deg) saturate(1.05); } 50% { filter: hue-rotate(16deg) saturate(1.28); } }
               @keyframes hinaing-sweep-x { from { transform: scaleX(-1) rotate(0deg); } to { transform: scaleX(-1) rotate(360deg); } }
               @keyframes hinaing-orbit-x { from { transform: scaleX(-1) rotateX(64deg) rotateZ(0deg); } to { transform: scaleX(-1) rotateX(64deg) rotateZ(360deg); } }
               @media (prefers-reduced-motion: reduce) {
@@ -666,7 +667,7 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   filter: 'blur(0.7px)',
-                  animation: 'hinaing-sweep 17s linear infinite',
+                  animation: 'hinaing-sweep 17s linear infinite, hinaing-hue 11s ease-in-out infinite',
                 }}
                 aria-hidden="true"
               />
@@ -678,14 +679,14 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
                   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 3.5px))',
                   filter: 'blur(0.7px)',
-                  animation: 'hinaing-sweep-x 17s linear infinite',
+                  animation: 'hinaing-sweep-x 17s linear infinite, hinaing-hue 11s ease-in-out infinite',
                   transform: 'scaleX(-1)',
                 }}
                 aria-hidden="true"
               />
               <div
                 className="absolute inset-0"
-                style={{ transformStyle: 'preserve-3d', animation: 'hinaing-wobble 9s ease-in-out infinite' }}
+                style={{ transformStyle: 'preserve-3d', animation: 'hinaing-wobble 9s ease-in-out infinite, hinaing-hue 11s ease-in-out infinite' }}
                 aria-hidden="true"
               >
                 <div
