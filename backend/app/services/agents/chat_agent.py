@@ -314,13 +314,21 @@ async def run_chat_agent(
         logger.info(f"[chat_agent] Performing web search for: {message}")
         
         search_client = LangSearchClient()
-        
-        # Ensure "Baguio City" context
-        query_lower = message.lower()
-        if "baguio" not in query_lower:
-            fresh_query = f"{message} {jurisdiction}"
-        else:
-            fresh_query = message
+
+        _q = message.lower().strip(' ?.\t')
+        for _pat in (
+            r'^what\s+is\s+', r"^what's\s+", r'^what\s+are\s+',
+            r'^who\s+is\s+', r'^who\s+are\s+',
+            r'^how many\s+', r'^how much\s+', r'^how\s+is\s+', r'^how\s+are\s+',
+            r'^when\s+is\s+', r'^where\s+is\s+', r'^why\s+is\s+', r'^which\s+is\s+',
+            r'^tell me about\s+', r'^tell me\s+', r'^please\s+',
+            r'^can you\s+', r'^could you\s+', r'^the\s+',
+        ):
+            _q = re.sub(_pat, '', _q, flags=re.IGNORECASE)
+        if len(_q) < 5:
+            _q = message.strip(' ?.\t')
+        fresh_query = _q if jurisdiction.lower() in _q.lower() else f"{_q} {jurisdiction}"
+        logger.info(f"[chat_agent] Rewritten search query: {fresh_query}")
         
         # Web search ONLY (fast, fresh, general knowledge)
         try:
