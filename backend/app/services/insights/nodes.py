@@ -560,7 +560,7 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
     if vsee_m:
         # CredibilityAgent computed REAL metrics during run()
         vsee_triggered = vsee_m["vsee_triggered_count"]
-        vsee_api_avoided = vsee_m["vsee_total_api_calls_avoided"]
+        vsee_api_avoided = int(vsee_m.get("vsee_tavily_api_calls_avoided", 0)) + int(vsee_m.get("vsee_factcheck_api_calls_avoided", 0))
         vsee_bypass_rate = vsee_m["vsee_bypass_rate"]
         vsee_via_crossref = vsee_m.get("vsee_verified_via_crossref", 0)
         vsee_via_domain = vsee_m.get("vsee_verified_via_domain", 0)
@@ -808,7 +808,8 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             summary_text = None
             insights_payload = []
     # Check if we have relevant documents to work with
-    docs = state.get("documents", [])
+    # Prefer enriched docs (sentiment + credibility attached) for verification
+    docs = state.get("enriched", []) or state.get("documents", [])
     if not docs:
         # GRACEFUL DEGRADATION: No relevant documents found
         # Return explicit "no data" instead of fabricating insights
@@ -869,10 +870,18 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
                 verified_claims=verification_report["verified_claims"],
                 faithfulness_score=verification_report["faithfulness_score"],
                 citation_verification=verification_report.get("citation_verification"),
-                hallucination_analysis=verification_report.get("hallucination_analysis"),
+                # Pass the full report: collector expects a bundle with
+                # hallucination_analysis / misattribution_analysis / numerical_hallucinations
+                # at its top level (same keys the report already has).
+                hallucination_analysis=verification_report,
             )
         except Exception as exc:
             logger.exception("[snapshot] FaithfulnessAgent verification failed: %s", exc)
+            try:
+                from app.services.metrics.collector import get_metrics_collector as _gmc
+                _gmc().record_error(f"faithfulness_verification: {exc}")
+            except Exception:
+                pass
             verification_report = None
     elif not faithfulness_enabled:
         logger.info("[ABLA] Node 7: Faithfulness verification disabled")
@@ -1077,7 +1086,8 @@ Return ONLY valid JSON with this exact structure:
 
 IMPORTANT:
 - The "evidence" array MUST contain actual URLs from the documents above
-- If documents truly lack {theme_label} content, return: {{"insights": []}}
+- Documents may be UNVERIFIED (low credibility scores, no fact-check). Do NOT return empty just because signals are weak — report what the documents say, cite them, and in "detail" note that verification evidence is thin
+- Only return {{"insights": []}} if the documents literally contain nothing related to {theme_label}
 - Generate EXACTLY 3 actionable recommendations if you have sufficient content
 - Each recommendation must be SPECIFIC and IMPLEMENTABLE by government
 - ONLY JSON output, no extra text"""

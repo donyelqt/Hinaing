@@ -137,6 +137,7 @@ class EmergingConcernsMemory:
                 url=qdrant_url,
                 api_key=settings.qdrant_api_key,
                 timeout=30.0,
+                check_compatibility=False,
             )
             logger.info("[EmergingConcerns] Connected to Qdrant Cloud")
         return self._client
@@ -166,6 +167,12 @@ class EmergingConcernsMemory:
         
         if collection_name in self._initialized_collections:
             return collection_name
+        
+        # Resolve embedding dimension BEFORE constructing VectorParams —
+        # _embedding_dim is only populated lazily via the embedding_service property,
+        # and VectorParams(size=None) fails pydantic validation before any Qdrant call.
+        if self._embedding_dim is None:
+            _ = self.embedding_service
         
         try:
             collections = self.client.get_collections()
