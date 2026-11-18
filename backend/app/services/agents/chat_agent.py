@@ -10,8 +10,11 @@ import asyncio
 
 from ...core.config import get_settings
 from ..langsearch import LangSearchClient
+from ...schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
+
+settings = get_settings()
 
 # Production safety limits
 MAX_MESSAGE_LENGTH = 2000  # Maximum input message length (chars)
@@ -330,16 +333,38 @@ async def run_chat_agent(
         fresh_query = _q if jurisdiction.lower() in _q.lower() else f"{_q} {jurisdiction}"
         logger.info(f"[chat_agent] Rewritten search query: {fresh_query}")
         
-        # Web search ONLY (fast, fresh, general knowledge)
-        try:
-            web_docs = await search_client.search(
-                query=fresh_query,
-                time_window="30d",
-                limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
-            )
-        except Exception as e:
-            logger.warning(f"[chat_agent] Web search failed: {e}")
-            web_docs = []
+        web_docs = []
+        if settings.tavily_api_key:
+            try:
+                from ..agents.credibility_agent import tavily_search
+                tavily_res = await tavily_search(fresh_query, str(settings.tavily_api_key), "topic")
+                for item in (tavily_res or {}).get("results", []):
+                    title = (item.get("title") or "").strip() or "(untitled)"
+                    snippet = (item.get("content") or item.get("snippet") or "").strip()
+                    if not snippet:
+                        continue
+                    web_docs.append(
+                        WebDocument(
+                            title=title,
+                            snippet=snippet,
+                            url=item.get("url") or None,
+                            published_at=None,
+                            metadata={"source_type": "WEB"},
+                        )
+                    )
+            except Exception as e:
+                logger.warning(f"[chat_agent] Tavily search failed: {e}")
+                web_docs = []
+        if not web_docs:
+            try:
+                web_docs = await search_client.search(
+                    query=fresh_query,
+                    time_window="30d",
+                    limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
+                )
+            except Exception as e:
+                logger.warning(f"[chat_agent] Web search failed: {e}")
+                web_docs = []
         
         # Build sources list
         combined_docs = []
