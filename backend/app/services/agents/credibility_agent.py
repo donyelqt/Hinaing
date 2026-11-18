@@ -829,7 +829,14 @@ def tavily_search_sync(query: str, api_key: str, search_type: str = "claim") -> 
         from tavily import TavilyClient
         
         client = TavilyClient(api_key=api_key)
-        
+
+        # Tavily API rejects requests when its implicit `days` param collides with
+        # a date operator baked into the query string ("after:YYYY-MM-DD",
+        # "before:YYYY-MM-DD") — observed error: "When days is set, start_date or
+        # end_date cannot be set". Strip those operators before everything else.
+        import re as _re
+        query = _re.sub(r"\s+(after|before):\d{4}-\d{2}-\d{2}", "", query).strip()
+
         # For claim verification, add fact-check context
         if search_type == "claim":
             search_query = f'{query} fact check verified'

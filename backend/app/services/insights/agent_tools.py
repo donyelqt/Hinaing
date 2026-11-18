@@ -403,7 +403,11 @@ async def _tavily_backfill(request: SnapshotRequest, custom_query: str | None, l
         settings = get_settings()
         if not settings.tavily_api_key:
             return []
+        import re as _re
         query = custom_query or build_focus_query(request)
+        # Tavily has no "after:" operator — keep it out of the wire query so the API
+        # doesn't conflate it with its own date params.
+        query = _re.sub(r"\s+(after|before):\d{4}-\d{2}-\d{2}", "", query).strip()
         logger.info(f"[tavily] Backfill fired for zero-doc query: {query[:80]}")
         results = await tavily_search(query, str(settings.tavily_api_key), "topic")
         docs: list[WebDocument] = []
