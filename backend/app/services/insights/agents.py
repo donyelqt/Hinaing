@@ -413,6 +413,7 @@ class CredibilityAgent:
     """
     
     use_enhanced: bool = True
+    _vsee_metrics: dict[str, Any] = field(default_factory=dict)
 
     async def run(self, documents: Sequence[WebDocument], disable_vsee: bool = False, llm_mode: str | None = None) -> list[WebDocument]:
         """Score credibility and return enriched documents."""
@@ -422,7 +423,11 @@ class CredibilityAgent:
             try:
                 from ..agents.credibility_agent import get_credibility_agent
                 agent = get_credibility_agent()
-                return await agent.run(list(documents), disable_vsee=disable_vsee, llm_mode=llm_mode)
+                enriched = await agent.run(list(documents), disable_vsee=disable_vsee, llm_mode=llm_mode)
+                # Forward VSEE telemetry to the facade so nodes.py can read it
+                # from a single, documented place (credibility_agent_node._vsee_metrics).
+                self._vsee_metrics = getattr(agent, "_vsee_metrics", {}) or {}
+                return enriched
             except Exception as exc:
                 logger.warning("[credibility_agent] Enhanced failed, using fallback: %s", exc)
                 import traceback
