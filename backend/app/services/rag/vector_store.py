@@ -78,6 +78,7 @@ class VectorStore:
             
             logger.info(f"[VectorStore] Connecting to Qdrant Cloud: {qdrant_url[:60]}...")
             self.client = QdrantClient(
+                check_compatibility=False,
                 url=qdrant_url,
                 api_key=settings.qdrant_api_key,
                 timeout=30.0,
@@ -86,6 +87,7 @@ class VectorStore:
         else:
             logger.info("[VectorStore] Using local Qdrant storage (qdrant_data/)")
             self.client = QdrantClient(
+                check_compatibility=False,
                 path="qdrant_data",
                 timeout=30.0,
             )

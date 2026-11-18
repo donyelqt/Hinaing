@@ -213,8 +213,8 @@ class CitationVerifier:
         metadata_matches = []
 
         for doc in documents:
-            doc_status = doc.get("metadata", {}).get("tavily_verification_status", "unverified").lower().strip()
-            doc_sent = doc.get("sentiment", "neutral").lower().strip()
+            doc_status = str(((doc.get("metadata") or {}).get("tavily_verification_status")) or "unverified").lower().strip()
+            doc_sent = str(doc.get("sentiment") or "neutral").lower().strip()
 
             # Check sentiment match (exact)
             sent_match = cited_sent == doc_sent
@@ -441,7 +441,7 @@ class CitationVerifier:
         )
 
         # Check sentiment match
-        doc_sentiment = document.get("sentiment", "neutral").lower()
+        doc_sentiment = str(document.get("sentiment") or "neutral").lower()
         citation_sentiment = citation.get("sentiment", "").lower()
 
         # Normalize sentiment labels
