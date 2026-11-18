@@ -19,7 +19,7 @@ import React from 'react';
  * @param sources - Snapshot sources ({ url }) used to number references
  * @returns Array of JSX elements (strings and reference chips)
  */
-type DisplayStatus = 'verified' | 'contradicted' | 'unverified';
+type DisplayStatus = 'verified' | 'contradicted' | 'unverified' | 'trustedskip';
 
 export interface CitationSource {
   url?: string | null;
@@ -36,7 +36,10 @@ function normalizeHost(value: string): string {
 
 function mapStatus(raw: string): DisplayStatus {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === 'verified' || normalized === 'vsee_bypass') return 'verified';
+  if (normalized === 'verified') return 'verified';
+  // VSEE bypass = internal trust shortcut, no external corroboration. NOT the
+  // same thing as an independently verified source — surface it separately.
+  if (normalized === 'vsee_bypass') return 'trustedskip';
   if (normalized === 'contradicted') return 'contradicted';
   return 'unverified';
 }
@@ -57,6 +60,7 @@ const CHIP_CLASS: Record<DisplayStatus, string> = {
   verified: 'bg-emerald-100 text-emerald-700',
   contradicted: 'bg-rose-100 text-rose-700',
   unverified: 'bg-amber-100 text-amber-700',
+  trustedskip: 'bg-slate-200 text-slate-600',
 };
 
 export function parseCitations(
