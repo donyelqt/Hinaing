@@ -19,6 +19,9 @@ class QueryTask(BaseModel):
     topic: str = Field(
         default="general", description="Topic cluster for diversity tracking"
     )
+    focus_area: str | None = Field(
+        default=None, description="Focus area the query belongs to (e.g. infrastructure, tourism)"
+    )
 
 
 class QueryPlan(BaseModel):
