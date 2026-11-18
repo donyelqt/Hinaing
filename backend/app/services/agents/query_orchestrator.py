@@ -628,6 +628,7 @@ class QueryOrchestratorAgent:
                     intent=intent,
                     topic=q.get("topic", "general"),
                     priority=len(queries) + 1,
+                    focus_area=q.get("focus_area"),
                 ))
 
             if queries:
@@ -673,6 +674,7 @@ class QueryOrchestratorAgent:
                         intent=intent,
                         topic=q.get("topic", "general"),
                         priority=len(queries) + 1,
+                        focus_area=q.get("focus_area"),
                     ))
             except json.JSONDecodeError:
                 continue
