@@ -218,6 +218,33 @@ class RetrievalAgent:
                             ),
                             timeout=25.0
                         )
+                        if not docs:
+                            # Sparse-tail fallback: orchestrator queries carry an
+                            # "after:YYYY-MM-DD" suffix that often yields zero hits on
+                            # today's date for civic corpora. Strip it and widen the
+                            # window rather than returning nothing.
+                            import re as _re
+                            stripped = _re.sub(r"\s*after:\d{4}-\d{2}-\d{2}\s*$", "", task.query).strip()
+                            if stripped and stripped != task.query:
+                                logger.info(
+                                    f"[retrieval_agent] query '{topic}' got 0 docs with after-suffix; retrying without it: {stripped[:80]}"
+                                )
+                                try:
+                                    widened = request.model_copy(update={"time_window": "month"})
+                                except Exception:
+                                    widened = request
+                                docs = await asyncio.wait_for(
+                                    search_web_documents(
+                                        widened,
+                                        custom_query=stripped,
+                                        limit=10,
+                                    ),
+                                    timeout=25.0
+                                )
+                                if docs:
+                                    logger.info(f"[retrieval_agent] fallback returned {len(docs)} docs for '{topic}'")
+                                else:
+                                    logger.info(f"[retrieval_agent] fallback also returned 0 docs for '{topic}'")
                         for doc in docs:
                             doc.metadata = {
                                 **(doc.metadata or {}), 
