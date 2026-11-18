@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     
     # Groq Configuration (ultra-fast inference; default cloud backend)
     groq_api_key: str | None = None
-    groq_default_model: str = "groq/compound"
+    groq_default_model: str = "openai/gpt-oss-120b"
     groq_timeout: float = 30.0
     groq_max_retries: int = 3
 
