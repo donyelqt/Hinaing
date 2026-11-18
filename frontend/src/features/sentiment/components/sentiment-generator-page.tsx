@@ -321,8 +321,8 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   const [showSources, setShowSources] = React.useState(false);
   const [animatedSummary, setAnimatedSummary] = React.useState("");
   const [isTypingSummary, setIsTypingSummary] = React.useState(false);
+  const [summaryExpanded, setSummaryExpanded] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [hoveredCardIndex, setHoveredCardIndex] = React.useState<number | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     if (typeof document === 'undefined') return false;
     return document.documentElement.dataset.sidebarCollapsed === 'true';
@@ -658,10 +658,13 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
 
               {/* Live Preview — equal height, flat premium */}
               <div className="flex h-full min-h-[900px] w-full max-w-md flex-col space-y-6 rounded-xl border border-slate-200/60 bg-white p-6 sm:mx-0 sm:max-w-none md:min-h-[920px] md:rounded-xl xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:scrollbar-thin xl:scrollbar-thumb-slate-300 xl:scrollbar-track-transparent" role="region" aria-labelledby="preview-heading">
-                <header className="space-y-1">
+                <header className="space-y-1.5">
                   <h2 id="preview-heading" className="text-lg font-semibold text-slate-900">Live Snapshot Preview</h2>
                   <p className="text-xs text-slate-500">
                     {state.timeWindow} • {computed.platformSummary.length} platform{computed.platformSummary.length === 1 ? '' : 's'}
+                  </p>
+                  <p className="text-[10px] leading-snug text-slate-400 border-l-2 border-slate-200 pl-2">
+                    Machine-generated. Treat as direction, not ground truth. Citation numbers group by host; each claim carries its own evidence status.
                   </p>
                   {snapshotError ? (
                     <p className="text-xs text-rose-600">{snapshotError}</p>
@@ -673,7 +676,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                     <>
                       <Card className={clsx(
                         "space-y-4 border border-hinaing-blue-200 bg-gradient-to-br from-hinaing-blue-50 to-violet-50 p-5 transition-all duration-300",
-                        hoveredCardIndex === 0 && "transform scale-105 shadow-xl ring-2 ring-hinaing-blue-300"
                       )}>
                         <div className="flex items-center justify-between">
                           <span className="rounded-full bg-gradient-to-r from-hinaing-blue-500/15 via-hinaing-blue-400/15 to-violet-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-hinaing-blue-800">
@@ -685,6 +687,19 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <h3 className="text-xl font-semibold text-hinaing-blue-900" id="sentiment-summary">
                             {snapshot.overall_sentiment.label}
                           </h3>
+                          {!summaryExpanded && animatedSummary.length === 0 && fullSummaryText.length > 420 && (
+                            <div className="text-sm text-slate-600 leading-relaxed">
+                              <p className="text-pretty">{fullSummaryText.slice(0, 420).replace(/\s+\S*$/, "")}…</p>
+                              <button
+                                type="button"
+                                onClick={() => setSummaryExpanded(true)}
+                                className="mt-2 text-xs font-medium text-hinaing-blue-600 hover:text-hinaing-blue-500 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 rounded"
+                              >
+                                Read full brief
+                              </button>
+                            </div>
+                          )}
+                          {(summaryExpanded || animatedSummary.length > 0 || fullSummaryText.length <= 420) && (
                           <div className="text-sm text-slate-600 space-y-4 leading-relaxed">
                             {(animatedSummary || fullSummaryText).split(/\n\n+/).filter((paragraph) => !isEmptyParagraph(paragraph)).map((paragraph, idx) => {
                               // Handle **Bold:** pattern for topic headers
@@ -705,25 +720,32 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               );
                             })}
                           </div>
+                          )}
+                          {summaryExpanded && fullSummaryText.length > 420 && !isTypingSummary && (
+                            <button
+                              type="button"
+                              onClick={() => setSummaryExpanded(false)}
+                              className="text-xs font-medium text-hinaing-blue-600 hover:text-hinaing-blue-500 focus:outline-none focus:ring-2 focus:ring-hinaing-blue-500 focus:ring-offset-2 rounded"
+                            >
+                              Collapse
+                            </button>
+                          )}
                         </div>
                         <div className="grid grid-cols-3 gap-3 text-center text-sm">
                           <div className={clsx(
                             "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 1 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
                           )}>
                             <strong className="block text-lg font-semibold text-rose-600">{negativePercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Negative</span>
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 2 && "transform scale-105 shadow-xl ring-2 ring-slate-300"
                           )}>
                             <strong className="block text-lg font-semibold text-slate-700">{neutralPercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Neutral</span>
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 3 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
                           )}>
                             <strong className="block text-lg font-semibold text-emerald-600">{positivePercent}%</strong>
                             <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
@@ -732,7 +754,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 4 && "transform scale-105 shadow-xl ring-2 ring-slate-300"
                           )}
                           title="5-signal credibility analysis">
                             <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.avgScore / 100))}>{credibilityBreakdown.avgScore}%</strong>
@@ -740,7 +761,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 5 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
                           )}>
                             <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.highCredibility / 100))}>{credibilityBreakdown.highCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
@@ -750,12 +770,15 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                            hoveredCardIndex === 6 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
                           )}>
                             <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibility / 100))}>{credibilityBreakdown.lowCredibility}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Misinfo</span>
                           </div>
                         </div>
+
+                        <p className="text-[9px] leading-snug text-slate-400 border-l-2 border-slate-200 pl-2">
+                          Metric definitions — Credibility: 5-signal ensemble (domain trust, cross-reference, Fact Check, AI analysis, Tavily). Verified: sources with score ≥55% weighted global, or NLI-corroborated. Misinfo: sources below 55% or flagged contradicted. Faithfulness: extracted claims entailed by retrieved sources. Citation: url-to-claim metadata match.
+                        </p>
 
                         {/* Faithfulness Score - Enhanced with Best Practice Metrics */}
                         {snapshot.verification && (
@@ -764,7 +787,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
                               <div className={clsx(
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                                hoveredCardIndex === 7 && "transform scale-105 shadow-xl ring-2 ring-violet-300"
                               )}>
                                 <strong className={clsx(
                                   "block text-base sm:text-lg font-semibold",
@@ -787,7 +809,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               </div>
                               <div className={clsx(
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                                hoveredCardIndex === 8 && "transform scale-105 shadow-xl ring-2 ring-emerald-300"
                               )}
                               title="LLM claim extraction + NLI verification">
                                 <strong className={clsx(
@@ -802,7 +823,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                               </div>
                               <div className={clsx(
                                 "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                                hoveredCardIndex === 9 && "transform scale-105 shadow-xl ring-2 ring-rose-300"
                               )}>
                                 <strong className={clsx(
                                   "block text-base sm:text-lg font-semibold",
