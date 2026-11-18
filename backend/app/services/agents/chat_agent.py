@@ -335,35 +335,47 @@ async def run_chat_agent(
         
         web_docs = []
         try:
-            web_docs = await search_client.search(
+            web_docs = list(await search_client.search(
                 query=fresh_query,
                 time_window="year",
                 limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
-            )
+            ))
         except Exception as e:
             logger.warning(f"[chat_agent] Web search failed: {e}")
             web_docs = []
-        if not web_docs and settings.tavily_api_key:
+
+        def _build_tavily_docs(res: dict) -> list:
+            docs = []
+            for item in (res or {}).get("results", []):
+                title = (item.get("title") or "").strip() or "(untitled)"
+                snippet = (item.get("content") or item.get("snippet") or "").strip()
+                if not snippet:
+                    continue
+                try:
+                    docs.append(WebDocument(
+                        title=title,
+                        snippet=snippet,
+                        url=item.get("url") or None,
+                        published_at=None,
+                        metadata={"source_type": "WEB"},
+                    ))
+                except Exception:
+                    continue
+            return docs
+
+        if settings.tavily_api_key:
             try:
                 from ..agents.credibility_agent import tavily_search
                 tavily_res = await tavily_search(fresh_query, str(settings.tavily_api_key), "topic")
-                for item in (tavily_res or {}).get("results", []):
-                    title = (item.get("title") or "").strip() or "(untitled)"
-                    snippet = (item.get("content") or item.get("snippet") or "").strip()
-                    if not snippet:
+                tavily_docs = _build_tavily_docs(tavily_res)
+                seen = {d.url for d in web_docs if d.url}
+                for d in tavily_docs:
+                    if d.url and d.url in seen:
                         continue
-                    web_docs.append(
-                        WebDocument(
-                            title=title,
-                            snippet=snippet,
-                            url=item.get("url") or None,
-                            published_at=None,
-                            metadata={"source_type": "WEB"},
-                        )
-                    )
+                    web_docs.append(d)
+                web_docs = LangSearchClient._local_rerank(fresh_query, web_docs)[:12]
             except Exception as e:
                 logger.warning(f"[chat_agent] Tavily search failed: {e}")
-                web_docs = []
         
         # Build sources list
         combined_docs = []
