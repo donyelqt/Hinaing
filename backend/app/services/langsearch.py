@@ -36,6 +36,8 @@ class LangSearchClient:
         focus_areas: list[str] | None = None,
         time_window: str | None = None,
         limit: int = 10,
+        include_domains: list[str] | None = None,
+        exclude_domains: list[str] | None = None,
     ) -> list[WebDocument]:
         if not self._api_key:
             logger.warning("LangSearch API key missing; returning empty result set")
@@ -52,6 +54,10 @@ class LangSearchClient:
         freshness = self._map_freshness(time_window)
         if freshness:
             payload["freshness"] = freshness
+        if include_domains:
+            payload["includeDomains"] = [d for d in include_domains if d.strip()]
+        if exclude_domains:
+            payload["excludeDomains"] = [d for d in exclude_domains if d.strip()]
 
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -82,7 +88,8 @@ class LangSearchClient:
                         await asyncio.sleep(delay)
                         continue
                     else:
-                        logger.error("LangSearch rate limited, max retries exceeded for query: %s", query[:50])
+                        logger.error(f"LangSearch rate limited (429) after {attempt} retries for query: {query[:50]} — daily token allowance may be exhausted (resets 00:00 UTC); check Dashboard")
+                        # Allowance safety net: fall back to no-domain-scoped call once to rule out domain-list exhaustion, then give up
                         return []
                 
                 response.raise_for_status()

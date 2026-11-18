@@ -56,12 +56,14 @@ BAGUIO_LOCATION_TERMS = {
 }
 
 # PH civic / PH news domains accepted as Baguio-relevant even without Baguio keywords.
+# Trusted PH + Baguio civic sources. Server-side includeDomains list for LangSearch
+# AND the client-side relevance policy in filter_by_location.
 PH_CIVIC_DOMAINS = {
-    "gmanetwork.com", "inquirer.net", "philstar.com", "sunstar.com.ph",
-    "bomboradyo.com", "tribune.net.ph", "manilatimes.net", "pia.gov.ph",
-    "pna.gov.ph", "baguio.gov.ph", "abs-cbn.com", "news.abs-cbn.com",
-    "goodmorningbaguio.com", "pinoybuilders.ph", "mb.com.ph", "cnn.com.ph",
-    "baguiomall.com", "sunstar.com.ph",
+    "inquirer.net", "philstar.com", "gmanetwork.com", "news.abs-cbn.com",
+    "abs-cbn.com", "sunstar.com.ph", "bomboradyo.com", "baguio.bomboradyo.com",
+    "tribune.net.ph", "manilatimes.net", "pia.gov.ph", "pna.gov.ph",
+    "mb.com.ph", "cnn.com.ph",
+    "baguio.gov.ph", "goodmorningbaguio.com",
 }
 EXCLUDED_DOMAINS = {
     "wikipedia.org", "wikimedia.org", "wikidata.org", "britannica.com",
@@ -323,6 +325,7 @@ async def search_web_documents(
         focus_areas=request.focus_areas,
         time_window=request.time_window,
         limit=limit,
+        include_domains=sorted(PH_CIVIC_DOMAINS),
     )
     
     # CRITICAL FIX: For orchestrator queries, rerank against the ORIGINAL query
