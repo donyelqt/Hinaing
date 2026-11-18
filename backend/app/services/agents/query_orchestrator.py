@@ -724,6 +724,7 @@ class QueryOrchestratorAgent:
                         intent="targeted",
                         topic=kw1.replace("Baguio ", ""),
                         priority=len(queries) + 1,
+                        focus_area=area_lower,
                     ))
             else:
                 queries.append(QueryTask(
@@ -731,6 +732,7 @@ class QueryOrchestratorAgent:
                     intent="broad",
                     topic=area,
                     priority=len(queries) + 1,
+                    focus_area=area_lower,
                 ))
 
             if len(queries) >= self.max_queries:
