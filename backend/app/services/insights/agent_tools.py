@@ -60,6 +60,10 @@ EXCLUDED_DOMAINS = {
     "wikipedia.org", "wikimedia.org", "wikidata.org", "britannica.com",
     "dictionary.com", "quora.com", "tripadvisor.com", "booking.com",
     "agoda.com", "expedia.com", "airbnb.com", "pinterest.com",
+    # Machine-generated aggregator/envelope front pages observed consuming the
+    # pool for Baguio civic queries (huge keyword-stuffed trending lists that
+    # win every baguio query by construction and add zero signal).
+    "collector.com.tr", "headtopics.com",
 }
 
 # Focus area concern keywords for query building
@@ -166,7 +170,9 @@ def filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
             filtered.append(doc)
         else:
             logger.debug("Filtered out non-Baguio document: %s", doc.title[:50] if doc.title else "Untitled")
-    return filtered
+    # Match the relax-if-empty semantics already used by the time-window filter,
+    # so near-misses degrade to noisy-but-nonzero results instead of No Data.
+    return filtered or documents
 
 
 def filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
@@ -179,6 +185,28 @@ def filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
             continue
         filtered.append(doc)
     return filtered
+
+
+def filter_aggregator_pages(documents: list[WebDocument]) -> list[WebDocument]:
+    """Drop machine-generated front-page/trending-list documents.
+
+    These pages dump every trending headline as one page; they contain Baguio
+    keywords by coincidence and outrank every real article on Baguio queries
+    while carrying none of the actual content.
+    """
+    kept: list[WebDocument] = []
+    dropped = 0
+    for doc in documents:
+        snippet = doc.snippet or ""
+        line_count = snippet.count("\n") + 1
+        if len(snippet) > 2000 and line_count > 15:
+            dropped += 1
+            logger.info(f"[search] Dropped aggregator/front-page doc: {doc.title[:60] if doc.title else 'untitled'}")
+            continue
+        kept.append(doc)
+    if dropped:
+        logger.info(f"[search] Aggregator-page filter dropped {dropped} front-page documents")
+    return kept
 
 
 def deduplicate_documents(documents: list[WebDocument]) -> list[WebDocument]:
@@ -320,6 +348,7 @@ async def search_web_documents(
         logger.info(f"[search] Skipping semantic filter (keeping all {len(web_docs)} docs)")
     
     web_docs = filter_excluded_sources(web_docs)
+    web_docs = filter_aggregator_pages(web_docs)
     web_docs = filter_by_location(web_docs)
     web_docs = filter_by_time_window(web_docs, request.time_window)
     web_docs = deduplicate_documents(web_docs)
