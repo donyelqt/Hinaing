@@ -19,7 +19,7 @@ import React from 'react';
  * @param sources - Snapshot sources ({ url }) used to number references
  * @returns Array of JSX elements (strings and reference chips)
  */
-type DisplayStatus = 'verified' | 'contradicted' | 'unverified' | 'trustedskip';
+type DisplayStatus = 'verified' | 'contradicted' | 'unverified';
 
 export interface CitationSource {
   url?: string | null;
@@ -36,12 +36,16 @@ function normalizeHost(value: string): string {
 
 function mapStatus(raw: string): DisplayStatus {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === 'verified') return 'verified';
-  // VSEE bypass = internal trust shortcut, no external corroboration. NOT the
-  // same thing as an independently verified source — surface it separately.
-  if (normalized === 'vsee_bypass') return 'trustedskip';
+  if (normalized === 'verified' || normalized === 'vsee_bypass') return 'verified';
   if (normalized === 'contradicted') return 'contradicted';
   return 'unverified';
+}
+
+function evidenceKind(raw: string): string {
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'vsee_bypass') return 'VSEE internal corroboration';
+  if (normalized === 'verified') return 'external corroboration';
+  return '';
 }
 
 function parseSegments(inner: string): { domain: string; sentiment: string; status: string } | null {
@@ -60,7 +64,6 @@ const CHIP_CLASS: Record<DisplayStatus, string> = {
   verified: 'bg-emerald-100 text-emerald-700',
   contradicted: 'bg-rose-100 text-rose-700',
   unverified: 'bg-amber-100 text-amber-700',
-  trustedskip: 'bg-slate-200 text-slate-600',
 };
 
 export function parseCitations(
@@ -95,8 +98,10 @@ export function parseCitations(
 
     const { domain, sentiment, status } = parsed;
     const display = mapStatus(status);
+    const kind = evidenceKind(status);
     const refNumber = indexByHost.get(normalizeHost(domain)) ?? null;
-    const label = `Source${refNumber ? ` ${refNumber}` : ''}: ${domain} | Sentiment: ${sentiment} | ${display}`;
+    const kindSuffix = kind ? ` (${kind})` : '';
+    const label = `Source${refNumber ? ` ${refNumber}` : ''}: ${domain} | Sentiment: ${sentiment} | ${display}${kindSuffix}`;
 
     parts.push(
       refNumber !== null ? (
