@@ -334,7 +334,16 @@ async def run_chat_agent(
         logger.info(f"[chat_agent] Rewritten search query: {fresh_query}")
         
         web_docs = []
-        if settings.tavily_api_key:
+        try:
+            web_docs = await search_client.search(
+                query=fresh_query,
+                time_window="year",
+                limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
+            )
+        except Exception as e:
+            logger.warning(f"[chat_agent] Web search failed: {e}")
+            web_docs = []
+        if not web_docs and settings.tavily_api_key:
             try:
                 from ..agents.credibility_agent import tavily_search
                 tavily_res = await tavily_search(fresh_query, str(settings.tavily_api_key), "topic")
@@ -354,16 +363,6 @@ async def run_chat_agent(
                     )
             except Exception as e:
                 logger.warning(f"[chat_agent] Tavily search failed: {e}")
-                web_docs = []
-        if not web_docs:
-            try:
-                web_docs = await search_client.search(
-                    query=fresh_query,
-                    time_window="30d",
-                    limit=12  # Reduced from 20 to avoid 413 Request Too Large errors
-                )
-            except Exception as e:
-                logger.warning(f"[chat_agent] Web search failed: {e}")
                 web_docs = []
         
         # Build sources list
