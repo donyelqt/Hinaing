@@ -218,25 +218,19 @@ class LangSearchClient:
         return [documents[i] for i in order]
 
     async def rerank(self, *, query: str, documents: list[WebDocument]) -> list[WebDocument]:
-        """Public method to rerank documents using semantic relevance.
-        
+        """Public method to rerank documents by term-overlap relevance (local BM25).
+
         Args:
             query: The search query to rank documents against.
             documents: List of WebDocument objects to rerank.
-            
+
         Returns:
-            Reranked list of WebDocument objects with semantic_relevance_score in metadata.
+            Reranked list of WebDocument objects, highest-scoring first.
         """
         if not documents:
             return documents
-            
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            try:
-                return await self._rerank_documents(
-                    client=client,
-                    query=query,
-                    documents=documents,
-                )
-            except Exception as exc:
-                logger.exception("Semantic rerank failed; returning original order: %s", exc)
-                return documents
+        try:
+            return self._local_rerank(query=query, documents=documents)
+        except Exception:
+            logger.exception("Local BM25 rerank failed; returning original order")
+            return documents
