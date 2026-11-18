@@ -527,7 +527,8 @@ class QueryOrchestratorAgent:
         try:
             memory = get_concerns_memory()
             cached = memory.recall_concerns(
-                focus_areas=focus_values, max_age_days=CONCERNS_TTL_DAYS
+                focus_areas=focus_values, max_age_days=CONCERNS_TTL_DAYS,
+                include_defaults=False,
             )
             if cached:
                 return  # Memory is fresh, no action needed
@@ -584,8 +585,11 @@ class QueryOrchestratorAgent:
                     "[query_orchestrator] Stored %d synthesized concern clusters",
                     sum(len(v) for v in concerns_by_area.values())
                 )
-        except Exception:
-            pass  # Non-critical; don't block the pipeline
+            else:
+                logger.info("[query_orchestrator] No concern clusters derived from synthesized queries; nothing to store")
+        except Exception as e:
+            # Loud, not silent — this is a self-learning subsystem, not an error to ignore
+            logger.exception("[query_orchestrator] Failed to store synthesized concern clusters: %s", e)
 
     def _parse_synthesis_output(
         self, output: str, focus_values: list[str], time_suffix: str
