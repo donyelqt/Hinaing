@@ -41,10 +41,13 @@ class LangSearchClient:
             logger.warning("LangSearch API key missing; returning empty result set")
             return []
 
+        # Documented Web Search API contract (docs.langsearch.com/reference/search-api-guide):
+        # contents.text requests full page text (capped per doc); response carries `text`
+        # instead of `snippet`. We keep snippet-only size but through the documented field.
         payload: dict[str, Any] = {
             "query": self._enrich_query(query=query, focus_areas=focus_areas),
-            "count": max(1, limit),  # Removed hard cap; let API enforce its own limits
-            "summary": True,
+            "count": max(1, min(int(limit), 50)),
+            "contents": {"text": {"maxCharacters": 1500}},
         }
         freshness = self._map_freshness(time_window)
         if freshness:
@@ -99,12 +102,16 @@ class LangSearchClient:
             if data is None:
                 return []
 
+            # Upstream contract carries usage tokens — log them for cost accounting
+            usage = data.get("usage") or {}
+            logger.info(f"[langsearch] usage: input_tokens={usage.get('input_tokens')} output_tokens={usage.get('output_tokens')} someResultsRemoved={((data.get('data') or {}).get('webPages') or {}).get('someResultsRemoved')}")
+
             documents: list[WebDocument] = []
             for item in self._extract_web_results(data):
                 try:
                     # SANITIZE at extraction time BEFORE reranking
                     # Prevents indirect prompt injection and poisoned documents from getting high scores
-                    snippet = item.get("snippet") or item.get("summary") or ""
+                    snippet = (item.get("text") or item.get("snippet") or item.get("summary") or "")[:1500]
                     dangerous_patterns = [
                         r"<\|endoftext\|>", r"ignore.*previous", r"forget.*instructions",
                         r"you are now", r"disregard.*rules", r"system prompt:"
@@ -200,10 +207,61 @@ class LangSearchClient:
             return None
 
 
+    _cross_encoder = None
+
+    @classmethod
+    def _get_cross_encoder(cls):
+        """Lazy-load BGE cross-encoder reranker. Falls back to BM25 when unavailable."""
+        import os as _os
+        if _os.getenv("LOCAL_RERANKER", "auto").lower() in ("0", "off", "none", "disabled"):
+            return None
+        if cls._cross_encoder is None:
+            try:
+                from sentence_transformers import CrossEncoder
+                cls._cross_encoder = CrossEncoder(
+                    "BAAI/bge-reranker-v2-m3",
+                    device="cpu",
+                    max_length=512,
+                )
+                logger.info("[langsearch] BGE cross-encoder (v2-m3) loaded on CPU")
+            except Exception as exc:
+                logger.warning(f"[langsearch] Cross-encoder unavailable ({exc}); falling back to BM25")
+                cls._cross_encoder = False
+        return cls._cross_encoder if cls._cross_encoder is not False else None
+
     @staticmethod
     def _local_rerank(query: str, documents: list[WebDocument]) -> list[WebDocument]:
         if len(documents) <= 1:
             return documents
+        # Cross-encoder (query, doc) judging — the learned relevance signal the former
+        # hosted /v1/rerank provided. Semantic scores land in doc.metadata so the
+        # downstream threshold filter works on a real semantic scale.
+        ce = LangSearchClient._get_cross_encoder()
+        if ce is not None:
+            try:
+                import re as _re
+                import math as _math
+                import numpy as _np
+                from sentence_transformers import CrossEncoder as _CE
+
+                def _clean(t):
+                    t = str(t or "")
+                    t = _re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", " ", t)
+                    return t[:1200]
+
+                pairs = [(query, _clean(f"{d.title or ''} {d.snippet or ''}")) for d in documents]
+                raw = ce.predict(pairs, batch_size=8, show_progress_bar=False)
+                raw_scores = [float(_np.asarray([r]).flatten()[0]) if hasattr(_np, 'asarray') else float(r) for r in raw]
+                # bge cross-encoders output logits roughly in [-10, 10]; map to [0,1] via sigmoid
+                mapped = [1.0 / (1.0 + _math.exp(-(v))) for v in raw_scores]
+                for (doc, score) in zip(documents, mapped):
+                    md = dict(doc.metadata or {})
+                    md["semantic_relevance_score"] = score
+                    doc.metadata = md
+                order = sorted(range(len(documents)), key=lambda i: mapped[i], reverse=True)
+                return [documents[i] for i in order]
+            except Exception as exc:
+                logger.exception(f"[langsearch] cross-encoder rerank failed; falling back to BM25: {exc}")
         from rank_bm25 import BM25Okapi
 
         def _tok(text: str) -> list[str]:

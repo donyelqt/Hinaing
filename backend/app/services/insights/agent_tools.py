@@ -55,7 +55,14 @@ BAGUIO_LOCATION_TERMS = {
     "porta vaga", "sm baguio", "baguio city market",
 }
 
-# Domains to exclude from search results
+# PH civic / PH news domains accepted as Baguio-relevant even without Baguio keywords.
+PH_CIVIC_DOMAINS = {
+    "gmanetwork.com", "inquirer.net", "philstar.com", "sunstar.com.ph",
+    "bomboradyo.com", "tribune.net.ph", "manilatimes.net", "pia.gov.ph",
+    "pna.gov.ph", "baguio.gov.ph", "abs-cbn.com", "news.abs-cbn.com",
+    "goodmorningbaguio.com", "pinoybuilders.ph", "mb.com.ph", "cnn.com.ph",
+    "baguiomall.com", "sunstar.com.ph",
+}
 EXCLUDED_DOMAINS = {
     "wikipedia.org", "wikimedia.org", "wikidata.org", "britannica.com",
     "dictionary.com", "quora.com", "tripadvisor.com", "booking.com",
@@ -160,19 +167,41 @@ def filter_by_time_window(documents: list[WebDocument], time_window: str | None)
     return filtered or documents
 
 
+def _host_in(url: str, allowed: set[str]) -> bool:
+    host = ""
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        pass
+    if not host:
+        return False
+    return any(host == d or host.endswith("." + d) for d in allowed)
+
+
 def filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
-    """Filter documents to only include Baguio-related content."""
-    filtered: list[WebDocument] = []
+    """Relevance policy for PH civic retrieval.
+
+    Keep a document when ANY of:
+      1. A Baguio term appears anywhere in title+snippet+url, or
+      2. It comes from a known PH civic / PH news host (.ph and local majors).
+    Score of baguio matches ranked by client first; this is a hard gate.
+    Returns [] when nothing passes — NEVER re-injects rejected international filler.
+    """
+    kept: list[WebDocument] = []
     for doc in documents:
         url_str = str(doc.url) if doc.url else ""
         searchable = f"{doc.title} {doc.snippet} {url_str}".lower()
-        if any(term in searchable for term in BAGUIO_LOCATION_TERMS):
-            filtered.append(doc)
+        baguio_hit = any(term in searchable for term in BAGUIO_LOCATION_TERMS)
+        ph_host = _host_in(url_str, PH_CIVIC_DOMAINS) or (urlparse(url_str).hostname or "").lower().endswith(".ph") if url_str else False
+        if baguio_hit or ph_host:
+            kept.append(doc)
         else:
-            logger.debug("Filtered out non-Baguio document: %s", doc.title[:50] if doc.title else "Untitled")
-    # Match the relax-if-empty semantics already used by the time-window filter,
-    # so near-misses degrade to noisy-but-nonzero results instead of No Data.
-    return filtered or documents
+            logger.debug(
+                "Filtered out non-PH/Baguio document: %s",
+                (doc.title or "")[:50],
+            )
+    return kept
 
 
 def filter_excluded_sources(documents: list[WebDocument]) -> list[WebDocument]:
@@ -352,7 +381,52 @@ async def search_web_documents(
     web_docs = filter_by_location(web_docs)
     web_docs = filter_by_time_window(web_docs, request.time_window)
     web_docs = deduplicate_documents(web_docs)
+    if not web_docs:
+        web_docs = await _tavily_backfill(request, custom_query, limit=8)
+        if web_docs:
+            logger.info(f"[tavily] Backfill supplied {len(web_docs)} docs for empty LangSearch result")
     return web_docs
+
+
+async def _tavily_backfill(request: SnapshotRequest, custom_query: str | None, limit: int = 6) -> list[WebDocument]:
+    """Tavily backfill — fires ONLY when LangSearch/policy produced zero docs.
+
+    Same backfill shape Simple Q&A tolerates; bounded cost (~1 credit per empty topic).
+    """
+    try:
+        from ..agents.credibility_agent import tavily_search
+        import logging as _log
+        from ...core.config import get_settings
+        settings = get_settings()
+        if not settings.tavily_api_key:
+            return []
+        query = custom_query or build_focus_query(request)
+        logger.info(f"[tavily] Backfill fired for zero-doc query: {query[:80]}")
+        results = await tavily_search(query, str(settings.tavily_api_key), "topic")
+        docs: list[WebDocument] = []
+        for item in (results or {}).get("results", []):
+            title = (item.get("title") or "").strip() or "(untitled)"
+            snippet = (item.get("content") or item.get("snippet") or "").strip()
+            if not snippet:
+                continue
+            try:
+                docs.append(WebDocument(
+                    title=title,
+                    snippet=snippet[:1500],
+                    url=item.get("url") or None,
+                    published_at=None,
+                    metadata={"source_type": "WEB", "origin": "tavily_backfill"},
+                ))
+            except Exception:
+                continue
+        docs = filter_excluded_sources(docs)
+        docs = filter_aggregator_pages(docs)
+        docs = filter_by_location(docs)
+        docs = deduplicate_documents(docs)[:limit]
+        return docs
+    except Exception as exc:
+        logger.warning(f"[tavily] Backfill failed: {exc}")
+        return []
 
 
 async def fetch_facebook_documents(request: SnapshotRequest) -> list[WebDocument]:
