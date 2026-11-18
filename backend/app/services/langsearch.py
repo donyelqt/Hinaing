@@ -16,7 +16,6 @@ from pydantic import ValidationError
 from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
-_RERANK_MODEL = "langsearch-reranker-v1"
 _MAX_RETRIES = 5
 _RETRY_DELAY = 0.5  # More aggressive initial delay; backoff: 0.5s, 1s, 2s, 4s, 8s (total ~15.5s)
 
@@ -28,7 +27,6 @@ class LangSearchClient:
         settings = get_settings()
         self._api_key = settings.langsearch_api_key
         self._base_url = settings.langsearch_base_url.rstrip("/")
-        self._rerank_url = settings.langsearch_rerank_url.rstrip("/")
         self._timeout = timeout
 
     async def search(
@@ -135,13 +133,12 @@ class LangSearchClient:
                 return documents
 
             try:
-                return await self._rerank_documents(
-                    client=client,
+                return self._local_rerank(
                     query=payload["query"],
                     documents=documents,
                 )
-            except Exception as exc:  # pragma: no cover - rerank must not break primary search
-                logger.exception("LangSearch semantic rerank failed; returning original ranking: %s", exc)
+            except Exception:  # pragma: no cover - rerank must not break primary search
+                logger.exception("Local BM25 rerank failed; returning original ranking")
                 return documents
 
     @staticmethod
@@ -202,93 +199,23 @@ class LangSearchClient:
             logger.debug("Unable to parse datetime '%s' from LangSearch; ignoring", value)
             return None
 
-    async def _rerank_documents(
-        self,
-        *,
-        client: httpx.AsyncClient,
-        query: str,
-        documents: list[WebDocument],
-    ) -> list[WebDocument]:
-        if not self._rerank_url or not documents:
+
+    @staticmethod
+    def _local_rerank(query: str, documents: list[WebDocument]) -> list[WebDocument]:
+        if len(documents) <= 1:
             return documents
-        
-        # Circuit breaker: skip rerank if it failed recently (global counter)
-        # This prevents cascading failures when API is overloaded
-        if hasattr(self, '_rerank_failures') and self._rerank_failures >= 3:
-            logger.warning("[langsearch] Circuit breaker: skipping rerank (3+ recent failures)")
+        from rank_bm25 import BM25Okapi
+
+        def _tok(text: str) -> list[str]:
+            return re.findall(r"[a-z0-9]+", (text or "").lower())
+
+        corpus = [_tok(f"{d.title} {d.snippet}") for d in documents]
+        tokenized = _tok(query)
+        if not tokenized or all(not len(t) for t in corpus):
             return documents
-        
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-
-        docs_payload = [f"{doc.title}\n\n{doc.snippet}" for doc in documents]
-        payload: dict[str, Any] = {
-            "model": _RERANK_MODEL,
-            "query": query,
-            "documents": docs_payload,
-            "top_n": len(docs_payload),
-            "return_documents": False,
-        }
-
-        # Retry with exponential backoff for rate limits (429)
-        data = None
-        rerank_failed = False
-        for attempt in range(1, _MAX_RETRIES + 1):
-            response = await client.post(self._rerank_url, json=payload, headers=headers)
-            
-            if response.status_code == 429:
-                rerank_failed = True
-                if attempt < _MAX_RETRIES:
-                    delay = _RETRY_DELAY * (2 ** (attempt - 1))
-                    logger.warning(
-                        "Rerank rate limited (429), retrying in %.1fs (attempt %d/%d)",
-                        delay, attempt, _MAX_RETRIES
-                    )
-                    await asyncio.sleep(delay)
-                    continue
-                else:
-                    logger.warning("Rerank rate limited, max retries exceeded, skipping rerank")
-                    break
-            
-            response.raise_for_status()
-            data = response.json()
-            break
-        
-        # Track failures for circuit breaker
-        if rerank_failed:
-            if not hasattr(self, '_rerank_failures'):
-                self._rerank_failures = 0
-            self._rerank_failures += 1
-        else:
-            # Reset on success
-            if hasattr(self, '_rerank_failures'):
-                self._rerank_failures = 0
-        
-        if data is None:
-            return documents
-
-        results = data.get("results")
-        if not isinstance(results, list):
-            return documents
-
-        ranked: list[WebDocument] = []
-        for item in results:
-            if not isinstance(item, dict):
-                continue
-            index = item.get("index")
-            score = item.get("relevance_score")
-            if not isinstance(index, int) or not (0 <= index < len(documents)):
-                continue
-            doc = documents[index]
-            metadata = dict(doc.metadata)
-            if isinstance(score, (int, float)):
-                metadata["semantic_relevance_score"] = float(score)
-            ranked.append(doc.model_copy(update={"metadata": metadata}))
-
-        return ranked or documents
+        scores = BM25Okapi(corpus).get_scores(tokenized)
+        order = sorted(range(len(documents)), key=lambda i: scores[i], reverse=True)
+        return [documents[i] for i in order]
 
     async def rerank(self, *, query: str, documents: list[WebDocument]) -> list[WebDocument]:
         """Public method to rerank documents using semantic relevance.
