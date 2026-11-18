@@ -296,7 +296,8 @@ class EmergingConcernsMemory:
         self,
         focus_areas: list[str],
         max_clusters_per_area: int = 4,
-        max_age_days: int = None
+        max_age_days: int = None,
+        include_defaults: bool = True,
     ) -> dict[str, list[list[str]]]:
         """Recall most recent concerns for given focus areas.
         
@@ -388,7 +389,7 @@ class EmergingConcernsMemory:
                 if clusters:
                     results[focus_area.lower()] = clusters
                     logger.info(f"[EmergingConcerns] Recalled {len(clusters)} clusters for {focus_area}")
-                else:
+                elif include_defaults:
                     # Fall back to default if nothing in memory
                     default = DEFAULT_EMERGING_CONCERNS.get(focus_area.lower(), [])
                     if default:
@@ -397,10 +398,10 @@ class EmergingConcernsMemory:
                         
             except Exception as e:
                 logger.warning(f"[EmergingConcerns] Recall failed for {focus_area}: {e}")
-                # Fall back to defaults
-                default = DEFAULT_EMERGING_CONCERNS.get(focus_area.lower(), [])
-                if default:
-                    results[focus_area.lower()] = default[:max_clusters_per_area]
+                if include_defaults:
+                    default = DEFAULT_EMERGING_CONCERNS.get(focus_area.lower(), [])
+                    if default:
+                        results[focus_area.lower()] = default[:max_clusters_per_area]
         
         return results
     
