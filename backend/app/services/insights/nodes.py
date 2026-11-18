@@ -1242,10 +1242,9 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         
     except Exception as exc:
         logger.warning("Theme agent failed for %s: %s", label, exc)
-        fallback_doc = docs[0]
         return [Insight(
             category=label,
-            title=f"Key updates in {label}",
-            detail=(fallback_doc.snippet or fallback_doc.title or "Context unavailable")[:500],
-            evidence=[str(doc.url) for doc in docs[:2] if doc.url],
+            title=f"{label}: insufficient signal this run",
+            detail=f"This run retrieved {len(docs)} document(s) tagged {label}, but the analyst model could not produce specific actionable recommendations from them. No fabricated recommendations are shown.",
+            evidence=[],
         )]

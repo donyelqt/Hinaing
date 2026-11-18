@@ -710,16 +710,32 @@ RULES:
         # Strategy 4: Extract summary and insights separately using regex
         # This handles cases where JSON is malformed but content is extractable
         logger.info("[LLMNarrativeClient] Attempting regex extraction fallback...")
-        
+
         summary_match = re.search(r'"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text, re.DOTALL)
         summary = summary_match.group(1) if summary_match else None
-        
+
+        if not summary:
+            # Strategy 5: tolerate an unterminated/truncated JSON string — grab
+            # everything after "summary":" and strip trailing keys/braces.
+            key_idx = text.find('"summary"')
+            if key_idx != -1:
+                open_idx = text.find('"', key_idx + len('"summary"'))
+                if open_idx != -1:
+                    candidate = text[open_idx + 1:]
+                    cut = re.search(r'"\s*,?\s*"(insights|claims|citations)"', candidate)
+                    if cut:
+                        candidate = candidate[:cut.start()]
+                    candidate = candidate.rstrip().rstrip('"').rstrip('}').rstrip()
+                    if len(candidate) >= 40:
+                        summary = candidate
+                        logger.info(f"[LLMNarrativeClient] Recovered truncated summary via strategy 5 ({len(summary)} chars)")
+
         if summary:
             # Unescape the summary
             summary = summary.replace('\\"', '"').replace('\\n', '\n')
             logger.info(f"[LLMNarrativeClient] Extracted summary via regex ({len(summary)} chars)")
             return {"summary": summary, "insights": []}
-        
+
         logger.warning(f"[LLMNarrativeClient] JSON parse failed. Text: {text[:200]}...")
         return None
     
