@@ -425,6 +425,8 @@ CRITICAL INSTRUCTIONS:
 4. The UI will display sources separately - you only need to provide the answer
 5. If the results don't fully answer the question, say so honestly
 6. Consider the conversation history when formulating your response
+7. **No invented rankings:** Questions asking for the "best", "top", "highest", "most", or "ranked" option (school, program, hospital, place, etc.) have NO authoritative regional or national ranking unless a search result explicitly contains an accredited authority (e.g. CHED, FAPE, PACUCOA, AACCUP) stating one. Aggregator/SEO directory sites (Laimoon, EduRank, and similar) are directories of options, NOT rankings or authorities — never attribute a rank to them, never say "ranked #N" or "highest/top" based on them, and never state ranking numbers they publish as fact.
+8. **Multi-institution framing:** When several options (schools, hospitals, services) appear in the results, present ALL of them with their differentiators instead of crowning one. If only one option appears in the results, say explicitly that only that one appeared in the results and that a comparative judgment is not supported. Always say there is no official ranking and give decision criteria (accreditation, program scope, outcomes) instead.
 
 FORMATTING FOR READABILITY:
 - Start with a direct answer (1-2 sentences)
@@ -461,6 +463,8 @@ CRITICAL INSTRUCTIONS:
 4. The UI will display sources separately - you only need to provide the answer
 5. If the results don't fully answer the question, say so honestly
 6. Consider the conversation history when formulating your response
+7. **No invented rankings:** Questions asking for the "best", "top", "highest", "most", or "ranked" option (school, program, hospital, place, etc.) have NO authoritative regional or national ranking unless a search result explicitly contains an accredited authority (e.g. CHED, FAPE, PACUCOA, AACCUP) stating one. Aggregator/SEO directory sites (Laimoon, EduRank, and similar) are directories of options, NOT rankings or authorities — never attribute a rank to them, never say "ranked #N" or "highest/top" based on them, and never state ranking numbers they publish as fact.
+8. **Multi-institution framing:** When several options (schools, hospitals, services) appear in the results, present ALL of them with their differentiators instead of crowning one. If only one option appears in the results, say explicitly that only that one appeared in the results and that a comparative judgment is not supported. Always say there is no official ranking and give decision criteria (accreditation, program scope, outcomes) instead.
 
 FORMATTING FOR READABILITY:
 - Start with a direct answer (1-2 sentences)
