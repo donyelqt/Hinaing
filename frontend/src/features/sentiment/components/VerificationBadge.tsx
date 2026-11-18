@@ -63,6 +63,17 @@ export function VerificationBadge({
     const isObject = typeof source === 'object' && source !== null;
     return isObject && (source as TavilySource).url.startsWith('internal://');
   });
+  const isVseeBypass = tavilyVerificationStatus === 'vsee_bypass';
+  // Sources that are NOT internal VSEE consensus entries
+  const externalSources = tavilyVerifiedSources.filter(source => {
+    const isObject = typeof source === 'object' && source !== null;
+    const url = isObject ? (source as TavilySource).url : String(source);
+    return !url.startsWith('internal://');
+  });
+  const internalSources = tavilyVerifiedSources.filter(source => {
+    const isObject = typeof source === 'object' && source !== null;
+    return isObject && (source as TavilySource).url.startsWith('internal://');
+  });
 
   // Determine claim verification status
   // Priority: External verification > Internal signals > Red flags
@@ -82,6 +93,22 @@ export function VerificationBadge({
       };
     }
 
+
+    // 1b. VSEE BYPASS - Cleared by internal consensus, external APIs not called.
+    // Honesty over polish: say so plainly instead of claiming corroboration.
+    if (isVseeBypass) {
+      return {
+        status: 'likely_accurate',
+        icon: ShieldCheck,
+        label: 'Likely Accurate',
+        description: 'Cleared by VSEE internal consensus (high domain authority + internal cross-reference). External APIs (Tavily, Fact Check) were NOT called for this claim.',
+        bgColor: 'bg-indigo-50',
+        borderColor: 'border-indigo-300',
+        textColor: 'text-indigo-800',
+        iconColor: 'text-indigo-600',
+        badgeColor: 'bg-indigo-100 text-indigo-700',
+      };
+    }
     // 2. VERIFIED - External verification takes priority over red flags
     // If Tavily verified the claim with trusted sources, it's verified regardless of source bias
     if (tavilyVerificationStatus === 'verified' || (hasTavilyVerification && corroboratingSources >= 2)) {
@@ -244,13 +271,16 @@ export function VerificationBadge({
                     llm: 'AI Analysis',
                     tavily: 'External Cross-Ref',
                   };
+                  // VSEE-bypassed docs carry padded 0.95 priors for fact_check/tavily — no API was called.
+                  const skippedSignal = isVseeBypass && (signal === 'fact_check' || signal === 'tavily');
                   const displayName = signalNames[signal] || signal.replace(/_/g, ' ');
-                  const percentage = Math.round((score || 0) * 100);
+                  const percentage = skippedSignal ? 0 : Math.round((score || 0) * 100);
 
                   let barColor = "bg-slate-400";
                   if ((score || 0) >= 0.7) barColor = "bg-emerald-500";
                   else if ((score || 0) >= 0.45) barColor = "bg-amber-500";
                   else barColor = "bg-rose-500";
+                  if (skippedSignal) barColor = "bg-slate-300";
 
                   return (
                     <div key={signal} className="flex items-center gap-2">
@@ -260,16 +290,21 @@ export function VerificationBadge({
                       <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                         <div
                           className={clsx("h-full rounded-full", barColor)}
-                          style={{ width: `${percentage}%` }}
+                          style={{ width: skippedSignal ? '100%' : `${percentage}%`, opacity: skippedSignal ? 0.35 : 1 }}
                         />
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-700 w-8 text-right">
-                        {percentage}%
+                      <span className={clsx("text-[10px] font-semibold w-8 text-right", skippedSignal ? "text-slate-400" : "text-slate-700")}>
+                        {skippedSignal ? 'skip' : `${percentage}%`}
                       </span>
                     </div>
                   );
                 })}
             </div>
+            {isVseeBypass && (
+              <p className="mt-1.5 text-[9px] text-indigo-600 leading-snug">
+                Fact Check API and External Cross-Ref show “skip” — these were NOT called because VSEE internal consensus cleared this claim. Values are not external attestations.
+              </p>
+            )}
           </div>
 
           {/* External Cross-Reference (Tavily) */}
@@ -303,7 +338,13 @@ export function VerificationBadge({
                   Partially Verified
                 </span>
               )}
-              {!hasTavilyVerification && (
+              {isVseeBypass && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold">
+                  <ShieldCheck className="h-4 w-4" />
+                  Cleared by VSEE Internal Consensus
+                </span>
+              )}
+              {!hasTavilyVerification && !isVseeBypass && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold">
                   <Shield className="h-4 w-4" />
                   No External Verification Found
@@ -317,11 +358,11 @@ export function VerificationBadge({
               )}
             </div>
 
-            {/* Verified Sources List */}
-            {(hasTavilyVerification && tavilyVerificationStatus !== 'unverified') && (
+            {/* Verified Sources List — split internal (VSEE) from external (Tavily) */}
+            {externalSources.length > 0 && tavilyVerificationStatus !== 'unverified' && (
               <div className="space-y-1.5">
                 <p className="text-[10px] text-slate-500 mb-1">Corroborating sources found:</p>
-                {tavilyVerifiedSources.map((source, idx) => {
+                {externalSources.map((source, idx) => {
                   // Handle both old format (string) and new format (object with url, domain, title)
                   const isObject = typeof source === 'object' && source !== null;
                   const url = isObject ? (source as TavilySource).url : `https://www.google.com/search?q=site:${encodeURIComponent(source as string)}`;
@@ -329,39 +370,44 @@ export function VerificationBadge({
                   const title = isObject ? (source as TavilySource).title : (source as string);
 
                   return (
-                    url.startsWith('internal://') ? (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs transition-colors"
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-indigo-500" />
-                        <div className="flex-1 min-w-0">
-                          <span className="block font-medium whitespace-normal leading-tight">{title}</span>
-                          <span className="block truncate text-[10px] text-indigo-600 opacity-80 mt-0.5 font-semibold">
-                            {domain}
-                          </span>
-                        </div>
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs transition-colors group"
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate font-medium">{title}</span>
+                        <span className="block truncate text-[10px] text-emerald-600 opacity-75">{domain}</span>
                       </div>
-                    ) : (
-                      <a
-                        key={idx}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs transition-colors group"
-                      >
-                        <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <span className="block truncate font-medium">{title}</span>
-                          <span className="block truncate text-[10px] text-emerald-600 opacity-75">{domain}</span>
-                        </div>
-                        <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
-                      </a>
-                    )
+                      <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                    </a>
                   );
                 })}
                 <p className="mt-1.5 text-[9px] text-slate-500">
                   Click to view the original articles
+                </p>
+              </div>
+            )}
+            {internalSources.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-indigo-600 mb-1 font-semibold">VSEE internal consensus (not external verification):</p>
+                {internalSources.map((source, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-indigo-500" />
+                    <div className="flex-1 min-w-0">
+                      <span className="block font-medium leading-tight">{(source as TavilySource).title}</span>
+                      <span className="block text-[10px] text-indigo-600 opacity-80 mt-0.5 font-semibold">VSEE Consensus</span>
+                    </div>
+                  </div>
+                ))}
+                <p className="mt-1.5 text-[9px] text-indigo-600 leading-snug">
+                  Cleared by internal corroboration across your own retrieved corpus. No external API attested to this claim.
                 </p>
               </div>
             )}
@@ -418,8 +464,9 @@ export function VerificationBadge({
           {/* Verification Info Footer */}
           <div className="pt-2 border-t border-slate-200">
             <p className="text-[9px] text-slate-500 leading-relaxed">
-              Verification powered by 5-signal ensemble: Domain Trust, Internal Cross-Reference,
-              Google Fact Check API, Gemini AI Analysis, and Tavily External Cross-Reference.
+              {isVseeBypass
+                ? 'Cleared by VSEE internal consensus. External APIs were skipped: Domain Trust + Internal Cross-Reference were strong enough to pass the epistemic gate. Fact Check API and Tavily were not called — scores for those signals are neutral priors, not measurements.'
+                : 'Verification powered by 5-signal ensemble: Domain Trust, Internal Cross-Reference, Google Fact Check API, Gemini AI Analysis, and Tavily External Cross-Reference.'}
             </p>
           </div>
         </div>
