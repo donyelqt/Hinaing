@@ -593,9 +593,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                       <div className="absolute left-0 top-0 hidden h-8 w-8 items-center justify-center rounded-full brand-gradient-y text-white border-transparent shadow-sm sm:flex" aria-hidden><span className="text-xs font-bold">5</span></div>
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">LLM Mode</span><span className="text-[11px] text-slate-500">Engine</span></div>
-                        <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="grid gap-2 sm:grid-cols-3">
                         {[
                             { value: 'cloud', label: 'Cloud (Groq)', desc: 'Hosted, fastest results' },
+                            { value: 'openrouter', label: 'OpenRouter (DeepSeek/Qwen/etc.)', desc: 'One gateway for every node' },
                             { value: 'local', label: 'Local (Qwen)', desc: 'Offline, runs on-device' }
                         ].map((option) => (
                           <label key={option.value} className={`flex cursor-pointer flex-col rounded-xl border p-4 text-left transition focus-within:ring-2 focus-within:ring-violet-500 ${llmMode===option.value ? 'border-transparent brand-gradient-y text-white shadow-sm' : 'border-slate-200 bg-white hover:border-violet-200'}`}>

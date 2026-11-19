@@ -1,9 +1,10 @@
-"""LLM abstraction layer: Groq (cloud) and Ollama/Qwen (local)."""
+"""LLM abstraction layer: Groq (cloud), Ollama/Qwen (local), OpenRouter gateway."""
 
 from .base import BaseLLMProvider
 from .factory import (
     PROVIDER_GROQ,
     PROVIDER_LOCAL,
+    PROVIDER_OPENROUTER,
     SUPPORTED_PROVIDERS,
     get_llm_for_mode,
     get_llm_provider,
@@ -12,6 +13,7 @@ from .langchain_adapter import ProviderChatModel
 from .mode import (
     CLOUD,
     LOCAL,
+    OPENROUTER,
     VALID_LLM_MODES,
     InvalidLLMMode,
     default_llm_mode,
@@ -26,11 +28,13 @@ from .ollama_provider import (
     get_ollama_provider,
     clear_ollama_cache,
 )
+from .openrouter_provider import OpenRouterProvider, get_openrouter_provider
 
 __all__ = [
     "BaseLLMProvider",
     "PROVIDER_GROQ",
     "PROVIDER_LOCAL",
+    "PROVIDER_OPENROUTER",
     "SUPPORTED_PROVIDERS",
     "get_llm_provider",
     "get_llm_for_mode",
@@ -38,8 +42,11 @@ __all__ = [
     "OllamaProvider",
     "get_ollama_provider",
     "clear_ollama_cache",
+    "OpenRouterProvider",
+    "get_openrouter_provider",
     "CLOUD",
     "LOCAL",
+    "OPENROUTER",
     "VALID_LLM_MODES",
     "InvalidLLMMode",
     "default_llm_mode",

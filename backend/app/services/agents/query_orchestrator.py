@@ -363,6 +363,7 @@ class QueryOrchestratorAgent:
 
         cloud -> Gemini 2.5 Flash Lite (fastest/cheapest for ReAct iterations)
         local -> Ollama Qwen via ProviderChatModel (fully offline)
+        openrouter -> OpenRouter gateway via ProviderChatModel (one gateway for the whole node)
         """
         from ..llm.mode import normalize_llm_mode
         from ..llm.factory import get_llm_for_mode
@@ -378,6 +379,9 @@ class QueryOrchestratorAgent:
                 )
                 logger.info("[QueryOrchestrator] Using Gemini 2.5 Flash Lite for cloud-mode agentic query synthesis")
             return self._llm
+        if mode == "openrouter":
+            provider = get_llm_for_mode("openrouter")
+            return ProviderChatModel(provider=provider, temperature=0.4, max_tokens=8192)
         provider = get_llm_for_mode("local")
         return ProviderChatModel(provider=provider, temperature=0.4, max_tokens=8192)
 

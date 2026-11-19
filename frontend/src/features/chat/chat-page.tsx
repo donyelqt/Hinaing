@@ -173,7 +173,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
     const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
     const [backendError, setBackendError] = React.useState<string | null>(null);
-    const [llmMode, setLlmMode] = React.useState<'cloud' | 'local'>('cloud');
+    const [llmMode, setLlmMode] = React.useState<'cloud' | 'local' | 'openrouter'>('cloud');
 
     // We rely on Main Layout's mobile toggle logic, but keep local state for Sidebar prop compatibility
 
@@ -238,7 +238,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                 message: string;
                 history: Array<{ role: string; content: string }>;
                 jurisdiction: string;
-                llm_mode: "cloud" | "local";
+                llm_mode: "cloud" | "local" | "openrouter";
             }
 
             interface ChatResponse {
@@ -345,6 +345,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                     <div className="flex items-center justify-end gap-1 mb-2">
                                         {([
                                             { value: 'cloud', label: 'Cloud (Groq)' },
+                                            { value: 'openrouter', label: 'OpenRouter' },
                                             { value: 'local', label: 'Local (Qwen)' }
                                         ] as const).map((option) => (
                                             <button

@@ -167,6 +167,7 @@ export function MobileFilters({
             <div className="space-y-2">
               {[
                 { value: 'cloud', label: 'Cloud (Groq)', description: 'Hosted, fastest results' },
+                { value: 'openrouter', label: 'OpenRouter (DeepSeek/Qwen/etc.)', description: 'One gateway for every node' },
                 { value: 'local', label: 'Local (Qwen)', description: 'Offline, runs on-device' }
               ].map((option) => (
                 <label key={option.value} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">

@@ -22,14 +22,14 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = []
     jurisdiction: str = "Baguio City"
-    llm_mode: str = Field(default="cloud", description="LLM execution mode: cloud (Groq) or local (Ollama/Qwen)")
+    llm_mode: str = Field(default="cloud", description="LLM execution mode: cloud (Groq), local (Ollama/Qwen), or openrouter (OpenRouter gateway for every node)")
 
     @field_validator("llm_mode")
     @classmethod
     def _validate_llm_mode(cls, v: str) -> str:
         normalized = str(v).strip().lower()
-        if normalized not in ("cloud", "local"):
-            raise ValueError(f"llm_mode must be 'cloud' or 'local', got {v!r}")
+        if normalized not in ("cloud", "local", "openrouter"):
+            raise ValueError(f"llm_mode must be 'cloud', 'local' or 'openrouter', got {v!r}")
         return normalized
 
 

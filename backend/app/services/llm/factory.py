@@ -1,4 +1,4 @@
-"""LLM provider factory: Gemini/Groq (cloud) and Ollama/Qwen (local).
+"""LLM provider factory: Gemini/Groq (cloud), Ollama/Qwen (local), OpenRouter gateway.
 
 Provider choice is driven by the request-scoped ``llm_mode`` (see
 :mod:`app.services.llm.mode`). Cloud mode picks the backend per call site via
@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 PROVIDER_GEMINI = "gemini"
 PROVIDER_GROQ = "groq"
 PROVIDER_LOCAL = "local"
-SUPPORTED_PROVIDERS: tuple[str, ...] = (PROVIDER_GEMINI, PROVIDER_GROQ, PROVIDER_LOCAL)
+PROVIDER_OPENROUTER = "openrouter"
+SUPPORTED_PROVIDERS: tuple[str, ...] = (PROVIDER_GEMINI, PROVIDER_GROQ, PROVIDER_LOCAL, PROVIDER_OPENROUTER)
 
 
 def get_llm_provider(
@@ -56,6 +57,15 @@ def get_llm_provider(
         from .ollama_provider import get_ollama_provider
 
         client = get_ollama_provider(model or settings.ollama_default_model)
+    elif provider == PROVIDER_OPENROUTER:
+        from .openrouter_provider import get_openrouter_provider
+
+        if not get_settings().openrouter_api_key:
+            raise RuntimeError(
+                "OPENROUTER_API_KEY is not configured. Set it in your environment "
+                "(and on the HF Space secrets) to use llm_mode='openrouter'."
+            )
+        client = get_openrouter_provider(model or settings.openrouter_default_model)
     else:
         raise ValueError(
             f"Unknown LLM provider {provider!r}; expected one of "
@@ -65,7 +75,8 @@ def get_llm_provider(
     if not client.is_available:
         raise RuntimeError(
             f"LLM provider {provider!r} is not available. "
-            "Check GEMINI_API_KEY / GROQ_API_KEY (cloud) or the Ollama server (local)."
+            "Check OPENROUTER_API_KEY (openrouter), GEMINI_API_KEY / GROQ_API_KEY (cloud), "
+            "or the Ollama server (local)."
         )
 
     logger.info("[LLM] Resolved provider=%s model=%s", provider, client.model_name)
@@ -77,18 +88,21 @@ def get_llm_for_mode(
     *,
     model: str | None = None,
 ) -> BaseLLMProvider:
-    """Groq provider for ``cloud`` mode, Ollama for ``local`` mode.
+    """Provider for ``cloud`` (Groq), ``local`` (Ollama), ``openrouter`` (gateway).
 
     This is the default entry point for all pipeline call sites (Nodes 2-7).
     A ``local`` request that cannot reach Ollama raises; it never falls back to
     the cloud, because silently spending Groq/Gemini quota would defeat the
-    point of running locally.
+    point of running locally. ``openrouter`` uses one gateway for every node.
     """
     resolved = normalize_llm_mode(mode) if mode is not None else get_active_llm_mode()
-    return get_llm_provider(
-        PROVIDER_LOCAL if resolved == "local" else PROVIDER_GROQ,
-        model=model,
-    )
+    if resolved == "local":
+        provider = PROVIDER_LOCAL
+    elif resolved == "openrouter":
+        provider = PROVIDER_OPENROUTER
+    else:
+        provider = PROVIDER_GROQ
+    return get_llm_provider(provider, model=model)
 
 
 def get_cloud_llm(
@@ -97,16 +111,14 @@ def get_cloud_llm(
     model: str | None = None,
     gemini_model: str | None = None,
 ) -> BaseLLMProvider:
-    """Cloud-mode provider for a pipeline node, with Gemini reserved for Node 1.
+    """Provider for a pipeline node under ``cloud``, with Gemini reserved for Node 1.
 
     Node 1 (query orchestration) gets Gemini 2.5 Flash Lite when a
     ``GEMINI_API_KEY`` is configured: it is the cheapest and fastest-per-inference
     backend for a multi-iteration ReAct loop, and Node 1 runs serially at the
     head of every snapshot so it bounds total pipeline latency. Every other node
-    gets Groq ``groq/compound``.
-
-    Degrades loudly, never silently: without a Gemini key the request is served
-    by Groq and the downgrade is logged. Local mode never calls this function.
+    gets Groq ``groq/compound``. ``openrouter`` mode routes every node through
+    the gateway. Local mode never calls this function.
     """
     settings = get_settings()
     if node == "query_orchestrator":
