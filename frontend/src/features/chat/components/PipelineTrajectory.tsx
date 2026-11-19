@@ -79,7 +79,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
         className={cn(
           "rounded-xl border bg-white transition-[border-color,box-shadow] duration-300 ease-out",
           active
-            ? "border-slate-200 shadow-[0_10px_22px_-16px_rgba(8,14,44,0.18)]"
+            ? "border-[rgb(var(--brand-from-rgb)_/_0.25)] bg-[linear-gradient(180deg,rgb(var(--brand-to-rgb))_0%,rgb(var(--brand-from-rgb))_100%)] shadow-sm"
             : "border-slate-100"
         )}
       >
@@ -88,7 +88,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
           <span
             className={cn(
               "font-mono text-[8.5px] sm:text-[9.5px] font-semibold tracking-[0.16em]",
-              active ? "text-violet-700/80" : "text-slate-400"
+              active ? "text-white/80" : "text-slate-400"
             )}
           >
             {String(def.index).padStart(2, "0")}<span className="text-slate-300"> / 07</span>
@@ -96,7 +96,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
           <span
             className={cn(
               "font-mono text-[8px] sm:text-[9px] tracking-[0.18em] uppercase",
-              active ? "text-violet-600/80" : "text-slate-400"
+              active ? "text-white/85" : "text-slate-400"
             )}
           >
             {active ? "running" : "done"}
@@ -108,7 +108,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
           <p
             className={cn(
               "text-[11px] sm:text-[12px] font-semibold leading-snug tracking-[-0.01em]",
-              active ? "text-slate-900" : "text-slate-500"
+              active ? "text-white" : "text-slate-500"
             )}
           >
             {def.label}
@@ -116,7 +116,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
           <p
             className={cn(
               "mt-0.5 font-mono text-[8.5px] sm:text-[9px] leading-snug tracking-[-0.005em]",
-              active ? "text-slate-600" : "text-slate-400"
+              active ? "text-white/80" : "text-slate-400"
             )}
           >
             {def.signature}
@@ -137,9 +137,11 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
                   role="listitem"
                   style={{ animationDelay: `${i * 60}ms` }}
                   className={cn(
-                    "rounded-md border bg-slate-50/60 px-1.5 py-1",
+                    "rounded-md border px-1.5 py-1",
                     "motion-safe:animate-[fade-up-soft_300ms_cubic-bezier(0.22,1,0.36,1)_both]",
-                    active ? "border-slate-200" : "border-slate-100"
+                    active
+                      ? "border-white/20 bg-white/15 text-white/90"
+                      : "border-emerald-200/80 bg-emerald-50/70 text-emerald-800"
                   )}
                 >
                   <div className="flex items-center gap-1">
@@ -147,12 +149,12 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
                       aria-hidden="true"
                       className={cn(
                         "h-1 w-1 rounded-full shrink-0",
-                        active ? "bg-violet-500 motion-safe:animate-pulse" : "bg-violet-400/60"
+                        active ? "bg-white/90 motion-safe:animate-pulse" : "bg-emerald-500"
                       )}
                     />
-                    <span className="font-mono text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.12em] text-slate-600 truncate">{w.name}</span>
+                    <span className={cn("font-mono text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.12em] truncate", active ? "text-white/85" : "text-emerald-800")}>{w.name}</span>
                   </div>
-                  <p className="mt-0.5 font-mono text-[7.5px] sm:text-[8px] leading-[1.25] text-slate-500 line-clamp-2">{w.tag}</p>
+                  <p className={cn("mt-0.5 font-mono text-[7.5px] sm:text-[8px] leading-[1.25] line-clamp-2", active ? "text-white/65" : "text-emerald-700/80")}>{w.tag}</p>
                 </div>
               ))}
             </div>
@@ -172,13 +174,13 @@ export function PipelineTrajectory({
   progress: number;
   message?: string;
 }) {
-  const fill = Math.min(1, Math.max(0, Number.isFinite(progress) ? progress : 0));
   const stageIndex = NODES.findIndex((n) => n.id === stage);
-  const targetIndex = stageIndex >= 0 ? stageIndex : Math.min(TOTAL - 1, Math.floor(fill * TOTAL));
+  const knownStage = stageIndex >= 0;
+  const targetIndex = knownStage ? stageIndex : Math.min(TOTAL - 1, Math.floor(Math.min(1, Math.max(0, Number.isFinite(progress) ? progress : 0)) * TOTAL));
 
-  // Each invariant gets a visible dwell — never faster than the run, but never skipped either.
-  // The backend bursts; the surface paces. Dwell shrinks to zero if the user opted for reduced motion.
-  const DWELL_MS = [750, 900, 500, 1100, 650, 1000, 550];
+  // Paced reading time. Never ahead of the backend; never faster than usable focus.
+  // Dwell preserves meaning (Domain → CrossRef → FactChk → LLM → Tavily are difficult labels).
+  const DWELL_MS = [1600, 2000, 800, 2200, 1200, 2400, 1600];
   const reduceMotion = React.useRef(
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
@@ -209,6 +211,9 @@ export function PipelineTrajectory({
   }, [targetIndex, revealed, dwellFlash]);
 
   const activeIndex = Math.min(revealed - 1, TOTAL - 1);
+  // Progress tracks how far the trajectory has actually spawned, not a raw backend percentage,
+  // so the visible bar and the node list can never disagree.
+  const fill = revealed / TOTAL;
 
   function totalDwell(cap: number) {
     return DWELL_MS.slice(0, cap).reduce((a, b) => a + b, 0);
@@ -256,11 +261,11 @@ export function PipelineTrajectory({
         })}
       </ol>
 
-      {/* Run pulse */}
+      {/* Run pulse — brand vertical gradient, pace-controlled by transform transition */}
       <div className="mt-2.5 flex items-center gap-2">
-        <div className="h-[3px] flex-1 rounded-full bg-slate-200 overflow-hidden" role="presentation">
+        <div className="h-[3px] flex-1 rounded-full bg-slate-200/80 overflow-hidden" role="presentation">
           <div
-            className="h-full w-full origin-left bg-[rgb(var(--brand-from-rgb))] transition-transform duration-500 ease-out motion-reduce:transition-none"
+            className="h-full w-full origin-left brand-gradient-y transition-transform duration-500 ease-out motion-reduce:transition-none"
             style={{ transform: `scaleX(${fill})` }}
           />
         </div>
