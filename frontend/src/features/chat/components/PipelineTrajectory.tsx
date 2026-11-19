@@ -34,6 +34,12 @@ const NODES: NodeDef[] = [
 
 const TOTAL = NODES.length;
 
+function stripProgressGlyphs(value: string | undefined): string {
+  if (!value) return "";
+  // Backend emits messages like "📡 Query Orchestrator: ..." — drop the glyph and colon prefix.
+  return value.replace(/^\s*[^\sA-Za-z0-9]{1,4}\s*/, "").replace(/^\s*[A-Za-z]+\s*:\s*/, "").trim();
+}
+
 type NodeState = "done" | "active";
 
 function Node({ def, state }: { def: NodeDef; state: NodeState }) {
@@ -259,11 +265,11 @@ export function PipelineTrajectory({
           />
         </div>
         <span className="font-mono text-[10px] sm:text-[10.5px] tabular-nums tracking-[0.06em] text-slate-500 w-9 text-right">
-          {Math.round(fill * 100).toString().padStart(2, "0")}<span className="text-slate-400">%</span>
+          <span className="tabular-nums">{Math.round(fill * 100)}</span><span className="text-slate-400">%</span>
         </span>
       </div>
-      <p className="mt-1.5 font-mono text-[9px] sm:text-[10px] leading-snug tracking-[0.01em] text-slate-500 line-clamp-2">
-        {message || "initializing invariants…"}
+      <p className="mt-2 text-[10px] sm:text-[11px] leading-snug text-slate-600 line-clamp-2">
+        {stripProgressGlyphs(message) || "Initializing invariants…"}
       </p>
     </div>
   );
