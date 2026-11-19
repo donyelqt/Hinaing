@@ -776,9 +776,6 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           </div>
                         </div>
 
-                        <p className="text-[9px] leading-snug text-slate-400 border-l-2 border-slate-200 pl-2">
-                          Metric definitions — Credibility: 5-signal ensemble (domain trust, cross-reference, Fact Check, AI analysis, Tavily). Verified: sources with score ≥55% weighted global, or NLI-corroborated. Misinfo: sources below 55% or flagged contradicted. Faithfulness: extracted claims entailed by retrieved sources. Citation: url-to-claim metadata match.
-                        </p>
 
                         {/* Faithfulness Score - Enhanced with Best Practice Metrics */}
                         {snapshot.verification && (

@@ -344,7 +344,7 @@ class LLMNarrativeClient:
                 prompt=analysis_prompt,
                 system_prompt="You are a senior analyst for Baguio City command center. Return VALID JSON only (no markdown, no code blocks).",
                 temperature=0.2,
-                max_tokens=8000,
+                max_tokens=3500,
             )
             elapsed = time.perf_counter() - start
             logger.info(f"[LLMNarrativeClient] Narrative generated in {elapsed:.1f}s")
@@ -391,7 +391,8 @@ class LLMNarrativeClient:
         doc_lines = []
         available_domains = set()
         
-        for idx, doc in enumerate(documents, start=1):
+        # Cap to 30 like the citation menu — assembling ALL docs (unbounded on large runs) pushes prompts past Groq's TPM budget.
+        for idx, doc in enumerate(documents[:30], start=1):
             title = sanitize_text(doc.get('title', ''))
             snippet = sanitize_text(doc.get('snippet', ''))[:200]
             sentiment = doc.get('sentiment', 'neutral')
