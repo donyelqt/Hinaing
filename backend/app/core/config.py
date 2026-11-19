@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
     openrouter_api_key: str | None = None
-    openrouter_default_model: str = "openai/gpt-oss-120b"
+    openrouter_default_model: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     openrouter_timeout: float = 60.0
     openrouter_max_retries: int = 3
 
