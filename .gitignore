@@ -53,3 +53,7 @@ docs/api-cost-reduction-*/
 docs/faithfulness-*/
 docs/hallucination-detection/
 
+
+# frontend build output
+frontend/.next/
+frontend/out/
