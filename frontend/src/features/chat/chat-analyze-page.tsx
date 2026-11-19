@@ -1088,8 +1088,23 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             return updated;
                         });
 
-                        // Check if complete
+                        // Check if complete — hold the trajectory visible for a final reveal beat
                         if (status.status === "completed") {
+                            setMessages((prev) => {
+                                const updated = [...prev];
+                                const lastIdx = updated.length - 1;
+                                if (updated[lastIdx]?.isStreaming) {
+                                    updated[lastIdx] = {
+                                        ...updated[lastIdx],
+                                        content: "Invariant 07 · Verification complete — rendering verdict…",
+                                        streamProgress: 1.0,
+                                        streamStage: "snapshot"
+                                    };
+                                }
+                                return updated;
+                            });
+                            // Let the animated trajectory reach its full reveal before the result card swaps in.
+                            await new Promise(resolve => setTimeout(resolve, 800));
                             return status.result as StreamEvent;
                         }
 
