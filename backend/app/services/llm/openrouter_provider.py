@@ -14,9 +14,6 @@ import re
 from typing import Any, AsyncIterator
 
 import httpx
-from openai import AsyncOpenAI, OpenAI
-from openai.types.chat import ChatCompletion
-
 from ...core.config import get_settings
 from .base import BaseLLMProvider
 
@@ -25,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Global semaphore limits concurrent OpenRouter API requests.
 _OPENROUTER_CONCURRENCY_LIMIT = asyncio.Semaphore(15)
 
-_DEFAULT_MODEL = "openai/gpt-oss-120b"
+_DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
 _BASE_URL = "https://openrouter.ai/api/v1"
 
 
@@ -45,10 +42,17 @@ class OpenRouterProvider(BaseLLMProvider):
         self._timeout = timeout
         self._max_retries = max_retries
 
-        self._client: AsyncOpenAI | None = None
-        self._sync_client: OpenAI | None = None
+        self._client: httpx.AsyncClient | None = None
+        self._sync_client: httpx.Client | None = None
         if self._api_key:
-            http_client = httpx.AsyncClient(
+            self._client = httpx.AsyncClient(
+                base_url=_BASE_URL,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://hinaing.app",
+                    "X-Title": "Hinaing Civic Analysis",
+                },
                 limits=httpx.Limits(
                     max_connections=100,
                     max_keepalive_connections=20,
@@ -56,30 +60,15 @@ class OpenRouterProvider(BaseLLMProvider):
                 ),
                 timeout=httpx.Timeout(timeout, connect=10.0),
             )
-            sync_http_client = httpx.Client(
+            self._sync_client = httpx.Client(
+                base_url=_BASE_URL,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://hinaing.app",
+                    "X-Title": "Hinaing Civic Analysis",
+                },
                 timeout=httpx.Timeout(timeout, connect=10.0),
-            )
-            self._client = AsyncOpenAI(
-                api_key=self._api_key,
-                base_url=_BASE_URL,
-                timeout=timeout,
-                max_retries=max_retries,
-                http_client=http_client,
-                default_headers={
-                    "HTTP-Referer": "https://hinaing.app",
-                    "X-Title": "Hinaing Civic Analysis",
-                },
-            )
-            self._sync_client = OpenAI(
-                api_key=self._api_key,
-                base_url=_BASE_URL,
-                timeout=timeout,
-                max_retries=max_retries,
-                http_client=sync_http_client,
-                default_headers={
-                    "HTTP-Referer": "https://hinaing.app",
-                    "X-Title": "Hinaing Civic Analysis",
-                },
             )
             logger.info(f"[OpenRouter] Initialized with model: {model}")
         else:
@@ -108,25 +97,22 @@ class OpenRouterProvider(BaseLLMProvider):
         if not self._client:
             raise RuntimeError("[OpenRouter] Client not initialized (missing API key)")
 
-        messages: list[dict[str, str]] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
+        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens, stream=False, **kwargs)
         async with _OPENROUTER_CONCURRENCY_LIMIT:
-            try:
-                completion: ChatCompletion = await self._client.chat.completions.create(
-                    model=self._model,
-                    messages=messages,  # type: ignore[arg-type]
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs,
-                )
-                content = completion.choices[0].message.content
-                return content if content is not None else ""
-            except Exception as exc:
-                logger.error(f"[OpenRouter] Generation failed: {exc}")
-                raise
+            last_exc: Exception | None = None
+            for attempt in range(self._max_retries + 1):
+                try:
+                    response = await self._client.post("/chat/completions", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    return (data.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+                except Exception as exc:
+                    last_exc = exc
+                    logger.warning(f"[OpenRouter] Attempt {attempt + 1}/{self._max_retries + 1} failed: {exc}")
+                    await asyncio.sleep(2 ** attempt)
+            logger.error(f"[OpenRouter] Generation failed after {self._max_retries + 1} attempts: {last_exc}")
+            assert last_exc is not None
+            raise last_exc
 
     async def generate_stream(
         self,
@@ -145,18 +131,23 @@ class OpenRouterProvider(BaseLLMProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens, stream=True, **kwargs)
         try:
-            stream = await self._client.chat.completions.create(
-                model=self._model,
-                messages=messages,  # type: ignore[arg-type]
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                **kwargs,
-            )
-            async for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+            async with self._client.stream("POST", "/chat/completions", json=payload) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    line = line[5:].strip()
+                    if line == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    delta = (chunk.get("choices") or [{}])[0].get("delta", {})
+                    if delta.get("content"):
+                        yield delta["content"]
         except Exception as exc:
             logger.error(f"[OpenRouter] Streaming failed: {exc}")
             raise
@@ -192,24 +183,38 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
         if not self._sync_client:
             raise RuntimeError("[OpenRouter] Sync client not initialized (missing API key)")
 
+        payload = self._build_payload(prompt, system_prompt, temperature, max_tokens, stream=False, **kwargs)
+        last_exc: Exception | None = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = self._sync_client.post("/chat/completions", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return (data.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(f"[OpenRouter] Sync attempt {attempt + 1}/{self._max_retries + 1} failed: {exc}")
+                import time as _time
+                _time.sleep(2 ** attempt)
+        logger.error(f"[OpenRouter] Sync generation failed after {self._max_retries + 1} attempts: {last_exc}")
+        assert last_exc is not None
+        raise last_exc
+
+    def _build_payload(self, prompt, system_prompt, temperature, max_tokens, stream, **kwargs):
         messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-
-        try:
-            completion: ChatCompletion = self._sync_client.chat.completions.create(
-                model=self._model,
-                messages=messages,  # type: ignore[arg-type]
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs,
-            )
-            content = completion.choices[0].message.content
-            return content or ""
-        except Exception as exc:
-            logger.error(f"[OpenRouter] Sync generation failed: {exc}")
-            raise
+        payload = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if stream:
+            payload["stream"] = True
+        # Groq-style reasoning efforts have no OpenRouter equivalent; forward nothing the gateway rejects.
+        return payload
 
     # ------------------------------------------------------------------
     # JSON parsing (mirrors GroqProvider behavior)
