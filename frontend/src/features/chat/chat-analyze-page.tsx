@@ -901,15 +901,46 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
       checkBackendStatus();
     }, []);
   
+    const pinnedRef = React.useRef(true);
+    const messagesLengthRef = React.useRef(0);
+
+    // Pin-to-bottom — but respect the user looking at earlier turns.
     React.useEffect(() => {
-      // Scroll within the container only, not the whole page
-      if (scrollContainerRef.current && bottomRef.current) {
-        const container = scrollContainerRef.current;
-        const bottom = bottomRef.current;
-        const scrollTop = bottom.offsetTop - container.offsetTop;
-        container.scrollTo({ top: scrollTop, behavior: "smooth" });
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      const onScroll = () => {
+        const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+        pinnedRef.current = distance < 120;
+      };
+      container.addEventListener("scroll", onScroll, { passive: true });
+      return () => container.removeEventListener("scroll", onScroll);
+    }, []);
+
+    // Track newly added turns and pin to bottom if the user was already there.
+    React.useEffect(() => {
+      const container = scrollContainerRef.current;
+      if (messages.length !== messagesLengthRef.current) {
+        messagesLengthRef.current = messages.length;
+        pinnedRef.current = true;
       }
-    }, [messages, isLoading]);
+      if (container && pinnedRef.current) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }, [messages]);
+
+    // Re-pin whenever the trajectory extends downward (progressive node spawn).
+    React.useEffect(() => {
+      const container = scrollContainerRef.current;
+      const bottom = bottomRef.current?.parentElement;
+      if (!container || !bottom) return;
+      const ro = new ResizeObserver(() => {
+        if (pinnedRef.current) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+      ro.observe(bottom);
+      return () => ro.disconnect();
+    }, []);
 
     const handleSubmit = async (e?: React.FormEvent) => {
       e?.preventDefault();
