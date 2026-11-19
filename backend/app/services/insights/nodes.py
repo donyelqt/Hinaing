@@ -1205,7 +1205,7 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
                 prompt=prompt,
                 system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
                 temperature=0.1,
-                max_tokens=8000,
+                max_tokens=3500,
             )
             
             from app.services.agents.theme_agent import sanitize_text

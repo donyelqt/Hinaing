@@ -32,6 +32,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from qdrant_client import QdrantClient
+from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import (
     Distance,
     FieldCondition,
@@ -64,6 +65,13 @@ FOCUS_AREA_COLLECTIONS = {
     "economy": "economy_concerns",
     "environment": "environment_concerns",
 }
+def _is_collection_not_found(exc: Exception) -> bool:
+    """Return True iff the exception is Qdrant's 404 'Collection `x` doesn't exist'."""
+    if isinstance(exc, UnexpectedResponse) and getattr(exc, "status_code", None) == 404:
+        return True
+    m = str(exc).lower()
+    return "404" in m and ("not found" in m or "exist" in m)
+
 
 # Default concerns as fallback (loaded if Qdrant unavailable)
 DEFAULT_EMERGING_CONCERNS: dict[str, list[list[str]]] = {
@@ -225,6 +233,12 @@ class EmergingConcernsMemory:
         
         return collection_name
     
+    def _recreate_on_404(self, focus_area: str, collection_name: str, exc: Exception) -> None:
+        """Invalidate the warm cache and recreate the collection on Qdrant 404."""
+        logger.warning(f"[EmergingConcerns] 404 for {collection_name}; dropping cache and recreating")
+        self._initialized_collections.discard(collection_name)
+        self._ensure_collection(focus_area)
+
     def store_concerns(
         self,
         concerns: dict[str, list[list[str]]],
@@ -279,12 +293,22 @@ class EmergingConcernsMemory:
                     points.append(point)
                 
                 if points:
-                    self.client.upsert(
-                        collection_name=collection_name,
-                        points=points
-                    )
+                    try:
+                        self.client.upsert(
+                            collection_name=collection_name,
+                            points=points,
+                        )
+                    except Exception as e:
+                        if not _is_collection_not_found(e):
+                            raise
+                        self._recreate_on_404(focus_area, collection_name, e)
+                        self.client.upsert(
+                            collection_name=collection_name,
+                            points=points,
+                        )
                     stored_counts[focus_area] = len(points)
                     logger.info(f"[EmergingConcerns] Stored {len(points)} clusters for {focus_area}")
+
                     
             except Exception as e:
                 logger.error(f"[EmergingConcerns] Failed to store {focus_area}: {e}")
@@ -352,15 +376,27 @@ class EmergingConcernsMemory:
                 search_limit = max_clusters_per_area * 4  # Get 4x for filtering
                 
                 try:
-                    search_response = self.client.query_points(
-                        collection_name=collection_name,
-                        query=query_embedding,
-                        limit=search_limit,
-                        with_payload=True,
-                    )
+                    try:
+                        search_response = self.client.query_points(
+                            collection_name=collection_name,
+                            query=query_embedding,
+                            limit=search_limit,
+                            with_payload=True,
+                        )
+                    except Exception as e:
+                        if not _is_collection_not_found(e):
+                            raise
+                        self._recreate_on_404(focus_area, collection_name, e)
+                        search_response = self.client.query_points(
+                            collection_name=collection_name,
+                            query=query_embedding,
+                            limit=search_limit,
+                            with_payload=True,
+                        )
                 except Exception as e:
                     logger.warning(f"[EmergingConcerns] Search failed for {focus_area}: {e}")
                     continue
+
                 
                 hits = getattr(search_response, "points", search_response) or []
                 
