@@ -101,7 +101,7 @@ export function VerificationBadge({
         status: 'likely_accurate',
         icon: ShieldCheck,
         label: 'Likely Accurate',
-        description: 'Cleared by VSEE internal consensus (high domain authority + internal cross-reference). External APIs (Tavily, Fact Check) were NOT called for this claim.',
+        description: 'No external verification — cleared by VSEE internal consensus. Tavily and Fact Check were not called.',
         bgColor: 'bg-indigo-50',
         borderColor: 'border-indigo-300',
         textColor: 'text-indigo-800',
@@ -302,7 +302,7 @@ export function VerificationBadge({
             </div>
             {isVseeBypass && (
               <p className="mt-1.5 text-[9px] text-indigo-600 leading-snug">
-                Fact Check API and External Cross-Ref show “skip” — these were NOT called because VSEE internal consensus cleared this claim. Values are not external attestations.
+                No external check. Fact Check API and External Cross-Ref were not called — this was cleared internally.
               </p>
             )}
           </div>
@@ -341,7 +341,7 @@ export function VerificationBadge({
               {isVseeBypass && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold">
                   <ShieldCheck className="h-4 w-4" />
-                  Cleared by VSEE Internal Consensus
+                  No External Cross-Ref
                 </span>
               )}
               {!hasTavilyVerification && !isVseeBypass && (
@@ -393,7 +393,7 @@ export function VerificationBadge({
             )}
             {internalSources.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[10px] text-indigo-600 mb-1 font-semibold">VSEE internal consensus (not external verification):</p>
+                <p className="text-[10px] text-indigo-600 mb-1 font-semibold">No external cross-reference — internal consensus only:</p>
                 {internalSources.map((source, idx) => (
                   <div
                     key={idx}
@@ -407,7 +407,7 @@ export function VerificationBadge({
                   </div>
                 ))}
                 <p className="mt-1.5 text-[9px] text-indigo-600 leading-snug">
-                  Cleared by internal corroboration across your own retrieved corpus. No external API attested to this claim.
+                  Internal consensus only — no external API attested this claim.
                 </p>
               </div>
             )}
@@ -465,7 +465,7 @@ export function VerificationBadge({
           <div className="pt-2 border-t border-slate-200">
             <p className="text-[9px] text-slate-500 leading-relaxed">
               {isVseeBypass
-                ? 'Cleared by VSEE internal consensus. External APIs were skipped: Domain Trust + Internal Cross-Reference were strong enough to pass the epistemic gate. Fact Check API and Tavily were not called — scores for those signals are neutral priors, not measurements.'
+                ? 'No external cross-reference. Cleared internally by VSEE consensus; Fact Check API and Tavily were not called. Scores for those signals are neutral priors, not measurements.'
                 : 'Verification powered by 5-signal ensemble: Domain Trust, Internal Cross-Reference, Google Fact Check API, Gemini AI Analysis, and Tavily External Cross-Reference.'}
             </p>
           </div>
