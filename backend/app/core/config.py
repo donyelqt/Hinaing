@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
     openrouter_api_key: str | None = None
+    openrouter_default_model: str = "openai/gpt-oss-120b"
+    openrouter_timeout: float = 60.0
+    openrouter_max_retries: int = 3
 
     facebook_app_id: str = ""
     facebook_app_secret: str = ""
@@ -59,7 +62,8 @@ class Settings(BaseSettings):
     gemini_default_model: str = "gemini-2.5-flash-lite"
     
     # LLM Execution Mode
-    # "cloud" -> Groq (groq/compound), "local" -> Ollama (ollama_default_model).
+    # "cloud" -> Groq (groq/compound), "local" -> Ollama (ollama_default_model),
+    # "openrouter" -> OpenRouter gateway (openrouter_default_model).
     # Requests may override this per call via their `llm_mode` field.
     llm_mode: str = "cloud"
 

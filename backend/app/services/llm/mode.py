@@ -6,6 +6,7 @@ Hinaing ships two interchangeable backends behind one interface:
   Node 1 query orchestration, which uses Gemini 2.5 Flash Lite (fastest
   per-inference and cheapest for its multi-iteration ReAct loop).
 - ``local`` -> Ollama serving Qwen (``qwen2.5:3b``), fully offline.
+- ``openrouter`` -> OpenRouter gateway (single pool for every node).
 
 A request carries the choice in its ``llm_mode`` field. Because agents are
 module-level singletons shared across concurrent requests, the active mode is
@@ -27,15 +28,16 @@ from ...core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-LLMMode = Literal["cloud", "local"]
+LLMMode = Literal["cloud", "local", "openrouter"]
 
 CLOUD: LLMMode = "cloud"
 LOCAL: LLMMode = "local"
-VALID_LLM_MODES: tuple[LLMMode, ...] = (CLOUD, LOCAL)
+OPENROUTER: LLMMode = "openrouter"
+VALID_LLM_MODES: tuple[LLMMode, ...] = (CLOUD, LOCAL, OPENROUTER)
 
 # Provider identifier per mode. Kept as strings so they can be handed straight to
 # the provider factory and logged without a second mapping table.
-_MODE_PROVIDER: dict[LLMMode, str] = {CLOUD: "groq", LOCAL: "local"}
+_MODE_PROVIDER: dict[LLMMode, str] = {CLOUD: "groq", LOCAL: "local", OPENROUTER: "openrouter"}
 
 _active_mode: ContextVar[str] = ContextVar("hinaing_llm_mode", default=CLOUD)
 
@@ -53,9 +55,10 @@ def normalize_llm_mode(value: str | None) -> str:
     """Coerce arbitrary input to a valid mode string.
 
     ``None``/empty falls back to the configured default. Anything else must be
-    exactly ``cloud`` or ``local`` (case-insensitive, surrounding whitespace
-    tolerated) — unknown values raise instead of defaulting, so a typo in the
-    frontend surfaces as a 422 rather than a surprise bill.
+    exactly ``cloud``, ``local`` or ``openrouter`` (case-insensitive,
+    surrounding whitespace tolerated) — unknown values raise instead of
+    defaulting, so a typo in the frontend surfaces as a 422 rather than a
+    surprise bill.
     """
     if value is None:
         return default_llm_mode()
@@ -79,6 +82,7 @@ def provider_name_for_mode(mode: str | None = None) -> str:
 
     Cloud mode resolves to the default cloud provider (``groq``); Node 1
     overrides to Gemini via :func:`app.services.llm.factory.get_cloud_llm`.
+    OpenRouter mode resolves to ``openrouter`` for every node.
     """
     return _MODE_PROVIDER[normalize_llm_mode(mode)]  # type: ignore[index]
 
