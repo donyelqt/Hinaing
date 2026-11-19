@@ -61,7 +61,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
           "h-7 w-7 sm:h-8 sm:w-8 rounded-full border transition-[border-color,box-shadow,background-color] duration-300 ease-out",
           active
             ? "border-violet-500/40 bg-violet-50 shadow-[0_0_0_4px_rgba(91,60,200,0.08)]"
-            : "border-slate-200 bg-white"
+            : "border-transparent brand-gradient-y shadow-sm"
         )}
       >
         {active ? (
@@ -70,7 +70,7 @@ function Node({ def, state }: { def: NodeDef; state: NodeState }) {
             <span aria-hidden="true" className="h-[9px] w-[9px] rounded-full bg-[rgb(var(--brand-from-rgb))] motion-safe:animate-pulse" />
           </>
         ) : (
-          <CheckCheck className="h-3.5 w-3.5 text-[rgb(var(--brand-from-rgb))]/80" aria-hidden="true" />
+          <CheckCheck className="h-3.5 w-3.5 text-white" aria-hidden="true" strokeWidth={2.5} />
         )}
       </span>
 
