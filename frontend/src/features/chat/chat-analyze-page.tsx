@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, Shield, FileText, ArrowRight, ArrowDown, ArrowUp, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle, Radar, FileSearch, Zap, Database, Target } from "lucide-react";
+import { Send, RefreshCw, Sparkles, User, Menu, X, BarChart3, FileText, ArrowRight, ArrowDown, ArrowUp, AlertTriangle, Ghost, XCircle, Hash, BrainCircuit, MessageCircle } from "lucide-react";
 import clsx from "clsx";
 import { Sidebar } from "../shared/components";
 import { HinaingLogo } from "@/components/ui/hinaing-logo";
 import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-parser";
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
+import { PipelineTrajectory } from "./components/PipelineTrajectory";
 
 const AGENTIC_MODE_OPTIONS = [
     { value: 'auto', label: 'Auto' },
@@ -176,75 +177,6 @@ type EvalMode = 'llm_only' | 'rag' | 'agentic_rag';
 
 // --- Components ---
 
-function ProgressIndicator({ stage, progress, message }: { stage: string; progress: number; message?: string }) {
-    // Stage icons reuse the Agentic Orchestrator pipeline glyph set
-    const stages = [
-        { id: "start", label: "Start", icon: <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-        { id: "query_orchestrator", label: "Query", icon: <Radar className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-        { id: "retrieval", label: "Fetch", icon: <FileSearch className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-        { id: "analyze", label: "Analyze", icon: <Zap className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-        { id: "context", label: "Context", icon: <Database className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-        { id: "themes", label: "Insights", icon: <Target className="h-3 w-3 sm:h-4 sm:w-4" aria-hidden="true" /> },
-    ];
-
-    const currentIndex = stages.findIndex(s => s.id === stage);
-    const displayStages = stages.slice(1); // Skip "start" in visual display
-    const fill = Math.min(1, Math.max(0, Number.isFinite(progress) ? progress : 0));
-
-    return (
-        <div role="status" aria-live="polite" className="w-full max-w-md mx-auto mb-3 sm:mb-4 px-0 sm:px-2">
-            {/* Stage trajectory */}
-            <div className="relative flex items-center justify-between mb-3 sm:mb-4 gap-0.5 sm:gap-2 overflow-x-auto">
-                <div aria-hidden="true" className="pointer-events-none absolute left-3 right-3 sm:left-[18px] sm:right-[18px] top-3 sm:top-[18px] -translate-y-1/2 h-0.5 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                        className="h-full w-full origin-left bg-blue-500 transition-transform duration-500 ease-out motion-reduce:transition-none"
-                        style={{ transform: `scaleX(${fill})` }}
-                    />
-                </div>
-                {displayStages.map((s, i) => {
-                    const isActive = currentIndex > 0 && i <= currentIndex - 1;
-                    const isCurrent = currentIndex > 0 && i === currentIndex - 1;
-                    return (
-                        <div key={s.id} className="relative flex flex-col items-center gap-0.5 sm:gap-1.5 shrink-0">
-                            <div
-                                aria-hidden="true"
-                                className={clsx(
-                                    "flex items-center justify-center w-6 h-6 sm:w-9 sm:h-9 rounded-full transition-colors transition-shadow duration-300",
-                                    isCurrent
-                                        ? "bg-blue-500 text-white ring-2 ring-blue-200 motion-safe:animate-pulse"
-                                        : isActive
-                                            ? "bg-blue-500 text-white"
-                                            : "bg-slate-200 text-slate-500"
-                                )}
-                            >
-                                {s.icon}
-                            </div>
-                            <span className={clsx(
-                                "text-[7px] sm:text-[10px] font-medium transition-colors text-center leading-tight whitespace-nowrap",
-                                isActive ? "text-blue-600" : "text-slate-500"
-                            )}>
-                                {s.label}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {/* Progress Bar */}
-            <div className="h-1 sm:h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                    className="h-full w-full origin-left bg-gradient-to-r from-blue-500 to-violet-500 transition-transform duration-500 ease-out motion-reduce:transition-none"
-                    style={{ transform: `scaleX(${fill})` }}
-                />
-            </div>
-
-            {/* Current Stage Message */}
-            <p className="text-[10px] sm:text-xs text-slate-600 text-center mt-2 sm:mt-3 font-medium line-clamp-2">
-                {message || stages.find(s => s.id === stage)?.label || "Initializing..."}
-            </p>
-        </div>
-    );
-}
 
 function AnalysisResultCard({ data }: { data: AnalysisData }) {
     const [showSources, setShowSources] = React.useState(false);
@@ -815,7 +747,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             >
                 {/* Progress Bar for Streaming */}
                 {msg.isStreaming && msg.streamProgress !== undefined && (
-                    <ProgressIndicator
+                    <PipelineTrajectory
                         stage={msg.streamStage || "start"}
                         progress={msg.streamProgress}
                         message={msg.content}
