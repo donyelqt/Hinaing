@@ -29,7 +29,7 @@ export type SentimentState = {
   llmMode: LlmMode;
 };
 
-export type LlmMode = 'cloud' | 'local';
+export type LlmMode = 'cloud' | 'local' | 'openrouter';
 
 export type AblationPreset = 'full' | 'ablated';
 

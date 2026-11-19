@@ -24,6 +24,7 @@ const EVAL_MODE_OPTIONS = [
 
 const LLM_OPTIONS = [
     { value: 'cloud', label: 'Cloud (Groq)' },
+    { value: 'openrouter', label: 'OpenRouter' },
     { value: 'local', label: 'Local (Qwen)' },
 ] as const;
 
@@ -936,7 +937,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   const [backendStatus, setBackendStatus] = React.useState<string | null>(null);
   const [backendError, setBackendError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<AnalysisMode>('auto');
-  const [llmMode, setLlmMode] = React.useState<'cloud' | 'local'>('cloud');
+  const [llmMode, setLlmMode] = React.useState<'cloud' | 'local' | 'openrouter'>('cloud');
   
   // NEW: System mode toggle (AgenticHinaing vs Evaluation)
   const [systemMode, setSystemMode] = React.useState<SystemMode>('agentic_hinaing');
@@ -1327,7 +1328,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             <SegmentedControl
                                                 ariaLabel="LLM engine"
                                                 value={llmMode}
-                                                onChange={(next) => setLlmMode(next as 'cloud' | 'local')}
+                                                onChange={(next) => setLlmMode(next as 'cloud' | 'local' | 'openrouter')}
                                                 options={LLM_OPTIONS}
                                             />
                                         </div>
