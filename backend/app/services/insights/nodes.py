@@ -1201,11 +1201,16 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         
         try:
             # Use synchronous generate method
+            # Nemotron Ultra needs more headroom than Groq's gpt-oss-120b
+            # because it emits reasoning tokens before the JSON payload.
+            # 3500 was truncating responses mid-URL on both providers;
+            # bump only for OpenRouter where the model is more verbose.
+            _max_tok = 8000 if (llm_mode or "") == "openrouter" else 3500
             response = llm.generate_sync(
                 prompt=prompt,
                 system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
                 temperature=0.1,
-                max_tokens=3500,
+                max_tokens=_max_tok,
             )
             
             from app.services.agents.theme_agent import sanitize_text
