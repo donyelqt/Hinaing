@@ -439,6 +439,90 @@ class QueryOrchestratorAgent:
             )
         return self._executors[mode]
 
+    async def _synthesize_direct(
+        self,
+        focus_values: list[str],
+        time_window: str,
+        time_suffix: str,
+        current_date: str,
+        llm_mode: str | None,
+    ) -> QueryPlan | None:
+        """Single-shot query synthesis for providers that cannot run ReAct.
+
+        OpenRouter chat models answer the prompt instead of emitting
+        ``Action:`` blocks, so the executor burns every iteration on
+        "Missing 'Action:' after 'Thought'" and the run falls back to
+        deterministic queries. Verified against
+        ``nvidia/nemotron-3-ultra-550b-a55b:free``, which returns 200 and
+        silently ignores ``stop``.
+
+        The two context tools are pure functions, so this path calls them
+        directly and gives the model one synthesis turn instead of an agent
+        loop. Cloud and local keep the ReAct executor.
+        """
+        from ..llm.factory import get_llm_for_mode
+
+        target_count = min(len(focus_values) * 3, self.max_queries)
+
+        domain_context = get_domain_context(json.dumps({"focus_areas": focus_values}))
+        temporal_context = get_temporal_context(
+            json.dumps({"focus_areas": focus_values, "time_window": time_window})
+        )
+
+        prompt = (
+            f"Generate {target_count} diverse web search queries for Baguio City civic monitoring.\n\n"
+            f"Focus areas: {', '.join(focus_values)}\n"
+            f"Time window: {time_window}\n"
+            f"Current date: {current_date}\n"
+            f"Append this suffix to EVERY query: {time_suffix}\n\n"
+            f"DOMAIN CONTEXT:\n{domain_context}\n\n"
+            f"TEMPORAL CONTEXT:\n{temporal_context}\n\n"
+            "RULES:\n"
+            "1. Write natural-language queries people would actually type.\n"
+            "2. Each query targets one specific angle, never a bare keyword pair.\n"
+            "3. Mix complaint-focused, news-focused and discussion-focused queries.\n"
+            "4. Cover a different sub-topic per query.\n"
+            "5. At least one query targets an emerging or unexpected issue.\n\n"
+            "Return ONLY the JSON object described below. No prose, no code fence.\n"
+            '{"strategy": "...", "queries": [{"query": "...", "topic": "...", '
+            '"focus_area": "...", "intent": "targeted"}], "expected_results": ["..."]}'
+        )
+
+        try:
+            llm = get_llm_for_mode(llm_mode)
+            raw = await llm.generate(
+                prompt=prompt,
+                system_prompt=(
+                    "You are a civic intelligence analyst for Baguio City. "
+                    "Return valid JSON only."
+                ),
+                temperature=0.4,
+                max_tokens=8192,
+            )
+        except Exception as exc:
+            logger.warning("[query_orchestrator] Direct synthesis failed: %s", exc)
+            return None
+
+        plan = self._parse_synthesis_output(raw, focus_values, time_suffix)
+        if plan and plan.queries:
+            logger.info(
+                "[query_orchestrator] Direct synthesis produced %d queries",
+                len(plan.queries),
+            )
+            self._store_queries_as_concerns(plan.queries, focus_values)
+            return plan
+
+        extracted = self._extract_queries_from_text(raw, focus_values, time_suffix)
+        if extracted and extracted.queries:
+            logger.info(
+                "[query_orchestrator] Direct synthesis recovered %d queries from text",
+                len(extracted.queries),
+            )
+            return extracted
+
+        logger.warning("[query_orchestrator] Direct synthesis returned no usable queries")
+        return None
+
     @measure_performance(component="QueryOrchestratorAgent", operation="run_planning")
     async def run(
         self,
@@ -474,6 +558,19 @@ class QueryOrchestratorAgent:
 
         # Background: populate memory for future context enrichment
         await self._populate_memory_if_needed(focus_values, llm_mode=llm_mode)
+        # OpenRouter chat models do not emit ReAct "Action:" blocks, so the
+        # executor exhausts max_iterations and the run degrades to
+        # deterministic queries. Cloud (Gemini) and local keep ReAct.
+        from ..llm.mode import normalize_llm_mode
+
+        if normalize_llm_mode(llm_mode) == "openrouter":
+            plan = await self._synthesize_direct(
+                focus_values, time_window, time_suffix, current_date, llm_mode
+            )
+            if plan:
+                return plan
+            logger.info("[query_orchestrator] Falling back after direct synthesis miss")
+            return self._fallback_plan(focus_values, time_window)
 
         # Run the ReAct agent
         try:
