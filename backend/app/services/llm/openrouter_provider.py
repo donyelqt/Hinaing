@@ -1,9 +1,8 @@
 """OpenRouter LLM provider.
 
 Single gateway for the whole pipeline. Routes requests to OpenRouter's
-OpenAI-compatible chat completions API. Default model is ``openai/gpt-oss-120b``
-(same family as the Groq default) but every node uses the same gateway so one
-API key carries the full pipeline.
+OpenAI-compatible chat completions API. Default model is ``nvidia/nemotron-3-ultra-550b-a55b:free``;
+the gateway carries the whole pipeline so one API key runs every node.
 """
 from __future__ import annotations
 
