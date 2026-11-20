@@ -132,9 +132,12 @@ type DisplayInsight = {
 };
 
 type CredibilityBreakdown = {
-  highCredibility: number;    // High + Medium tier
-  lowCredibility: number;     // Low + Very Low tier
-  avgScore: number;           // Average credibility score
+  /** Share of documents the system cleared without external corroboration (Tavily-verified or VSEE-bypassed). */
+  verifiedPercent: number;
+  /** Share of documents scoring below 0.55 on the 5-signal credibility ensemble. */
+  lowCredibilityPercent: number;
+  /** Mean 5-signal credibility score. */
+  avgScore: number;
   hasData: boolean;
 };
 
@@ -183,48 +186,45 @@ const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => 
 
 const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | null): CredibilityBreakdown => {
   if (!sources || sources.length === 0) {
-    return { highCredibility: 0, lowCredibility: 0, avgScore: 0, hasData: false };
+    return { verifiedPercent: 0, lowCredibilityPercent: 0, avgScore: 0, hasData: false };
   }
 
-  let highCount = 0;  // High + Medium credibility
-  let lowCount = 0;   // Low + Very Low credibility
+  // Verified means the system cleared the document without external corroboration:
+  // Tavily returned a verdict, or VSEE bypassed the external calls entirely.
+  // This matches the per-document badge and the Agentic Verification Rate.
+  let verifiedCount = 0;
+  let lowCount = 0;
   let totalScore = 0;
   let scoredCount = 0;
 
   sources.forEach((source) => {
     const metadata = source.metadata ?? {};
     const score = typeof metadata.credibility_score === "number" ? metadata.credibility_score : null;
-    const tier = typeof metadata.credibility_tier === "string" ? metadata.credibility_tier.toLowerCase() : null;
+    const verificationStatus = typeof metadata.tavily_verification_status === "string"
+      ? metadata.tavily_verification_status
+      : null;
+
+    if (verificationStatus === "verified" || verificationStatus === "vsee_bypass") {
+      verifiedCount += 1;
+    }
 
     if (score !== null) {
       totalScore += score;
       scoredCount += 1;
-
-      // High/Medium (≥0.55) vs Low/Very Low (<0.55) - matches 6-signal thresholds
-      if (score >= 0.55 || tier === "high" || tier === "medium") {
-        highCount += 1;
-      } else {
-        lowCount += 1;
-      }
-    } else if (tier) {
-      // Fallback to tier only
-      if (tier === "high" || tier === "medium") {
-        highCount += 1;
-      } else {
+      if (score < 0.55) {
         lowCount += 1;
       }
     }
   });
 
-  const total = highCount + lowCount;
-  if (!total) {
-    return { highCredibility: 0, lowCredibility: 0, avgScore: 0, hasData: false };
+  if (scoredCount === 0) {
+    return { verifiedPercent: 0, lowCredibilityPercent: 0, avgScore: 0, hasData: false };
   }
 
   return {
-    highCredibility: Math.round((highCount / total) * 100),
-    lowCredibility: Math.round((lowCount / total) * 100),
-    avgScore: scoredCount > 0 ? Math.round((totalScore / scoredCount) * 100) : 0,
+    verifiedPercent: Math.round((verifiedCount / sources.length) * 100),
+    lowCredibilityPercent: Math.round((lowCount / scoredCount) * 100),
+    avgScore: Math.round((totalScore / scoredCount) * 100),
     hasData: true,
   };
 };
@@ -763,17 +763,20 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                           )}>
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.highCredibility / 100))}>{credibilityBreakdown.highCredibility}%</strong>
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.verifiedPercent / 100))}>{credibilityBreakdown.verifiedPercent}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
                             <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              {credibilityBreakdown.hasData ? 'Low risk' : 'Score ≥55%'}
+                              Cleared by VSEE or Tavily
                             </p>
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                           )}>
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibility / 100))}>{credibilityBreakdown.lowCredibility}%</strong>
-                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Misinfo</span>
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibilityPercent / 100))}>{credibilityBreakdown.lowCredibilityPercent}%</strong>
+                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Review</span>
+                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
+                              Scored below 55%
+                            </p>
                           </div>
                         </div>
 
