@@ -767,10 +767,14 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                     "credibility_score": float(cred_score) if cred_score is not None else None,
                     "credibility_tier": str(meta.get("credibility_tier")) if meta.get("credibility_tier") else None,
                     "verification_status": str(meta.get("verification_status")) if meta.get("verification_status") else None,
+                    "tavily_verification_status": str(meta.get("tavily_verification_status")) if meta.get("tavily_verification_status") else None,
                 })
         
-        # Compute credibility breakdown
-        high_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) >= 0.55)
+        # Compute credibility breakdown.
+        # high_percent counts documents the system cleared without external corroboration:
+        # Tavily-verified or VSEE-bypassed. This is the AVR / "Verified Hinaing" figure.
+        # avg_score stays the 5-signal weighted average.
+        high_cred = sum(1 for s in sources_data if s.get("tavily_verification_status") in ("verified", "vsee_bypass"))
         low_cred = len(sources_data) - high_cred
         avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
         
@@ -971,8 +975,11 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
                 }
             })
 
-    # Compute credibility breakdown
-    high_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) >= 0.55)
+    # Compute credibility breakdown.
+    # high_percent counts documents the system cleared without external corroboration:
+    # Tavily-verified or VSEE-bypassed. This is the AVR / "Verified Hinaing" figure.
+    # avg_score stays the 5-signal weighted average.
+    high_cred = sum(1 for s in sources_data if (s.get("metadata") or {}).get("tavily_verification_status") in ("verified", "vsee_bypass"))
     low_cred = len(sources_data) - high_cred
     avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
 
