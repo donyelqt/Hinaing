@@ -165,6 +165,26 @@ class VectorStore:
                     logger.debug(f"[VectorStore] Index '{field}' already exists (OK)")
                 else:
                     logger.warning(f"[VectorStore] Index creation warning for '{field}': {e}")
+
+    def _call_with_collection_retry(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        """Call a Qdrant method; recreate the collection and retry once on 404.
+
+        The singleton is created once per process. If the collection is deleted
+        after startup (e.g. during testing), every subsequent call 404s until
+        restart. This restores the self-healing behavior that concerns_memory
+        already has.
+        """
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            msg = str(e).lower()
+            if "doesn't exist" not in msg and "does not exist" not in msg and "not found" not in msg and "404" not in msg:
+                raise
+            logger.warning(
+                f"[VectorStore] Collection missing ({e}); recreating and retrying once"
+            )
+            self._ensure_collection()
+            return fn(*args, **kwargs)
     
     def _rebuild_bm25_index(self, max_docs: int = 10000):
         """Rebuild BM25 index from Qdrant documents.
@@ -182,7 +202,8 @@ class VectorStore:
         
         try:
             # Get all documents from Qdrant
-            scroll_result = self.client.scroll(
+            scroll_result = self._call_with_collection_retry(
+                self.client.scroll,
                 collection_name=self.COLLECTION_NAME,
                 limit=max_docs,
                 with_payload=True,
@@ -336,9 +357,10 @@ class VectorStore:
             )
         
         # Upsert to Qdrant
-        self.client.upsert(
+        self._call_with_collection_retry(
+            self.client.upsert,
             collection_name=self.COLLECTION_NAME,
-            points=points
+            points=points,
         )
         
         # Rebuild BM25 index with new documents
@@ -407,7 +429,8 @@ class VectorStore:
         dense_score_map: dict[int, float] = {}  # doc_id -> original cosine score
         
         try:
-            dense_response = self.client.query_points(
+            dense_response = self._call_with_collection_retry(
+                self.client.query_points,
                 collection_name=self.COLLECTION_NAME,
                 query=query_embedding,
                 limit=k * 3,  # Get more for fusion
@@ -458,7 +481,8 @@ class VectorStore:
             doc_ids = [doc_id for doc_id, _ in fused_results[:k]]
             
             try:
-                points_response = self.client.retrieve(
+                points_response = self._call_with_collection_retry(
+                    self.client.retrieve,
                     collection_name=self.COLLECTION_NAME,
                     ids=doc_ids,
                     with_payload=True,
@@ -561,7 +585,8 @@ class VectorStore:
         query_embedding = self.embedding_service.embed_query(query)
         
         try:
-            response = self.client.query_points(
+            response = self._call_with_collection_retry(
+                self.client.query_points,
                 collection_name=self.COLLECTION_NAME,
                 query=query_embedding,
                 limit=k,
