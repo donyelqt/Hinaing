@@ -324,10 +324,13 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
             documents_fresh=0,
         )
         
-        # Record Agentic Verification Rate from cached docs
+        # Record Agentic Verification Rate from cached docs.
+        # AVR counts documents the system cleared without external corroboration:
+        # Tavily-verified or VSEE-bypassed. This matches the field contract
+        # (verification_status="verified") and the per-document badge.
         verified_count = sum(
             1 for doc in already_enriched
-            if float((doc.metadata or {}).get("credibility_score", 0.0)) >= 0.55
+            if (doc.metadata or {}).get("tavily_verification_status") in ("verified", "vsee_bypass")
         )
         metrics.record_agentic_verification_rate(
             total_documents=int(total_docs),
@@ -540,12 +543,13 @@ async def label_sentiment_and_analyze(state: SnapshotState) -> SnapshotState:
         documents_fresh=len(newly_enriched_docs),
     )
 
-    # Record Agentic Verification Rate (count verified documents)
-    # Matches frontend logic: score >= 0.55 OR tier in ["high", "medium"]
-    # This aligns with high_credibility_count in graph.py and frontend display
+    # Record Agentic Verification Rate.
+    # AVR counts documents the system cleared without external corroboration:
+    # Tavily-verified or VSEE-bypassed. This matches the field contract
+    # (verification_status="verified") and the per-document badge.
     verified_count = sum(
         1 for doc in all_enriched_docs
-        if (doc.metadata or {}).get("credibility_score", 0) >= 0.55
+        if (doc.metadata or {}).get("tavily_verification_status") in ("verified", "vsee_bypass")
     )
     metrics.record_agentic_verification_rate(
         total_documents=len(all_enriched_docs),
