@@ -373,7 +373,7 @@ async def run_chat_agent(
                     if d.url and d.url in seen:
                         continue
                     web_docs.append(d)
-                web_docs = LangSearchClient._local_rerank(fresh_query, web_docs)[:12]
+                web_docs = web_docs[:12]
             except Exception as e:
                 logger.warning(f"[chat_agent] Tavily search failed: {e}")
         

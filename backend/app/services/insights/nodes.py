@@ -42,7 +42,6 @@ from app.services.insights.agents import (  # type: ignore
 from app.services.agents.query_orchestrator import QueryOrchestratorAgent  # type: ignore
 from app.services.agents.context_agent import ContextAugmentationAgent  # type: ignore
 from app.services.agents.coordinator_agent import get_coordinator_agent  # type: ignore
-from app.services.langsearch import LangSearchClient  # type: ignore
 from app.services.metrics import get_metrics_collector  # type: ignore
 
 from app.services.insights.definitions import (  # type: ignore
@@ -112,14 +111,6 @@ async def fetch_documents(state: SnapshotState) -> SnapshotState:
     except Exception:
         logger.exception("Retrieval agent failed; returning empty document set")
         documents = []
-
-    if "web" in request.platforms and "facebook" in request.platforms and len(documents) > 1:
-        query = _build_query(request)
-        try:
-            reranker = LangSearchClient()
-            documents = await reranker.rerank(query=query, documents=documents)
-        except Exception as exc:
-            logger.warning("Semantic rerank failed; continuing without rerank: %s", exc)
 
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.info("[snapshot] External retrieval completed in %.1f ms with %d docs", duration_ms, len(documents))

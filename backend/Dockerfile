@@ -61,10 +61,7 @@ RUN python -c "from transformers import AutoModelForSequenceClassification, Auto
     python -c "from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
     AutoModelForSequenceClassification.from_pretrained('MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33'); \
     AutoTokenizer.from_pretrained('MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33'); \
-    print('✓ DeBERTa-v3 NLI entailment model downloaded')" && \
-    python -c "from sentence_transformers import CrossEncoder; \
-    CrossEncoder('BAAI/bge-reranker-v2-m3', max_length=512); \
-    print('✓ BGE reranker v2-m3 downloaded')"
+    print('✓ DeBERTa-v3 NLI entailment model downloaded')"
 
 # Hugging Face Spaces uses port 7860 by default
 EXPOSE 7860
