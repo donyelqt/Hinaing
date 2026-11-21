@@ -64,6 +64,8 @@ PH_CIVIC_DOMAINS = {
     "tribune.net.ph", "manilatimes.net", "pia.gov.ph", "pna.gov.ph",
     "mb.com.ph", "cnn.com.ph",
     "baguio.gov.ph", "goodmorningbaguio.com",
+    "baguioheraldexpressonline.com", "cordilleranewsagency.com",
+    "thebaguiochronicle.com",
 }
 EXCLUDED_DOMAINS = {
     "wikipedia.org", "wikimedia.org", "wikidata.org", "britannica.com",

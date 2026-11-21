@@ -95,6 +95,8 @@ DOMAIN_TRUST_SCORES = {
     "inquirer.net": 0.82, "philstar.com": 0.82, "gmanetwork.com": 0.80,
     "abs-cbn.com": 0.78, "mb.com.ph": 0.75, "manilatimes.net": 0.75,
     "sunstar.com.ph": 0.75, "baguiomidlandcourier.com.ph": 0.75,
+    "bomboradyo.com": 0.75, "baguioheraldexpressonline.com": 0.75,
+    "cordilleranewsagency.com": 0.75, "thebaguiochronicle.com": 0.75,
     # Tier 4: Organizations (0.65-0.70)
     "org.ph": 0.70, "org": 0.65,
     # Tier 5: Social media (0.40-0.50)
