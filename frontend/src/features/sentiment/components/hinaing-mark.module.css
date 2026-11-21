@@ -1,0 +1,43 @@
+/* Mesh gradient for the Hinaing bars.
+   Three radial fields overlap on an oversized background, so moving the
+   background position drifts them independently. That reads as colour
+   churning rather than a band sliding sideways, which is what a single
+   linear gradient does. */
+.mesh {
+  background-image:
+    radial-gradient(circle at 30% 30%, #f472b6 0%, rgba(244, 114, 182, 0) 46%),
+    radial-gradient(circle at 70% 60%, #3b82f6 0%, rgba(59, 130, 246, 0) 48%),
+    radial-gradient(circle at 50% 80%, #22d3ee 0%, rgba(34, 211, 238, 0) 44%);
+  background-size: 200% 200%;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mesh {
+    animation: drift 18s ease-in-out infinite;
+  }
+}
+
+/* Each layer travels a different path and returns to its start, so the loop
+   closes without any layer visibly snapping back. */
+@keyframes drift {
+  0% {
+    background-position: 0% 0%, 100% 100%, 50% 0%;
+  }
+  33% {
+    background-position: 100% 60%, 0% 40%, 80% 100%;
+  }
+  66% {
+    background-position: 40% 100%, 60% 0%, 10% 50%;
+  }
+  100% {
+    background-position: 0% 0%, 100% 100%, 50% 0%;
+  }
+}
+
+/* Reduced motion keeps the same colour, held at a composed frame. */
+@media (prefers-reduced-motion: reduce) {
+  .mesh {
+    background-position: 20% 20%, 80% 70%, 55% 40%;
+  }
+}
