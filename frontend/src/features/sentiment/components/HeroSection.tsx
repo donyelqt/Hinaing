@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { ToggleOption } from "../types";
+import { HinaingMark } from "./HinaingMark";
 
 type HeroSectionProps = {
   selectedWindowLabel: string;
@@ -190,6 +191,7 @@ export function HeroSection(_props: HeroSectionProps) {
           </p>
           <p className="mt-1 hidden text-[11px] font-medium text-slate-500 sm:block">Public sentiment console. Configure and generate a grounded briefing.</p>
         </div>
+        <HinaingMark className="ml-auto shrink-0" />
       </div>
     </div>
   );
