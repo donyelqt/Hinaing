@@ -19,7 +19,7 @@ import {
 import { KeyboardButton } from "@/components/ui/keyboard-button";
 
 import { Card } from "@/components/ui/card";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { Sidebar } from "../../shared/components";
 import type { ActivePage } from "../../shared/types/navigation";
 import { useAgenticOrchestrator } from "../hooks/useAgenticOrchestrator";
@@ -487,9 +487,51 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
       llm_mode: llmMode,
     };
 
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
     try {
-      const result = await apiPost<typeof payload, SnapshotResponse>("/insights/snapshot", payload);
-      setSnapshot(result);
+      const startResponse = await fetch(`${apiBase}/insights/snapshot/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!startResponse.ok) throw new Error("Failed to start snapshot");
+      const { task_id: taskId } = (await startResponse.json()) as { task_id: string };
+
+      const POLL_INTERVAL = 2000;
+      const MAX_POLLS = 300;
+      let pollCount = 0;
+
+      while (pollCount < MAX_POLLS) {
+        pollCount++;
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, POLL_INTERVAL);
+        await promise;
+
+        const statusResponse = await fetch(`${apiBase}/insights/snapshot/status/${taskId}`);
+        if (!statusResponse.ok) {
+          if (statusResponse.status === 404) throw new Error("Task expired. Please try again.");
+          throw new Error("Failed to get status");
+        }
+
+        const status = (await statusResponse.json()) as {
+          status: string;
+          progress: number;
+          stage: string;
+          message: string;
+          result?: SnapshotResponse;
+          error?: string | null;
+        };
+
+        if (status.status === "completed" && status.result) {
+          setSnapshot(status.result);
+          return;
+        }
+        if (status.status === "failed") {
+          throw new Error(status.error || "Snapshot generation failed");
+        }
+      }
+      throw new Error("Snapshot timed out. Please try again.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate snapshot";
       setSnapshotError(message);

@@ -97,7 +97,13 @@ async def memory_cleanup_middleware(request: Request, call_next):
     logger.info(f"-> {request.method} {request.url.path}")
     
     # Track heavy endpoints for specialized memory handling
-    is_heavy = request.url.path in ["/insights/snapshot", "/api/snapshot", "/agents/gemini", "/chat/analyze"]
+    is_heavy = request.url.path in [
+        "/insights/snapshot",
+        "/insights/snapshot/start",
+        "/api/snapshot",
+        "/agents/gemini",
+        "/chat/analyze",
+    ] or request.url.path.startswith("/insights/snapshot/status/")
     
     if is_heavy:
         _active_requests += 1
