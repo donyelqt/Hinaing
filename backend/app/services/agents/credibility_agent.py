@@ -1486,7 +1486,7 @@ class CredibilityAgent:
              return float(score_domain(_extract_domain(url_str)))
              
         domain_scores_pre = [
-            asyncio.to_thread(lambda *_: _exec_m(doc), doc)
+            asyncio.to_thread(_exec_m, doc)
             for doc in list(cast(list, documents or []))
         ]
         
