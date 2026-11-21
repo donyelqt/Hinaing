@@ -330,57 +330,6 @@ async def search_web_documents(
         include_domains=sorted(PH_CIVIC_DOMAINS),
     )
     
-    # CRITICAL FIX: For orchestrator queries, rerank against the ORIGINAL query
-    # The search() method already reranked against enriched query, but we need
-    # to rerank again against the specific topic for accurate relevance scores
-    if custom_query and web_docs:
-        logger.info(f"[search] Re-ranking {len(web_docs)} docs against orchestrator query: {custom_query[:60]}")
-        web_docs = await client.rerank(query=custom_query, documents=web_docs)
-        # Log sample scores after reranking
-        if web_docs:
-            sample_scores = [doc.metadata.get("semantic_relevance_score", 0.0) for doc in web_docs[:5]]
-            logger.info(f"[search] Sample relevance scores after rerank: {sample_scores}")
-    
-    # Apply semantic filtering based on relevance scores
-    # For orchestrator queries: Filter against the specific topic (high precision)
-    # For baseline queries: Filter against broad focus area (lower precision)
-    if not skip_semantic_filter:
-        # Use different thresholds for orchestrator vs baseline queries
-        # Orchestrator: 0.30 (balanced - captures Filipino content at 0.36, filters very low scores)
-        # Baseline: 0.25 (slightly more permissive for broad searches)
-        # Note: Filipino mallification content scores 0.36, Japanese content scores 0.23 (filtered)
-        MIN_SEMANTIC_RELEVANCE = 0.30 if custom_query else 0.25
-        filtered_docs = []
-        low_relevance_samples = []
-        
-        for doc in web_docs:
-            relevance = doc.metadata.get("semantic_relevance_score", 1.0)
-            if relevance >= MIN_SEMANTIC_RELEVANCE:
-                filtered_docs.append(doc)
-            else:
-                if len(low_relevance_samples) < 3:
-                    low_relevance_samples.append({
-                        "title": doc.title[:60] if doc.title else "No title",
-                        "score": relevance,
-                        "url": str(doc.url)[:80] if doc.url else "No URL"
-                    })
-                logger.debug(
-                    f"[search] Filtered low-relevance doc: {doc.title[:50]} "
-                    f"(score: {relevance:.2f})"
-                )
-        
-        if len(filtered_docs) < len(web_docs):
-            logger.info(
-                f"[search] Filtered {len(web_docs) - len(filtered_docs)} low-relevance docs "
-                f"({len(filtered_docs)}/{len(web_docs)} kept, threshold: {MIN_SEMANTIC_RELEVANCE})"
-            )
-            if low_relevance_samples:
-                logger.info(f"[search] Sample filtered docs: {low_relevance_samples}")
-        
-        web_docs = filtered_docs
-    else:
-        logger.info(f"[search] Skipping semantic filter (keeping all {len(web_docs)} docs)")
-    
     web_docs = filter_excluded_sources(web_docs)
     web_docs = filter_aggregator_pages(web_docs)
     web_docs = filter_by_location(web_docs)
@@ -581,17 +530,7 @@ async def fetch_reddit_documents(
     if len(all_docs) > 10:
         all_docs = filter_by_time_window(all_docs, request.time_window)
     
-    # Rerank by semantic relevance (like LangSearch) before capping
     if len(all_docs) > MAX_REDDIT_DOCUMENTS:
-        try:
-            rerank_query = f"Baguio {' '.join(focus_areas)}" if focus_areas else "Baguio"
-            client = LangSearchClient()
-            all_docs = await client.rerank(query=rerank_query, documents=all_docs)
-            logger.info("[reddit_tool] Reranked %d docs by relevance", len(all_docs))
-        except Exception as e:
-            logger.warning("[reddit_tool] Rerank failed, using original order: %s", e)
-        
-        # Cap at MAX_REDDIT_DOCUMENTS
         logger.info("[reddit_tool] Capping results: %d -> %d", len(all_docs), MAX_REDDIT_DOCUMENTS)
         all_docs = all_docs[:MAX_REDDIT_DOCUMENTS]
     
