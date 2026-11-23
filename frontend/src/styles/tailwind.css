@@ -12,6 +12,10 @@
     --smooth-to-rgb: 140 82 255;
     --royal-from-rgb: 51 72 184;
     --royal-to-rgb: 91 60 200;
+    /* accent sweep, sampled from the reference hero: indigo -> violet -> pink */
+    --accent-indigo-rgb: 99 102 241;
+    --accent-violet-rgb: 168 85 247;
+    --accent-pink-rgb: 236 72 153;
   }
 
   html,
@@ -59,6 +63,20 @@
   .hero-glow-pulse {
     animation: hero-glow-pulse 3s ease-in-out infinite;
     background-size: 190% 190%;
+  }
+
+  /* Diagonal indigo -> violet -> pink band. The sweep is 200% wide so the
+     drift moves the colour field, not the element. */
+  .hero-accent-sweep {
+    background-image: linear-gradient(
+      115deg,
+      rgb(var(--accent-indigo-rgb) / 0.55) 0%,
+      rgb(var(--accent-violet-rgb) / 0.45) 38%,
+      rgb(var(--accent-pink-rgb) / 0.5) 72%,
+      rgb(var(--accent-pink-rgb) / 0) 100%
+    );
+    background-size: 200% 200%;
+    background-repeat: no-repeat;
   }
 
   .hero-glow-ping {
@@ -132,6 +150,30 @@
 .animate-rainbow-border {
   animation: rainbow-border 3s ease infinite;
   background-size: 200% 200%;
+}
+
+@keyframes accent-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-accent-drift {
+  animation: accent-drift 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-accent-drift {
+    animation: none;
+  }
 }
 
 @keyframes dash-flow {
