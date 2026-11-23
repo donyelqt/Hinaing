@@ -65,18 +65,34 @@
     background-size: 190% 190%;
   }
 
-  /* Diagonal indigo -> violet -> pink band. The sweep is 200% wide so the
-     drift moves the colour field, not the element. */
-  .hero-accent-sweep {
+  /* Text-clip accent sweep, ported from omp.sh .sunray. The gradient is lit
+     only at its midpoint, so a narrow band travels across the glyphs instead
+     of the whole line changing colour.
+
+     omp.sh runs translucent stops on a #000 page. Ours is slate-50, so the
+     stops carry opaque light-page anchors instead. */
+  .sunray {
+    --ray-dim: #7c3aed;
+    --ray-lit: #db2777;
     background-image: linear-gradient(
-      115deg,
-      rgb(var(--accent-indigo-rgb) / 0.55) 0%,
-      rgb(var(--accent-violet-rgb) / 0.45) 38%,
-      rgb(var(--accent-pink-rgb) / 0.5) 72%,
-      rgb(var(--accent-pink-rgb) / 0) 100%
+      105deg,
+      var(--ray-dim) 38%,
+      var(--ray-lit) 50%,
+      var(--ray-dim) 62%
     );
-    background-size: 200% 200%;
-    background-repeat: no-repeat;
+    background-size: 320% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: sunray-sweep 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sunray {
+      animation: none;
+      background-position: 50% 0;
+    }
   }
 
   .hero-glow-ping {
@@ -152,27 +168,21 @@
   background-size: 200% 200%;
 }
 
-@keyframes accent-drift {
+/* Ported verbatim from omp.sh: a fast lit pass, then a hold. */
+@keyframes sunray-sweep {
   0% {
-    background-position: 0% 50%;
+    text-shadow: none;
+    background-position: 100% 0;
   }
 
-  50% {
-    background-position: 100% 50%;
+  8% {
+    text-shadow: 0 0 16px rgb(var(--accent-pink-rgb) / 0.65);
   }
 
+  18%,
   100% {
-    background-position: 0% 50%;
-  }
-}
-
-.animate-accent-drift {
-  animation: accent-drift 18s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-accent-drift {
-    animation: none;
+    text-shadow: none;
+    background-position: 0 0;
   }
 }
 

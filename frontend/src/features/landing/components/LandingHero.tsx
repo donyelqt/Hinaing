@@ -179,7 +179,7 @@ export function LandingHero() {
           <div className="space-y-4">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl leading-[1.1]">
               Monitor public sentiment <br />
-              <span className="brand-gradient bg-clip-text text-transparent">
+              <span className="sunray">
                 before it becomes a crisis.
               </span>
             </h1>
