@@ -69,11 +69,12 @@
      only at its midpoint, so a narrow band travels across the glyphs instead
      of the whole line changing colour.
 
-     omp.sh runs translucent stops on a #000 page. Ours is slate-50, so the
-     stops carry opaque light-page anchors instead. */
+    omp.sh runs translucent stops on a #000 page. Ours is slate-50, so the
+    stops carry opaque light-page anchors instead. Both are dark enough that
+    antialiased glyph edges stay above the 3:1 large-text floor. */
   .sunray {
-    --ray-dim: #7c3aed;
-    --ray-lit: #db2777;
+    --ray-dim: #6d28d9;
+    --ray-lit: #be185d;
     background-image: linear-gradient(
       105deg,
       var(--ray-dim) 38%,
