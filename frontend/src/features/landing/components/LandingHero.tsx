@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MessageSquare, MapPin, Share2, Sparkles, Command, Eye, Bot } from "lucide-react";
 import { KeyboardButton } from "@/components/ui/keyboard-button";
+import { ParticleCurve } from "./ParticleCurve";
 
 function BaguioTeamsPill() {
   const [isAutoPulse, setIsAutoPulse] = useState(false);
@@ -163,6 +164,14 @@ export function LandingHero() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-gradient-to-br from-violet-200/30 via-blue-200/30 to-transparent blur-3xl animate-fade-in" />
         <div className="absolute top-[10%] -right-[10%] w-[60%] h-[60%] rounded-full bg-gradient-to-bl from-cyan-200/30 via-emerald-100/30 to-transparent blur-3xl animate-fade-in" style={{ animationDelay: '0.5s' }} />
+      </div>
+
+      {/* Particle curve, ported from omp.sh. Flipped on Y so the arc sweeps
+          from the lower left up to the upper right, like the reference. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="[transform:scaleY(-1)] absolute inset-0">
+          <ParticleCurve />
+        </div>
       </div>
 
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:py-16 xl:px-8">
