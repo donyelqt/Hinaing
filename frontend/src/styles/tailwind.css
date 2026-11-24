@@ -12,10 +12,6 @@
     --smooth-to-rgb: 140 82 255;
     --royal-from-rgb: 51 72 184;
     --royal-to-rgb: 91 60 200;
-    /* accent sweep, sampled from the reference hero: indigo -> violet -> pink */
-    --accent-indigo-rgb: 99 102 241;
-    --accent-violet-rgb: 168 85 247;
-    --accent-pink-rgb: 236 72 153;
   }
 
   html,
@@ -169,20 +165,14 @@
   background-size: 200% 200%;
 }
 
-/* Ported verbatim from omp.sh: a fast lit pass, then a hold. */
+/* Ported from omp.sh: a fast lit pass, then a hold. */
 @keyframes sunray-sweep {
   0% {
-    text-shadow: none;
     background-position: 100% 0;
-  }
-
-  8% {
-    text-shadow: 0 0 16px rgb(var(--accent-pink-rgb) / 0.65);
   }
 
   18%,
   100% {
-    text-shadow: none;
     background-position: 0 0;
   }
 }
