@@ -278,12 +278,19 @@ function renderCurve(canvas: HTMLCanvasElement, width: number, height: number, c
       for (let col = px; col < px + 2; col += 1) {
         if (col < 0 || col >= width) continue;
         const index = (row * width + col) * 4;
-        // Lerp the opaque ink toward the mote colour by `opacity`. The
-        // reference never leaves a pixel translucent: unoccupied cells carry
-        // the page colour, so a mote only brightens the pixel it lands on.
-        data[index] += (palette.dust[0] * intensity - data[index]) * opacity;
-        data[index + 1] += (palette.dust[1] * intensity - data[index + 1]) * opacity;
-        data[index + 2] += (palette.dust[2] * intensity - data[index + 2]) * opacity;
+        // Composite the mote over whatever is already there and write the
+        // alpha. Unlike the reference we leave unoccupied pixels transparent,
+        // so a mote landing on one has to supply its own cover or it would
+        // be invisible.
+        const cover = opacity;
+        const dstAlpha = data[index + 3] / 255;
+        const outAlpha = cover + dstAlpha * (1 - cover);
+        const blend = (dst: number, src: number): number =>
+          (src * cover + dst * dstAlpha * (1 - cover)) / outAlpha;
+        data[index] = blend(data[index], palette.dust[0] * intensity);
+        data[index + 1] = blend(data[index + 1], palette.dust[1] * intensity);
+        data[index + 2] = blend(data[index + 2], palette.dust[2] * intensity);
+        data[index + 3] = outAlpha * 255;
       }
     }
   }
