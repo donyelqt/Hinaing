@@ -63,6 +63,11 @@ type Arc = {
   radius: number;
   thetaMin: number;
   thetaMax: number;
+  /**
+   * Half-plane the band may occupy: a point on the rim chord plus the normal
+   * that points away from the circle's centre.
+   */
+  bandSide: { x: number; y: number; nx: number; ny: number } | null;
 };
 
 /**
@@ -107,6 +112,26 @@ function fitArc(width: number, height: number): Arc {
     }
   }
 
+  // Keep the outer field on the outward side of the rim chord. Without this,
+  // a frame tall enough to bring the far side of the circle into view wraps
+  // the dust back around the rim and floods the copy above it. On wide frames
+  // the far side is already outside the frame, so the clip changes nothing.
+  let bandSide: Arc["bandSide"] = null;
+  const edgeX = width - left;
+  const edgeY = bottom;
+  const length = Math.hypot(edgeX, edgeY);
+  if (length > 0) {
+    let nx = edgeY / length;
+    let ny = -edgeX / length;
+    const toCentreX = centerX - (left + width) / 2;
+    const toCentreY = centerY - bottom / 2;
+    if (toCentreX * nx + toCentreY * ny > 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    bandSide = { x: left, y: 0, nx, ny };
+  }
+
   return {
     scale,
     centerX,
@@ -114,12 +139,17 @@ function fitArc(width: number, height: number): Arc {
     radius,
     thetaMin: thetaMin - 0.04,
     thetaMax: thetaMax + 0.04,
+    bandSide,
   };
 }
 
 function renderCurve(canvas: HTMLCanvasElement, width: number, height: number, clock: number): void {
-  canvas.width = width;
-  canvas.height = height;
+  // Resizing the bitmap resets it and allocates a new buffer, so only touch
+  // the dimensions when they actually change. This runs every frame.
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
 
   const palette = buildPalette();
   const arc = fitArc(width, height);
@@ -174,6 +204,12 @@ function renderCurve(canvas: HTMLCanvasElement, width: number, height: number, c
       const dx = x - arc.centerX;
       const rimDistance = Math.hypot(dx, dy) - arc.radius;
       if (rimDistance < 0) continue;
+      if (
+        arc.bandSide &&
+        (x - arc.bandSide.x) * arc.bandSide.nx + (y - arc.bandSide.y) * arc.bandSide.ny < 0
+      ) {
+        continue;
+      }
 
       const shade = vignette(x + 1, y + 1);
       const theta = Math.atan2(dy, dx);
@@ -325,7 +361,8 @@ export function ParticleCurve({ className = "" }: ParticleCurveProps) {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     let frame = 0;
-    let startedAt = performance.now();
+    let resizeFrame = 0;
+    const startedAt = performance.now();
 
     const draw = (clock: number): void => {
       const rect = canvas.getBoundingClientRect();
@@ -352,12 +389,19 @@ export function ParticleCurve({ className = "" }: ParticleCurveProps) {
 
     const onResize = (): void => {
       // Re-render at the live clock. Resizing must not restart the motion.
-      draw((performance.now() - startedAt) / FRAME_MS);
+      // Phones fire resize on every address-bar collapse, so fold a burst of
+      // events into one redraw.
+      if (resizeFrame) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        draw((performance.now() - startedAt) / FRAME_MS);
+      });
     };
 
     window.addEventListener("resize", onResize, { passive: true });
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(resizeFrame);
       window.removeEventListener("resize", onResize);
     };
   }, []);
