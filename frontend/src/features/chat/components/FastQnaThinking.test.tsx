@@ -14,36 +14,46 @@ describe('FastQnaThinking', () => {
     expect(html).not.toContain('role="status"');
   });
 
-  it('names the phase it is in so the two passes are distinguishable', () => {
+  it('names the phase it is in so the three states are distinguishable', () => {
+    expect(markup({ kind: 'pending', progress: 0 })).toContain('data-phase="pending"');
     expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('data-phase="retrieval"');
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('data-phase="generating"');
   });
 
   it('labels the pass that is actually running', () => {
+    expect(markup({ kind: 'pending', progress: 0 })).toContain('Starting');
     expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('Searching for relevant information');
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('Generating response');
   });
 
-  it('renders an orb and a halo, never a progress bar', () => {
+  it('renders a lit sphere, never a progress bar', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html).toContain('blur-[6px]');
+    expect(html).toContain('radial-gradient(circle at 30% 24%');
     expect(html).not.toContain('scaleX(');
+    expect(html).not.toContain('blur-[6px]');
   });
 
-  it('drives every layer from motion-safe so reduced motion gets a still frame', () => {
+  it('keeps the sheen on the rim with a mask instead of across the face', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html.match(/motion-safe:animate-\[/g)).toHaveLength(3);
+    expect(html).toContain('mask-image:radial-gradient(farthest-side');
+    expect(html).toContain('conic-gradient(from 0deg');
   });
 
-  it('kills all three animations under reduced motion', () => {
+  it('drives every animated layer from motion-safe', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html).toContain('.fq-orb, .fq-orb-halo, .fq-orb-label { animation: none !important; }');
+    expect(html.match(/motion-safe:animate-\[/g)).toHaveLength(5);
   });
 
-  it('keeps an orb silhouette when motion is reduced, not the raw square', () => {
+  it('kills every animation under reduced motion', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html).toContain('.fq-orb { border-radius: 58% 42% 55% 45% / 45% 58% 42% 55%; }');
-    expect(html).toContain('.fq-orb-halo { opacity: 0.26; }');
+    expect(html).toContain('.fq-orb, .fq-orb-core, .fq-orb-sheen, .fq-orb-bloom, .fq-orb-label { animation: none !important; }');
+  });
+
+  it('holds a lit sphere when motion is reduced, not an unstyled box', () => {
+    const html = markup({ kind: 'retrieval', progress: 0.4 });
+    expect(html).toContain('.fq-orb-bloom { opacity: 0.34; }');
+    expect(html).toContain('rounded-full');
+    expect(html).toContain('radial-gradient(circle at 30% 24%');
   });
 
   it('carries the label light as a clipped gradient rather than a colour change', () => {
