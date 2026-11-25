@@ -19,32 +19,41 @@ describe('FastQnaThinking', () => {
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('data-phase="generating"');
   });
 
-  it('keeps both labels mounted so the row never resizes when the phase flips', () => {
+  it('labels the pass that is actually running', () => {
+    expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('Searching for relevant information');
+    expect(markup({ kind: 'generating', progress: 0.8 })).toContain('Generating response');
+  });
+
+  it('renders an orb and a halo, never a progress bar', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html).toContain('Searching for relevant information');
-    expect(html).toContain('Generating response');
+    expect(html).toContain('blur-[6px]');
+    expect(html).not.toContain('scaleX(');
   });
 
-  it('shows only the current label and hides the other from view', () => {
-    const html = markup({ kind: 'generating', progress: 0.8 });
-    expect(html.match(/data-active="true"/g)).toHaveLength(1);
-    expect(html).toContain('visibility:hidden');
-  });
-
-  it('draws the trail at the reported progress', () => {
-    expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('scaleX(0.4)');
-  });
-
-  it('never draws a trail so short the head disappears', () => {
-    expect(markup({ kind: 'retrieval', progress: 0 })).toContain('scaleX(0.08)');
-  });
-
-  it('clamps progress above one so the head cannot leave the track', () => {
-    expect(markup({ kind: 'generating', progress: 4 })).toContain('scaleX(1)');
-  });
-
-  it('places the head at the leading edge of the trail', () => {
+  it('drives every layer from motion-safe so reduced motion gets a still frame', () => {
     const html = markup({ kind: 'retrieval', progress: 0.4 });
-    expect(html).toContain('translateX(-60%)');
+    expect(html.match(/motion-safe:animate-\[/g)).toHaveLength(3);
+  });
+
+  it('kills all three animations under reduced motion', () => {
+    const html = markup({ kind: 'retrieval', progress: 0.4 });
+    expect(html).toContain('.fq-orb, .fq-orb-halo, .fq-orb-label { animation: none !important; }');
+  });
+
+  it('keeps an orb silhouette when motion is reduced, not the raw square', () => {
+    const html = markup({ kind: 'retrieval', progress: 0.4 });
+    expect(html).toContain('.fq-orb { border-radius: 58% 42% 55% 45% / 45% 58% 42% 55%; }');
+    expect(html).toContain('.fq-orb-halo { opacity: 0.26; }');
+  });
+
+  it('carries the label light as a clipped gradient rather than a colour change', () => {
+    const html = markup({ kind: 'retrieval', progress: 0.4 });
+    expect(html).toContain('background-clip:text');
+    expect(html).toContain('-webkit-text-fill-color:transparent');
+  });
+
+  it('reserves a full row so the answer below does not shift when it unmounts', () => {
+    const html = markup({ kind: 'retrieval', progress: 0.4 });
+    expect(html).toContain('min-h-11');
   });
 });
