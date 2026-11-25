@@ -385,7 +385,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                             className={clsx(
                                                 "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
                                                 input.trim() && !isLoading && backendStatus && !backendError
-                                                    ? "bg-blue-600 text-white shadow-none hover:bg-blue-700"
+                                                    ? "brand-gradient-y text-white shadow-none hover:brightness-[1.06]"
                                                     : "bg-slate-100 text-slate-600 cursor-not-allowed"
                                             )}
                                         >
