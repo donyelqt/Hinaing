@@ -383,7 +383,7 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                             type="submit"
                                             disabled={!input.trim() || isLoading || !backendStatus || !!backendError}
                                             className={clsx(
-                                                "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 active:scale-95 text-sm font-medium",
+                                                "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 text-sm font-medium",
                                                 input.trim() && !isLoading && backendStatus && !backendError
                                                     ? "brand-gradient-y text-white shadow-none hover:brightness-[1.06]"
                                                     : "bg-slate-100 text-slate-600 cursor-not-allowed"
