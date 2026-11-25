@@ -28,22 +28,13 @@ import { cn } from "../../../lib/utils";
  * mutation, and `aria-busy` on it would defer the announcement forever.
  */
 
-export type FastQnaPhase =
-  | { kind: "retrieval"; progress: number }
-  | { kind: "generating"; progress: number };
-
 export type FastQnaThinkingProps = {
-  /**
-   * Omit while the request is still waiting on /start. There is no honest verb
-   * for that gap, and inventing one reads as filler.
-   */
-  phase?: FastQnaPhase;
   className?: string;
 };
 
 /**
- * One label for both passes. The two stages are an implementation detail, and
- * naming them made the row change width mid-wait.
+ * One label for every stage. The label is constant, so nothing here needs to
+ * know which pass is running, and the row never changes width mid-wait.
  */
 const LABEL = "Thinking";
 
@@ -108,12 +99,11 @@ const KEYFRAMES = `
   }
 `;
 
-export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
+export function FastQnaThinking({ className }: FastQnaThinkingProps) {
   return (
     <div
       aria-hidden="true"
       data-fast-qna=""
-      data-phase={phase?.kind ?? "pending"}
       className={cn("flex min-h-11 w-full select-none items-center gap-3 py-1.5", className)}
     >
       <style>{KEYFRAMES}</style>
@@ -143,21 +133,19 @@ export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
         />
       </span>
 
-      {phase && (
-        <span
-          className="fq-orb-label truncate text-xs font-medium text-slate-600 motion-safe:animate-[fq-orb-sweep_2400ms_linear_infinite]"
-          style={{
-            backgroundImage:
-              "linear-gradient(100deg,rgb(71 85 105) 0%,rgb(71 85 105) 40%,rgb(var(--brand-to-rgb)) 50%,rgb(71 85 105) 60%,rgb(71 85 105) 100%)",
-            backgroundSize: "230% 100%",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          {LABEL}
-        </span>
-      )}
+      <span
+        className="fq-orb-label truncate text-xs font-medium text-slate-600 motion-safe:animate-[fq-orb-sweep_2400ms_linear_infinite]"
+        style={{
+          backgroundImage:
+            "linear-gradient(100deg,rgb(71 85 105) 0%,rgb(71 85 105) 40%,rgb(var(--brand-to-rgb)) 50%,rgb(71 85 105) 60%,rgb(71 85 105) 100%)",
+          backgroundSize: "230% 100%",
+          backgroundClip: "text",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+        }}
+      >
+        {LABEL}
+      </span>
     </div>
   );
 }
