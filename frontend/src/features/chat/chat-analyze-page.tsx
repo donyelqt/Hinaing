@@ -758,14 +758,7 @@ function MessageBubble({ msg }: { msg: Message }) {
                             message={msg.content}
                         />
                     ) : (
-                        <FastQnaThinking
-                            phase={msg.streamStage === "generating"
-                                ? { kind: "generating", progress: msg.streamProgress }
-                                : msg.streamStage === "retrieval"
-                                    ? { kind: "retrieval", progress: msg.streamProgress }
-                                    : undefined
-                            }
-                        />
+                        <FastQnaThinking />
                     )
                 )}
 
@@ -977,8 +970,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         setIsLoading(true);
 
         // The orb shows during the wait, not only once /start answers. The
-        // pipeline is unknown until then, so the seed claims no pipeline and
-        // the gate below draws the orb for a seed with no pipeline.
+        // seed carries progress so the gate draws it, and no pipeline so the
+        // agentic trajectory stays out of the way.
         setMessages((prev) => [...prev, {
             role: "model",
             content: "Thinking...",
@@ -1025,10 +1018,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     setSessionId(startData.session_id);
                 }
                 
-                // Show animated progress for Q&A mode. Each step holds long
-                // enough to read, because 300ms cleared both before the eye
-                // landed on the label.
-                // Step 1: Searching (800ms)
+                // Show the indicator for Q&A mode. The label is constant, so
+                // the two steps only exist to give the orb a beat on screen.
+                // Step 1
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
@@ -1043,9 +1035,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     }
                     return updated;
                 });
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
-                // Step 2: Generating (800ms)
+                // Step 2
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
@@ -1060,7 +1052,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     }
                     return updated;
                 });
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 300));
                 
                 // Step 3: Display final result
                 setMessages((prev) => {
