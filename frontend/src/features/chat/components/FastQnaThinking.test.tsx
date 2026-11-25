@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { FastQnaThinking } from './FastQnaThinking';
 
-const markup = (phase: Parameters<typeof FastQnaThinking>[0]['phase']) =>
+const markup = (phase?: Parameters<typeof FastQnaThinking>[0]['phase']) =>
   renderToStaticMarkup(<FastQnaThinking phase={phase} />);
 
 describe('FastQnaThinking', () => {
@@ -14,16 +14,21 @@ describe('FastQnaThinking', () => {
     expect(html).not.toContain('role="status"');
   });
 
-  it('names the phase it is in so the three states are distinguishable', () => {
-    expect(markup({ kind: 'pending', progress: 0 })).toContain('data-phase="pending"');
+  it('names the phase it is in so the two passes are distinguishable', () => {
     expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('data-phase="retrieval"');
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('data-phase="generating"');
   });
 
   it('labels the pass that is actually running', () => {
-    expect(markup({ kind: 'pending', progress: 0 })).toContain('Starting');
     expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('Searching for relevant information');
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('Generating response');
+  });
+
+  it('shows the orb alone with no label while the request is still waiting', () => {
+    const html = markup(undefined);
+    expect(html).toContain('data-phase="pending"');
+    expect(html).not.toContain('Starting');
+    expect(html).not.toContain('class="fq-orb-label');
   });
 
   it('renders a lit sphere, never a progress bar', () => {
