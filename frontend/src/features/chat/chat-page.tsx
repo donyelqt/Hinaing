@@ -4,6 +4,7 @@ import React from "react";
 import { Send, StopCircle, RefreshCw, Sparkles, User, ArrowRight, Menu, X } from "lucide-react";
 import clsx from "clsx";
 import { apiPost } from "@/lib/api";
+import { FastQnaThinking } from "./components/FastQnaThinking";
 import { Sidebar } from "../shared/components";
 import { HinaingLogo } from "@/components/ui/hinaing-logo";
 import { ActivePage } from "../shared/types/navigation";
@@ -327,9 +328,8 @@ export function ChatPage({ onNavigate }: ChatPageProps) {
                                                 <div className="mt-1 shrink-0">
                                                     <HinaingLogo alt="" className="h-7 sm:h-8 w-auto motion-safe:animate-pulse" />
                                                 </div>
-                                                <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500 text-xs sm:text-sm italic pt-2">
-                                                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-blue-400" />
-                                                    <span>Thinking...</span>
+                                                <div className="flex flex-1 items-center pt-2">
+                                                    <FastQnaThinking />
                                                 </div>
                                             </div>
                                         )}
