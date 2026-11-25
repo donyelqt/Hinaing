@@ -84,10 +84,8 @@ export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
           <span
             key={kind}
             data-active={kind === phase.kind}
-            className={cn(
-              "col-start-1 row-start-1 truncate text-xs font-medium text-slate-500",
-              kind === phase.kind ? "opacity-100" : "invisible opacity-0",
-            )}
+            className="col-start-1 row-start-1 truncate text-xs font-medium text-slate-500"
+            style={kind === phase.kind ? undefined : { visibility: "hidden" }}
           >
             {LABELS[kind]}
           </span>
