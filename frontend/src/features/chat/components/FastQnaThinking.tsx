@@ -7,13 +7,19 @@ import { cn } from "../../../lib/utils";
  * Fast Q&A thinking indicator.
  *
  * Fast Q&A is one retrieval pass then one generation pass, so this reads as a
- * single travelling head with a trail behind it. It deliberately does not use
- * the 7-node trajectory: that component paces a 12-second swarm, and a 600ms
- * request would never clear its first dwell.
+ * single living orb rather than a checklist. The orb is the only place the
+ * gradient lives, and the label carries the real state.
+ *
+ * There is no percentage and no bar. The request is a single pass, so a number
+ * would be fake progress.
+ *
+ * The seven-node trajectory is deliberately not used here. It paces a node
+ * every 1.6-2.4s and a Fast Q&A request finishes in about 600ms, so it would
+ * never clear its first dwell.
  *
  * The row is decorative. The answer that replaces it is the status message a
- * screen reader reads, so nothing here is a live region: a node that mounts
- * and unmounts inside 600ms never enters the accessibility tree before the
+ * screen reader reads, so nothing here is a live region: a row that mounts and
+ * unmounts inside 600ms never enters the accessibility tree before the
  * mutation, and `aria-busy` on it would defer the announcement forever.
  */
 
@@ -26,71 +32,69 @@ export type FastQnaThinkingProps = {
   className?: string;
 };
 
-/** Both labels are always mounted so the row is as wide as its widest word. */
 const LABELS: Record<FastQnaPhase["kind"], string> = {
   retrieval: "Searching for relevant information",
   generating: "Generating response",
 };
 
-/** Keeps the head visible when a phase reports zero progress. */
-const MIN_PROGRESS = 0.08;
-
 /**
- * Reads the live preference rather than a mount-time snapshot, so a user who
- * turns the setting on mid-session gets the still frame on the next render.
+ * Keyframes are inlined because the repo already does this for the welcome
+ * halo, and a one-off indicator does not earn a global block. The reduced
+ * motion kill switch is the same shape as that block's.
  */
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = React.useState(false);
-
-  React.useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = (): void => setReduced(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-
-  return reduced;
-}
+const KEYFRAMES = `
+  @keyframes fq-orb-morph {
+    0%, 100% { border-radius: 58% 42% 55% 45% / 45% 58% 42% 55%; }
+    33%      { border-radius: 45% 55% 48% 52% / 58% 45% 55% 42%; }
+    66%      { border-radius: 52% 48% 60% 40% / 42% 52% 45% 58%; }
+  }
+  @keyframes fq-orb-halo {
+    0%, 100% { opacity: 0.26; transform: scale(1); }
+    50%      { opacity: 0.46; transform: scale(1.12); }
+  }
+  @keyframes fq-orb-sweep {
+    from { background-position: 130% 0; }
+    to   { background-position: -130% 0; }
+  }
+  /* The base shape carries the still frame, so reduced motion keeps an orb
+     instead of the square the unstyled box would otherwise be. */
+  .fq-orb { border-radius: 58% 42% 55% 45% / 45% 58% 42% 55%; }
+  .fq-orb-halo { opacity: 0.26; }
+  @media (prefers-reduced-motion: reduce) {
+    .fq-orb, .fq-orb-halo, .fq-orb-label { animation: none !important; }
+  }
+`;
 
 export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
-  const progress = Math.min(1, Math.max(MIN_PROGRESS, phase.progress));
-
-  const reduceMotion = usePrefersReducedMotion();
-  const sweep = reduceMotion ? undefined : "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)";
-
   return (
     <div
       aria-hidden="true"
       data-fast-qna=""
       data-phase={phase.kind}
-      className={cn("relative h-10 w-full select-none", className)}
+      className={cn("flex min-h-11 w-full select-none items-center gap-2.5 py-1.5", className)}
     >
-      <div className="absolute inset-x-0 top-1 h-1 rounded-full bg-slate-200/70">
-        <div
-          className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-[linear-gradient(90deg,rgb(var(--brand-from-rgb)/0.35),rgb(var(--brand-to-rgb)/0.9))]"
-          style={{ transform: `scaleX(${progress})`, transition: sweep }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{ transform: `translateX(${(progress - 1) * 100}%)`, transition: sweep }}
-        >
-          <span className="absolute right-0 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[linear-gradient(135deg,rgb(var(--brand-from-rgb)),rgb(var(--brand-to-rgb)))] shadow-[0_0_0_3px_rgb(var(--brand-from-rgb)/0.16)]" />
-        </div>
-      </div>
+      <style>{KEYFRAMES}</style>
 
-      <div className="absolute inset-x-0 bottom-0 grid leading-4">
-        {(Object.keys(LABELS) as FastQnaPhase["kind"][]).map((kind) => (
-          <span
-            key={kind}
-            data-active={kind === phase.kind}
-            className="col-start-1 row-start-1 truncate text-xs font-medium text-slate-500"
-            style={kind === phase.kind ? undefined : { visibility: "hidden" }}
-          >
-            {LABELS[kind]}
-          </span>
-        ))}
-      </div>
+      <span className="relative grid h-7 w-7 shrink-0 place-items-center">
+        <span
+          className="fq-orb-halo absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_30%,rgb(var(--brand-to-rgb)),rgb(var(--brand-from-rgb)))] blur-[6px] motion-safe:animate-[fq-orb-halo_3400ms_ease-in-out_infinite]"
+        />
+        <span className="fq-orb relative h-6 w-6 bg-[radial-gradient(circle_at_35%_30%,rgb(var(--brand-to-rgb)),rgb(var(--brand-from-rgb)))] shadow-[0_0_0_1px_rgb(var(--brand-from-rgb)/0.2)] motion-safe:animate-[fq-orb-morph_2400ms_ease-in-out_infinite]" />
+      </span>
+
+      <span
+        className="fq-orb-label truncate text-xs font-medium text-slate-600 motion-safe:animate-[fq-orb-sweep_2400ms_linear_infinite]"
+        style={{
+          backgroundImage:
+            "linear-gradient(100deg,rgb(71 85 105) 0%,rgb(71 85 105) 40%,rgb(var(--brand-to-rgb)) 50%,rgb(71 85 105) 60%,rgb(71 85 105) 100%)",
+          backgroundSize: "230% 100%",
+          backgroundClip: "text",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+        }}
+      >
+        {LABELS[phase.kind]}
+      </span>
     </div>
   );
 }
