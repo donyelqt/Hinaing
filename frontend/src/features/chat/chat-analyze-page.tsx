@@ -748,20 +748,23 @@ function MessageBubble({ msg }: { msg: Message }) {
                         : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-8 sm:mr-12 max-w-[85%] sm:max-w-[75%] shadow-none"
                 )}
             >
-                {/* Streaming indicator — Fast Q&A is one pass, the swarm is seven nodes */}
-                {msg.isStreaming && msg.pipeline !== undefined && msg.streamProgress !== undefined && (
-                    msg.pipeline === "fast_qna" ? (
-                        <FastQnaThinking
-                            phase={msg.streamStage === "generating"
-                                ? { kind: "generating", progress: msg.streamProgress }
-                                : { kind: "retrieval", progress: msg.streamProgress }
-                            }
-                        />
-                    ) : (
+                {/* Streaming indicator. A seed with no pipeline is still
+                    waiting on /start, so it draws the orb rather than nothing. */}
+                {msg.isStreaming && msg.streamProgress !== undefined && (
+                    msg.pipeline === "agentic" ? (
                         <PipelineTrajectory
                             stage={msg.streamStage || "start"}
                             progress={msg.streamProgress}
                             message={msg.content}
+                        />
+                    ) : (
+                        <FastQnaThinking
+                            phase={msg.streamStage === "pending"
+                                ? { kind: "pending", progress: msg.streamProgress }
+                                : msg.streamStage === "generating"
+                                    ? { kind: "generating", progress: msg.streamProgress }
+                                    : { kind: "retrieval", progress: msg.streamProgress }
+                            }
                         />
                     )
                 )}
@@ -973,12 +976,15 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         setInput("");
         setIsLoading(true);
 
-        // No indicator yet: the agent system is unknown until /start answers,
-        // and the seed has no progress value to draw.
+        // The orb shows during the wait, not only once /start answers. The
+        // pipeline is unknown until then, so the seed claims no pipeline and
+        // the gate below draws the orb for a seed with no pipeline.
         setMessages((prev) => [...prev, {
             role: "model",
             content: "Thinking...",
-            isStreaming: true
+            isStreaming: true,
+            streamProgress: 0,
+            streamStage: "pending"
         }]);
 
         try {
