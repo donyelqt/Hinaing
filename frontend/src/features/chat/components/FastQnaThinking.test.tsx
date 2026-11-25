@@ -19,9 +19,13 @@ describe('FastQnaThinking', () => {
     expect(markup({ kind: 'generating', progress: 0.8 })).toContain('data-phase="generating"');
   });
 
-  it('labels the pass that is actually running', () => {
-    expect(markup({ kind: 'retrieval', progress: 0.4 })).toContain('Searching for relevant information');
-    expect(markup({ kind: 'generating', progress: 0.8 })).toContain('Generating response');
+  it('shows one label for both passes so the row never changes width', () => {
+    const retrieval = markup({ kind: 'retrieval', progress: 0.4 });
+    const generating = markup({ kind: 'generating', progress: 0.8 });
+    expect(retrieval).toContain('Thinking');
+    expect(generating).toContain('Thinking');
+    expect(retrieval).not.toContain('Searching for relevant');
+    expect(generating).not.toContain('Generating response');
   });
 
   it('shows the orb alone with no label while the request is still waiting', () => {
