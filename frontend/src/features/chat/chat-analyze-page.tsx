@@ -759,11 +759,11 @@ function MessageBubble({ msg }: { msg: Message }) {
                         />
                     ) : (
                         <FastQnaThinking
-                            phase={msg.streamStage === "pending"
-                                ? { kind: "pending", progress: msg.streamProgress }
-                                : msg.streamStage === "generating"
-                                    ? { kind: "generating", progress: msg.streamProgress }
-                                    : { kind: "retrieval", progress: msg.streamProgress }
+                            phase={msg.streamStage === "generating"
+                                ? { kind: "generating", progress: msg.streamProgress }
+                                : msg.streamStage === "retrieval"
+                                    ? { kind: "retrieval", progress: msg.streamProgress }
+                                    : undefined
                             }
                         />
                     )

@@ -29,17 +29,19 @@ import { cn } from "../../../lib/utils";
  */
 
 export type FastQnaPhase =
-  | { kind: "pending"; progress: number }
   | { kind: "retrieval"; progress: number }
   | { kind: "generating"; progress: number };
 
 export type FastQnaThinkingProps = {
-  phase: FastQnaPhase;
+  /**
+   * Omit while the request is still waiting on /start. There is no honest verb
+   * for that gap, and inventing one reads as filler.
+   */
+  phase?: FastQnaPhase;
   className?: string;
 };
 
 const LABELS: Record<FastQnaPhase["kind"], string> = {
-  pending: "Starting",
   retrieval: "Searching for relevant information",
   generating: "Generating response",
 };
@@ -110,7 +112,7 @@ export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
     <div
       aria-hidden="true"
       data-fast-qna=""
-      data-phase={phase.kind}
+      data-phase={phase?.kind ?? "pending"}
       className={cn("flex min-h-11 w-full select-none items-center gap-3 py-1.5", className)}
     >
       <style>{KEYFRAMES}</style>
@@ -140,19 +142,21 @@ export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
         />
       </span>
 
-      <span
-        className="fq-orb-label truncate text-xs font-medium text-slate-600 motion-safe:animate-[fq-orb-sweep_2400ms_linear_infinite]"
-        style={{
-          backgroundImage:
-            "linear-gradient(100deg,rgb(71 85 105) 0%,rgb(71 85 105) 40%,rgb(var(--brand-to-rgb)) 50%,rgb(71 85 105) 60%,rgb(71 85 105) 100%)",
-          backgroundSize: "230% 100%",
-          backgroundClip: "text",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}
-      >
-        {LABELS[phase.kind]}
-      </span>
+      {phase && (
+        <span
+          className="fq-orb-label truncate text-xs font-medium text-slate-600 motion-safe:animate-[fq-orb-sweep_2400ms_linear_infinite]"
+          style={{
+            backgroundImage:
+              "linear-gradient(100deg,rgb(71 85 105) 0%,rgb(71 85 105) 40%,rgb(var(--brand-to-rgb)) 50%,rgb(71 85 105) 60%,rgb(71 85 105) 100%)",
+            backgroundSize: "230% 100%",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          {LABELS[phase.kind]}
+        </span>
+      )}
     </div>
   );
 }
