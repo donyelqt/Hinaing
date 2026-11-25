@@ -28,15 +28,23 @@ import { cn } from "../../../lib/utils";
  * mutation, and `aria-busy` on it would defer the announcement forever.
  */
 
+export type FastQnaStage = "thinking" | "retrieval" | "generating";
+
 export type FastQnaThinkingProps = {
+  /** Defaults to `thinking`, which is all the seed message knows. */
+  stage?: FastQnaStage;
   className?: string;
 };
 
 /**
- * One label for every stage. The label is constant, so nothing here needs to
- * know which pass is running, and the row never changes width mid-wait.
+ * One label per stage. The wait says Thinking, then each pass names itself, so
+ * the user can see the request move rather than watch one word sit still.
  */
-const LABEL = "Thinking";
+const LABELS: Record<FastQnaStage, string> = {
+  thinking: "Thinking",
+  retrieval: "Searching for relevant information",
+  generating: "Generating response",
+};
 
 /**
  * Lit sphere. The highlight has to hold for a visible distance, so the white
@@ -99,11 +107,12 @@ const KEYFRAMES = `
   }
 `;
 
-export function FastQnaThinking({ className }: FastQnaThinkingProps) {
+export function FastQnaThinking({ stage = "thinking", className }: FastQnaThinkingProps) {
   return (
     <div
       aria-hidden="true"
       data-fast-qna=""
+      data-stage={stage}
       className={cn("flex min-h-11 w-full select-none items-center gap-3 py-1.5", className)}
     >
       <style>{KEYFRAMES}</style>
@@ -144,7 +153,7 @@ export function FastQnaThinking({ className }: FastQnaThinkingProps) {
           WebkitTextFillColor: "transparent",
         }}
       >
-        {LABEL}
+        {LABELS[stage]}
       </span>
     </div>
   );

@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { FastQnaThinking } from './FastQnaThinking';
 
-const markup = () => renderToStaticMarkup(<FastQnaThinking />);
+const markup = (stage?: Parameters<typeof FastQnaThinking>[0]['stage']) =>
+  renderToStaticMarkup(<FastQnaThinking stage={stage} />);
 
 describe('FastQnaThinking', () => {
   it('is hidden from assistive tech because the answer is the status message', () => {
@@ -13,17 +14,18 @@ describe('FastQnaThinking', () => {
     expect(html).not.toContain('role="status"');
   });
 
-  it('shows Thinking from the first frame so the wait is never blank', () => {
+  it('says Thinking by default so the wait is never blank', () => {
     const html = markup();
     expect(html).toContain('Thinking');
+    expect(html).toContain('data-stage="thinking"');
     expect(html).toContain('class="fq-orb-label');
   });
 
-  it('never names a pass, so the row cannot change width mid-wait', () => {
-    const html = markup();
-    expect(html).not.toContain('Searching for relevant');
-    expect(html).not.toContain('Generating response');
-    expect(html).not.toContain('Starting');
+  it('names each pass so the user can see the request move', () => {
+    expect(markup('retrieval')).toContain('Searching for relevant information');
+    expect(markup('generating')).toContain('Generating response');
+    expect(markup('retrieval')).toContain('data-stage="retrieval"');
+    expect(markup('generating')).toContain('data-stage="generating"');
   });
 
   it('renders a lit sphere, never a progress bar', () => {
