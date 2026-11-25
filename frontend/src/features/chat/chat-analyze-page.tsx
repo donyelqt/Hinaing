@@ -9,6 +9,7 @@ import { isEmptyParagraph, parseCitations } from "../sentiment/utils/citation-pa
 import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 import { PipelineTrajectory } from "./components/PipelineTrajectory";
+import { FastQnaThinking } from "./components/FastQnaThinking";
 
 const AGENTIC_MODE_OPTIONS = [
     { value: 'auto', label: 'Auto' },
@@ -164,6 +165,8 @@ interface Message {
     isStreaming?: boolean;
     streamProgress?: number;
     streamStage?: string;
+    /** Which agent system is running, so the bubble picks the right indicator. */
+    pipeline?: "fast_qna" | "agentic";
     data?: AnalysisData;
 }
 
@@ -745,13 +748,22 @@ function MessageBubble({ msg }: { msg: Message }) {
                         : "bg-white border border-slate-100 text-slate-700 rounded-tl-none mr-8 sm:mr-12 max-w-[85%] sm:max-w-[75%] shadow-none"
                 )}
             >
-                {/* Progress Bar for Streaming */}
-                {msg.isStreaming && msg.streamProgress !== undefined && (
-                    <PipelineTrajectory
-                        stage={msg.streamStage || "start"}
-                        progress={msg.streamProgress}
-                        message={msg.content}
-                    />
+                {/* Streaming indicator — Fast Q&A is one pass, the swarm is seven nodes */}
+                {msg.isStreaming && msg.pipeline !== undefined && msg.streamProgress !== undefined && (
+                    msg.pipeline === "fast_qna" ? (
+                        <FastQnaThinking
+                            phase={msg.streamStage === "generating"
+                                ? { kind: "generating", progress: msg.streamProgress }
+                                : { kind: "retrieval", progress: msg.streamProgress }
+                            }
+                        />
+                    ) : (
+                        <PipelineTrajectory
+                            stage={msg.streamStage || "start"}
+                            progress={msg.streamProgress}
+                            message={msg.content}
+                        />
+                    )
                 )}
 
                 {/* Hide text content while streaming OR when rich analysis card is shown */}
@@ -961,13 +973,12 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         setInput("");
         setIsLoading(true);
 
-        // Add initial streaming message with thinking animation
+        // No indicator yet: the agent system is unknown until /start answers,
+        // and the seed has no progress value to draw.
         setMessages((prev) => [...prev, {
             role: "model",
             content: "Thinking...",
-            isStreaming: true,
-            streamProgress: 0.1,
-            streamStage: "start"
+            isStreaming: true
         }]);
 
         try {
@@ -1018,7 +1029,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             ...updated[lastIdx],
                             content: "Searching for relevant information...",
                             streamProgress: 0.4,
-                            streamStage: "retrieval"
+                            streamStage: "retrieval",
+                            pipeline: "fast_qna"
                         };
                     }
                     return updated;
@@ -1034,7 +1046,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                             ...updated[lastIdx],
                             content: "Generating response...",
                             streamProgress: 0.8,
-                            streamStage: "themes"
+                            streamStage: "generating",
+                            pipeline: "fast_qna"
                         };
                     }
                     return updated;
@@ -1077,7 +1090,8 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                         ...updated[lastIdx],
                         content: "Starting multi-agent analysis...",
                         streamProgress: 0.1,
-                        streamStage: "query_orchestrator"
+                        streamStage: "query_orchestrator",
+                        pipeline: "agentic"
                     };
                 }
                 return updated;
