@@ -41,10 +41,11 @@ export type FastQnaThinkingProps = {
   className?: string;
 };
 
-const LABELS: Record<FastQnaPhase["kind"], string> = {
-  retrieval: "Searching for relevant information",
-  generating: "Generating response",
-};
+/**
+ * One label for both passes. The two stages are an implementation detail, and
+ * naming them made the row change width mid-wait.
+ */
+const LABEL = "Thinking";
 
 /**
  * Lit sphere. The highlight has to hold for a visible distance, so the white
@@ -154,7 +155,7 @@ export function FastQnaThinking({ phase, className }: FastQnaThinkingProps) {
             WebkitTextFillColor: "transparent",
           }}
         >
-          {LABELS[phase.kind]}
+          {LABEL}
         </span>
       )}
     </div>
