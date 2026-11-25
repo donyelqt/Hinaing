@@ -758,7 +758,13 @@ function MessageBubble({ msg }: { msg: Message }) {
                             message={msg.content}
                         />
                     ) : (
-                        <FastQnaThinking />
+                        <FastQnaThinking
+                            stage={msg.streamStage === "retrieval"
+                                ? "retrieval"
+                                : msg.streamStage === "generating"
+                                    ? "generating"
+                                    : "thinking"}
+                        />
                     )
                 )}
 
