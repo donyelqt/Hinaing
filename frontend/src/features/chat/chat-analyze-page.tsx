@@ -1028,7 +1028,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                 // Show animated progress for Q&A mode. Each step holds long
                 // enough to read, because 300ms cleared both before the eye
                 // landed on the label.
-                // Step 1: Searching (1200ms)
+                // Step 1: Searching (800ms)
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
@@ -1043,9 +1043,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     }
                     return updated;
                 });
-                await new Promise(resolve => setTimeout(resolve, 1200));
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
-                // Step 2: Generating (1200ms)
+                // Step 2: Generating (800ms)
                 setMessages((prev) => {
                     const updated = [...prev];
                     const lastIdx = updated.length - 1;
@@ -1060,7 +1060,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                     }
                     return updated;
                 });
-                await new Promise(resolve => setTimeout(resolve, 1200));
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
                 // Step 3: Display final result
                 setMessages((prev) => {
