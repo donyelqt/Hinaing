@@ -82,11 +82,22 @@ class CoordinatorAgent:
                 sentiment_distribution=sentiment_distribution,
                 llm_mode=llm_mode,
             )
-            logger.info("[CoordinatorAgent] Narrative generation complete")
-            return summary, insights
         except Exception as exc:
             logger.exception("[CoordinatorAgent] Failed to generate narrative: %s", exc)
             return None, []
+
+        # Log completion only after the call returned. Logging first made a
+        # swallowed 429 read as a delivered narrative.
+        if not summary:
+            logger.error(
+                "[CoordinatorAgent] Narrative generation returned no summary "
+                "for %d documents",
+                len(documents),
+            )
+            return None, insights
+
+        logger.info("[CoordinatorAgent] Narrative generation complete")
+        return summary, insights
 
 
 # Global singleton instance
