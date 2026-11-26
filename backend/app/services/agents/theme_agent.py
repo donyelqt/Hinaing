@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ...schemas.snapshot import WebDocument
+from ...core.llm_budget import LLM_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -223,7 +224,7 @@ IMPORTANT:
                 prompt=prompt,
                 system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
                 temperature=0.1,
-                max_tokens=8000,
+                max_tokens=LLM_MAX_OUTPUT_TOKENS,
             )
             
             output = sanitize_text(response)

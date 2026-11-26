@@ -16,6 +16,7 @@ from typing import Any, Callable
 # from ..agents.gemini import run_gemini_agent
 
 from ...core.config import get_settings
+from ...core.llm_budget import LLM_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +348,7 @@ class LLMNarrativeClient:
                 prompt=analysis_prompt,
                 system_prompt="You are a senior analyst for Baguio City command center. Return VALID JSON only (no markdown, no code blocks).",
                 temperature=0.2,
-                max_tokens=8000,
+                max_tokens=LLM_MAX_OUTPUT_TOKENS,
             )
             elapsed = time.perf_counter() - start
             logger.info(f"[LLMNarrativeClient] Narrative generated in {elapsed:.1f}s")
