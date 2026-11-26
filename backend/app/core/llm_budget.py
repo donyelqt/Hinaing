@@ -16,6 +16,11 @@ from __future__ import annotations
 # below is checkable against the number rather than a comment.
 LLM_FREE_TIER_TPM: int = 8000
 
-# Output tokens requested per call. Half the per-minute ceiling, so two calls
-# can overlap without tripping the limit.
+# Output tokens for a theme synthesis call. Six of these run concurrently, so
+# each one stays at half the per-minute ceiling.
 LLM_MAX_OUTPUT_TOKENS: int = 4000
+
+# Output tokens for the narrative call. It runs after the theme calls finish,
+# so it may claim more of the window. Six paragraphs with inline citations do
+# not fit in 4000 once reasoning tokens are counted.
+LLM_NARRATIVE_MAX_OUTPUT_TOKENS: int = 6000
