@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 from ..llm.factory import get_llm_for_mode
+from ...core.llm_budget import LLM_CLAIM_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class ClaimExtractor:
                     prompt=prompt,
                     system_prompt="You are a claim extraction specialist. Return ONLY valid JSON array of claims (no markdown, no code blocks).",
                     temperature=0.1,
-                    max_tokens=4000,
+                    max_tokens=LLM_CLAIM_MAX_OUTPUT_TOKENS,
                 )
 
                 elapsed = time.perf_counter() - start
