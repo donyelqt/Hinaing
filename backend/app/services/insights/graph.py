@@ -40,6 +40,20 @@ if settings.langsmith_api_key:
         os.environ.setdefault("LANGCHAIN_PROJECT", settings.langsmith_project)
 
 
+def _count_verified(documents: list[WebDocument]) -> int:
+    """Count documents the system cleared without external corroboration.
+
+    Single definition of Verified Hinaing, shared by the metrics run, the
+    snapshot collector and both pages. A document counts when Tavily returned
+    a verdict or VSEE bypassed the external calls.
+    """
+    return sum(
+        1
+        for doc in documents
+        if (getattr(doc, "metadata", None) or {}).get("tavily_verification_status")
+        in ("verified", "vsee_bypass")
+    )
+
 # --------------------------------------------------------------------------
 # GRAPH DEFINITION (The Wiring Diagram)
 # --------------------------------------------------------------------------
@@ -257,8 +271,8 @@ async def generate_snapshot(
 
                 cred_scores = [(d.metadata or {}).get("credibility_score", 0.5) for d in enriched]
                 avg_cred = sum(cred_scores) / max(len(cred_scores), 1)
-                high_cred = sum(1 for s in cred_scores if s >= 0.55)
-                low_cred = sum(1 for s in cred_scores if s < 0.55)
+                high_cred = _count_verified(enriched)
+                low_cred = len(enriched) - high_cred
                 metrics.record_credibility_metrics(avg_cred, high_cred, low_cred)
 
             theme_docs = state.get("theme_documents", {})
