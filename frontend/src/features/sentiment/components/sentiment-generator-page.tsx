@@ -807,18 +807,14 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           )}>
                             <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.verifiedPercent / 100))}>{credibilityBreakdown.verifiedPercent}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
-                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              Cleared by VSEE or Tavily
-                            </p>
+                
                           </div>
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                           )}>
                             <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibilityPercent / 100))}>{credibilityBreakdown.lowCredibilityPercent}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Review</span>
-                            <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[11px] text-slate-500 leading-tight hidden sm:block">
-                              Scored below 55%
-                            </p>
+          
                           </div>
                         </div>
 
