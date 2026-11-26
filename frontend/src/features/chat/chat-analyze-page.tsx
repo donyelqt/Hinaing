@@ -10,6 +10,8 @@ import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 import { PipelineTrajectory } from "./components/PipelineTrajectory";
 import { FastQnaThinking } from "./components/FastQnaThinking";
+import { buildDemoSweep, DEMO_PROMPT } from "./demo/corpus";
+import { useDemoMode } from "./demo/use-demo-mode";
 
 const AGENTIC_MODE_OPTIONS = [
     { value: 'auto', label: 'Auto' },
@@ -33,6 +35,11 @@ const LLM_OPTIONS = [
 const SYSTEM_MODE_OPTIONS = [
     { value: 'agentic_hinaing', label: 'AgenticHinaing' },
     { value: 'evaluation', label: 'Evaluation' },
+] as const;
+
+const DEMO_MODE_OPTIONS = [
+    { value: 'off', label: 'Live' },
+    { value: 'on', label: 'Demo' },
 ] as const;
 
 function SegmentedControl({
@@ -555,7 +562,7 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
     );
 }
 
-function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) => void }) {
+function WelcomeScreen({ onPromptSelect, demoEnabled }: { onPromptSelect: (prompt: string) => void; demoEnabled: boolean }) {
     const [greeting, setGreeting] = React.useState("Hello");
     
     React.useEffect(() => {
@@ -563,15 +570,21 @@ function WelcomeScreen({ onPromptSelect }: { onPromptSelect: (prompt: string) =>
         setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
     }, []);
 
-    const analysisSuggestions = [
-        "Analyze public sentiment about safety in Baguio",
-        "What's the current sentiment on infrastructure issues?",
-    ];
+    // Demo mode swaps the two live shortcuts for one six-theme sweep that the
+    // frozen corpus answers offline. Off, the live shortcuts stay.
+    const analysisSuggestions = demoEnabled
+        ? [DEMO_PROMPT]
+        : [
+            "Analyze public sentiment about safety in Baguio",
+            "What's the current sentiment on infrastructure issues?",
+        ];
 
-    const simpleSuggestions = [
-        "What is the Panagbenga Festival?",
-        "How many hospitals are in Baguio City?",
-    ];
+    const simpleSuggestions = demoEnabled
+        ? []
+        : [
+            "What is the Panagbenga Festival?",
+            "How many hospitals are in Baguio City?",
+        ];
 
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
@@ -888,6 +901,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
   // NEW: System mode toggle (AgenticHinaing vs Evaluation)
   const [systemMode, setSystemMode] = React.useState<SystemMode>('agentic_hinaing');
   const [evalMode, setEvalMode] = React.useState<EvalMode>('agentic_rag');
+  const demoMode = useDemoMode();
 
     const bottomRef = React.useRef<HTMLDivElement>(null);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -960,8 +974,9 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
       e?.preventDefault();
       if (!input.trim() || isLoading) return;
   
-      // Check if backend is ready
-      if (!backendStatus || backendError) {
+      // Demo mode answers from the frozen corpus, so a dead backend must not
+      // block it. The live path still requires a healthy backend.
+      if (!demoMode.enabled && (!backendStatus || backendError)) {
         setMessages((prev) => [...prev, {
           role: "model",
           content: "System is still initializing. Please wait a moment and try again.",
@@ -986,6 +1001,26 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
             streamStage: "pending"
         }]);
 
+
+        // Demo mode answers from the frozen corpus and returns before any
+        // fetch, so a demo cannot be rate limited or fail on a dead network.
+        if (demoMode.enabled) {
+            setMessages((prev) => {
+                const updated = [...prev];
+                const lastIdx = updated.length - 1;
+                if (updated[lastIdx]?.isStreaming) {
+                    updated[lastIdx] = {
+                        role: "model",
+                        content: "",
+                        isStreaming: false,
+                        data: buildDemoSweep(),
+                    };
+                }
+                return updated;
+            });
+            setIsLoading(false);
+            return;
+        }
         try {
             const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -1262,7 +1297,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                 className="flex-1 overflow-y-auto w-full scroll-smooth p-3 sm:p-4 md:p-6 overscroll-contain"
                             >
                                 {messages.length === 0 ? (
-                                    <WelcomeScreen onPromptSelect={handlePromptSelect} />
+                                    <WelcomeScreen onPromptSelect={handlePromptSelect} demoEnabled={demoMode.enabled} />
                                 ) : (
                                     <div className="w-full max-w-4xl mx-auto pb-2 sm:pb-4 pt-2 sm:pt-4">
                                         {messages.map((msg, i) => (
@@ -1338,6 +1373,14 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             onChange={(next) => setSystemMode(next as SystemMode)}
                                             options={SYSTEM_MODE_OPTIONS}
                                         />
+
+                                        {/* Demo mode, persisted per browser */}
+                                        <SegmentedControl
+                                            ariaLabel="Demo mode"
+                                            value={demoMode.enabled ? 'on' : 'off'}
+                                            onChange={(next) => demoMode.setEnabled(next === 'on')}
+                                            options={DEMO_MODE_OPTIONS}
+                                        />
                                             </div>
                                         </div>
                                     </div>
@@ -1360,17 +1403,17 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                                             />
                                             <button
                                                 type="submit"
-                                                disabled={!input.trim() || isLoading || !backendStatus || !!backendError}
+                                                disabled={!input.trim() || isLoading || (!demoMode.enabled && (!backendStatus || !!backendError))}
                                                 className={clsx(
                                                     "px-3 py-2 rounded-md sm:rounded-lg transition-all duration-200 text-sm font-medium",
-                                                    input.trim() && !isLoading && backendStatus && !backendError
+                                                    input.trim() && !isLoading && (demoMode.enabled || (backendStatus && !backendError))
                                                         ? "brand-gradient-y text-white shadow-none hover:brightness-[1.06]"
                                                         : "bg-slate-100 text-slate-600 cursor-not-allowed"
                                                 )}
                                             >
                                                 {isLoading ? (
                                                     <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                                ) : !backendStatus || backendError ? (
+                                                ) : !demoMode.enabled && (!backendStatus || backendError) ? (
                                                     <>
                                                         <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                                                         Initializing...
