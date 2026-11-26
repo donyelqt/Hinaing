@@ -65,6 +65,16 @@ def _log_memory_usage(stage: str):
 
 logger = logging.getLogger(__name__)
 
+# A theme that exhausts its retries returns this marker instead of an insight.
+# build_snapshot counts only real insights, so a failed theme cannot inflate
+# the run total or read as a delivered recommendation.
+INSUFFICIENT_SIGNAL_PREFIX = "This run retrieved"
+INSUFFICIENT_SIGNAL_DETAIL = (
+    INSUFFICIENT_SIGNAL_PREFIX + " {count} document(s) tagged {label}, but the "
+    "analyst model could not produce specific actionable recommendations from "
+    "them. No fabricated recommendations are shown."
+)
+
 # --------------------------------------------------------------------------
 # AGENT INSTANCES (The Workforce)
 # --------------------------------------------------------------------------
@@ -896,8 +906,25 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
     insights: list[Insight] = []
     theme_fallbacks = state.get("theme_insights") or []
 
-    if theme_fallbacks:
-        insights.extend(theme_fallbacks)
+    # A theme that exhausted its retries returns the insufficient-signal marker.
+    # That is a failure report, not an insight, so it must not inflate the count.
+    failed_themes = [
+        item
+        for item in theme_fallbacks
+        if item.detail.startswith(INSUFFICIENT_SIGNAL_PREFIX)
+    ]
+    real_theme_insights = [
+        item for item in theme_fallbacks if item not in failed_themes
+    ]
+    if failed_themes:
+        logger.warning(
+            "[snapshot] %d theme(s) produced no insights: %s",
+            len(failed_themes),
+            ", ".join(item.category for item in failed_themes),
+        )
+
+    if real_theme_insights:
+        insights.extend(real_theme_insights)
     elif insights_payload:
         for idx, payload in enumerate(insights_payload, start=1):
             try:
@@ -1205,27 +1232,35 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         llm = get_llm_for_mode(llm_mode)
         logger.info(f"[ThemeAgent] Running synchronous LLM (mode={llm_mode or 'active'}, model={llm.model_name}) for '{label}' with {len(enriched_docs)} docs")
         
-        try:
-            # Use synchronous generate method
-            # Groq's gpt-oss-120b emits reasoning tokens before the JSON
-            # payload, and 3500 truncated theme synthesis mid-URL. 8000 gives
-            # both providers the same headroom, matching theme_agent.
-            response = llm.generate_sync(
-                prompt=prompt,
-                system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
-                temperature=0.1,
-                max_tokens=LLM_MAX_OUTPUT_TOKENS,
-            )
-            
-            from app.services.agents.theme_agent import sanitize_text
-            output = sanitize_text(response)
-            
-            # Parse the response
-            insights = _parse_theme_insights(output, label)
-            
-        except Exception as llm_err:
-            logger.warning(f"[ThemeAgent] LLM sync failed for {label}: {llm_err}, using fallback")
-            raise ValueError("LLM failed, using fallback")
+        # A model that answers with valid JSON and zero insights is usually a
+        # one-off sample, often after a 429. Retry before dropping the theme.
+        insights: list[dict] = []
+        for attempt in (1, 2):
+            try:
+                response = llm.generate_sync(
+                    prompt=prompt,
+                    system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                    temperature=0.1,
+                    max_tokens=LLM_MAX_OUTPUT_TOKENS,
+                )
+
+                from app.services.agents.theme_agent import sanitize_text
+                output = sanitize_text(response)
+                insights = _parse_theme_insights(output, label)
+                if insights:
+                    break
+
+                logger.warning(
+                    f"[ThemeAgent] {label} attempt {attempt} parsed 0 insights; "
+                    f"output: {output[:300]}"
+                )
+            except Exception as llm_err:
+                logger.warning(
+                    f"[ThemeAgent] {label} attempt {attempt} failed: {llm_err}"
+                )
+
+        if not insights:
+            raise ValueError("No structured insights found after 2 attempts")
         
         # Convert to Insight objects
         evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
@@ -1254,6 +1289,8 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         return [Insight(
             category=label,
             title=f"{label}: insufficient signal this run",
-            detail=f"This run retrieved {len(docs)} document(s) tagged {label}, but the analyst model could not produce specific actionable recommendations from them. No fabricated recommendations are shown.",
+            detail=INSUFFICIENT_SIGNAL_DETAIL.format(
+                count=len(docs), label=label
+            ),
             evidence=[],
         )]
