@@ -24,3 +24,8 @@ LLM_MAX_OUTPUT_TOKENS: int = 4000
 # so it may claim more of the window. Six paragraphs with inline citations do
 # not fit in 4000 once reasoning tokens are counted.
 LLM_NARRATIVE_MAX_OUTPUT_TOKENS: int = 6000
+
+# Output tokens for claim extraction. It runs in node 7, after the six theme
+# calls have finished, so it can claim more of the minute. 4000 truncated a
+# reasoning model's JSON array mid-string.
+LLM_CLAIM_MAX_OUTPUT_TOKENS: int = 6000
