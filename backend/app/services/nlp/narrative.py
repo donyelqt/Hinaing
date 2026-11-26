@@ -290,24 +290,22 @@ class LLMNarrativeClient:
                 url_short = str(url).replace('https://', '').replace('http://', '')
                 if len(url_short) > 60:
                     url_short = url_short[:57] + '...'
-                credibility = doc.get('metadata', {}).get('credibility_score', doc.get('credibility_score', 0.0))
                 sentiment = doc.get('sentiment', 'neutral').capitalize()
                 verification_status = doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
                 citation_map[idx] = {
                     'url': url_short,
-                    'credibility': round(credibility, 2),
                     'sentiment': sentiment,
                     'verification_status': verification_status,
                 }
         
-        # Convert [1], [2], [3] to [Src: url | Cred: X.XX | Sent: Y | Verified/Unverified]
+        # Convert [1], [2], [3] to the canonical three-field citation. The
+        # verifier pattern and the frontend parser both treat this as canonical.
         def replace_citation(match):
             num = int(match.group(1))
             if num in citation_map:
                 item = citation_map[num]
-                # Add verification status if available
                 verification = item.get('verification_status', 'unverified').capitalize()
-                return f"[Src: {item['url']} | Cred: {item['credibility']:.2f} | Sent: {item['sentiment']} | {verification}]"
+                return f"[Src: {item['url']} | Sent: {item['sentiment']} | {verification}]"
             else:
                 logger.warning(f"[LLMNarrativeClient] Citation [{num}] not found in citation map")
                 return match.group(0)  # Keep original if not found
