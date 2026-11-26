@@ -776,14 +776,12 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
     ablation = state.get("ablation_config", {})
     cwa_enabled = ablation.get("cwa_enabled", True)
     
-    # CWA: Sort documents by credibility score before passing to CoordinatorAgent
+    # Order documents so each theme's own strongest source leads. A single
+    # global sort makes one document the citation for every theme, which is
+    # why every paragraph cited source 1. Interleaving per-theme leaders keeps
+    # each theme's best evidence inside the citation menu's first entries.
     if cwa_enabled:
-        # FULL SYSTEM: Sort by credibility (high credibility docs cited first)
-        docs_for_coordinator = sorted(
-            docs,
-            key=lambda d: (d.metadata or {}).get("credibility_score", 0.5),
-            reverse=True
-        )
+        docs_for_coordinator = _order_docs_by_theme(state, docs)
     else:
         # ABLATED: No credibility weighting - use original order
         logger.info("[ABLA] Node 7: CWA disabled - using uniform source weighting")
@@ -967,6 +965,62 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
 # --------------------------------------------------------------------------
 # HELPERS
 # --------------------------------------------------------------------------
+def _credibility_key(doc: Any) -> float:
+    """Total order on credibility, treating a missing or None score as zero."""
+    raw = (getattr(doc, "metadata", None) or {}).get("credibility_score")
+    if raw is None:
+        return 0.0
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+def _order_docs_by_theme(
+    state: SnapshotState, docs: list[WebDocument]
+) -> list[WebDocument]:
+    """Round-robin across themes, each theme's strongest document first.
+
+    One global sort makes a single document the citation for every theme, which
+    is why every paragraph cited source 1. Taking one document per theme in
+    turn puts every theme's best source inside the citation menu's first
+    entries, and the menu is capped at 30. Themes absent from
+    ``theme_documents`` keep their original relative order at the end.
+    """
+    theme_docs = state.get("theme_documents") or {}
+    buckets: list[list[WebDocument]] = []
+    for theme_key in sorted(theme_docs):
+        buckets.append(
+            sorted(
+                theme_docs.get(theme_key) or [],
+                key=_credibility_key,
+                reverse=True,
+            )
+        )
+
+    ordered: list[WebDocument] = []
+    seen: set[int] = set()
+    depth = 0
+    while True:
+        added = False
+        for bucket in buckets:
+            if depth >= len(bucket):
+                continue
+            doc = bucket[depth]
+            if id(doc) not in seen:
+                seen.add(id(doc))
+                ordered.append(doc)
+                added = True
+        if not added:
+            break
+        depth += 1
+
+    for doc in docs:
+        if id(doc) not in seen:
+            seen.add(id(doc))
+            ordered.append(doc)
+
+    return ordered
+
 def _derive_label(scores: dict[str, float]) -> str:
     negative = scores.get("negative", 0)
     positive = scores.get("positive", 0)
