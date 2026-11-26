@@ -831,6 +831,16 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             }
         )
 
+    # A blank summary renders as an empty card, which reads as a broken run.
+    # Say so plainly instead, and keep the counts that did succeed.
+    if not (summary_text or "").strip():
+        logger.warning("[snapshot] Narrative summary empty after fallback")
+        summary_text = (
+            "Summary unavailable. The narrative step returned no text, "
+            f"so this run reports {len(docs)} documents and "
+            f"{len(insights)} insights without a written summary."
+        )
+
     # ─────────────────────────────────────────────────────────────
     # Phase 2: Verify Claims (PGCV) - Enhanced with Citation Verification
     # ─────────────────────────────────────────────────────────────
