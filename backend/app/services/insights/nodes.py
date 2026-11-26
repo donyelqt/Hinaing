@@ -65,6 +65,10 @@ def _log_memory_usage(stage: str):
 
 logger = logging.getLogger(__name__)
 
+# Documents shown to a theme agent. The citation menu in narrative.py caps at
+# 30, so a theme shown more than that cannot cite the overflow anyway.
+THEME_CONTEXT_DOC_LIMIT = 30
+
 # --------------------------------------------------------------------------
 # AGENT INSTANCES (The Workforce)
 # --------------------------------------------------------------------------
@@ -1069,8 +1073,10 @@ def _build_theme_context(documents: list[dict]) -> str:
         return cleaned.strip()
     
     doc_lines = []
-    # Use cast(Any, ...) for slice
-    for doc in cast(Any, documents)[slice(None, 10)]:
+    # A theme with more documents than this had the rest silently dropped, so
+    # the model answered about a fraction of its evidence. 30 matches the
+    # citation menu cap in narrative.py.
+    for doc in cast(Any, documents)[slice(None, THEME_CONTEXT_DOC_LIMIT)]:
         title = sanitize(doc.get('title', 'Untitled'))
         s_raw_t = sanitize(doc.get('snippet', ''))
         snippet = str(cast(Any, s_raw_t)[slice(None, 200)])
@@ -1089,13 +1095,13 @@ def _build_theme_prompt(theme_label: str, focus: str, context: str, doc_count: i
 Theme: {theme_label}
 {focus}
 
-Task: Analyze the documents below and generate EXACTLY 3 ACTIONABLE RECOMMENDATIONS for government action.
+Task: Analyze the documents below and generate {min(3, doc_count)} ACTIONABLE RECOMMENDATION{"" if min(3, doc_count) == 1 else "S"} for government action.
 
 Documents ({doc_count} shown):
 {context}
 
 CRITICAL REQUIREMENTS FOR GOOD GOVERNANCE:
-1. Generate EXACTLY 3 actionable recommendations (no more, no less)
+1. Generate AT MOST {min(3, doc_count)} recommendations, and never more than the documents can support
 2. Each recommendation must address a DIFFERENT issue or sub-topic
 3. Each recommendation must include SPECIFIC ACTIONS the government can take
 4. Focus on PRACTICAL, IMPLEMENTABLE solutions
@@ -1147,8 +1153,8 @@ Return ONLY valid JSON with this exact structure:
 IMPORTANT:
 - The "evidence" array MUST contain actual URLs from the documents above
 - Documents may be UNVERIFIED (low credibility scores, no fact-check). Do NOT return empty just because signals are weak — report what the documents say, cite them, and in "detail" note that verification evidence is thin
-- Only return {{"insights": []}} if the documents literally contain nothing related to {theme_label}
-- Generate EXACTLY 3 actionable recommendations if you have sufficient content
+- Return {{"insights": []}} ONLY when the documents contain nothing related to {theme_label}. If they do, return at least one recommendation even when evidence is thin
+- Prefer fewer, well-grounded recommendations over {min(3, doc_count)} padded ones
 - Each recommendation must be SPECIFIC and IMPLEMENTABLE by government
 - ONLY JSON output, no extra text"""
 
