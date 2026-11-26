@@ -69,7 +69,15 @@ class ClaimExtractor:
                 logger.info(f"[ClaimExtractor] Extracted claims in {elapsed:.2f}s")
 
                 claims = self._parse_claims(raw_text)
-                return claims
+                if claims:
+                    return claims
+
+                # A reasoning model can return valid-looking text that is cut
+                # mid-string. That is a retryable failure, not an empty answer.
+                logger.warning(
+                    f"[ClaimExtractor] attempt {attempt} produced no claims; "
+                    f"output: {raw_text[:300]}"
+                )
 
             except Exception as exc:
                 if attempt == 5:
