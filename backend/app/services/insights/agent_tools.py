@@ -184,25 +184,25 @@ def _host_in(url: str, allowed: set[str]) -> bool:
 
 
 def filter_by_location(documents: list[WebDocument]) -> list[WebDocument]:
-    """Relevance policy for PH civic retrieval.
+    """Hard geographic gate: keep only documents about Baguio City.
 
-    Keep a document when ANY of:
-      1. A Baguio term appears anywhere in title+snippet+url, or
-      2. It comes from a known PH civic / PH news host (.ph and local majors).
-    Score of baguio matches ranked by client first; this is a hard gate.
-    Returns [] when nothing passes — NEVER re-injects rejected international filler.
+    A document passes when a Baguio term appears in its title, snippet or URL.
+    A PH news host is NOT sufficient. ``sunstar.com.ph`` also publishes Davao,
+    ``tribune.net.ph`` also publishes Caloocan, and ``manilatimes.net`` also
+    publishes New York. Host-level trust answers "is this a real PH outlet",
+    which is a different question from "is this about Baguio".
+
+    Returns [] when nothing passes. Never re-injects rejected filler.
     """
     kept: list[WebDocument] = []
     for doc in documents:
         url_str = str(doc.url) if doc.url else ""
         searchable = f"{doc.title} {doc.snippet} {url_str}".lower()
-        baguio_hit = any(term in searchable for term in BAGUIO_LOCATION_TERMS)
-        ph_host = _host_in(url_str, PH_CIVIC_DOMAINS) or (urlparse(url_str).hostname or "").lower().endswith(".ph") if url_str else False
-        if baguio_hit or ph_host:
+        if any(term in searchable for term in BAGUIO_LOCATION_TERMS):
             kept.append(doc)
         else:
             logger.debug(
-                "Filtered out non-PH/Baguio document: %s",
+                "Filtered out non-Baguio document: %s",
                 (doc.title or "")[:50],
             )
     return kept
