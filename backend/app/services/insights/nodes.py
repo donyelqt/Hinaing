@@ -1259,27 +1259,33 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         llm = get_llm_for_mode(llm_mode)
         logger.info(f"[ThemeAgent] Running synchronous LLM (mode={llm_mode or 'active'}, model={llm.model_name}) for '{label}' with {len(enriched_docs)} docs")
         
-        try:
-            # Use synchronous generate method
-            # Groq's gpt-oss-120b emits reasoning tokens before the JSON
-            # payload, and 3500 truncated theme synthesis mid-URL. 8000 gives
-            # both providers the same headroom, matching theme_agent.
-            response = llm.generate_sync(
-                prompt=prompt,
-                system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
-                temperature=0.1,
-                max_tokens=LLM_MAX_OUTPUT_TOKENS,
-            )
-            
-            from app.services.agents.theme_agent import sanitize_text
-            output = sanitize_text(response)
-            
-            # Parse the response
-            insights = _parse_theme_insights(output, label)
-            
-        except Exception as llm_err:
-            logger.warning(f"[ThemeAgent] LLM sync failed for {label}: {llm_err}, using fallback")
-            raise ValueError("LLM failed, using fallback")
+        # A model that answers with valid JSON and zero insights is usually a
+        # one-off, often right after a 429. Retry before dropping the theme.
+        insights: list[dict] = []
+        for attempt in (1, 2):
+            try:
+                response = llm.generate_sync(
+                    prompt=prompt,
+                    system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                    temperature=0.1,
+                    max_tokens=LLM_MAX_OUTPUT_TOKENS,
+                )
+
+                from app.services.agents.theme_agent import sanitize_text
+                output = sanitize_text(response)
+                insights = _parse_theme_insights(output, label)
+                if insights:
+                    break
+
+                logger.warning(
+                    f"[ThemeAgent] {label} attempt {attempt} parsed 0 insights; "
+                    f"output: {output[:300]}"
+                )
+            except Exception as llm_err:
+                logger.warning(f"[ThemeAgent] {label} attempt {attempt} failed: {llm_err}")
+
+        if not insights:
+            raise ValueError("No structured insights found after 2 attempts")
         
         # Convert to Insight objects
         evidence_seed = [str(doc.url) for doc in docs[:3] if doc.url]
