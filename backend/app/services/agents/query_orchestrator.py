@@ -29,7 +29,7 @@ from ...core.config import get_settings
 from ...core.telemetry import measure_performance
 from ...schemas.snapshot import SnapshotRequest
 from ...schemas.query import QueryPlan, QueryTask
-from ...services.insights.agent_tools import FOCUS_CONCERN_KEYWORDS
+from ...services.insights.agent_tools import BAGUIO_LOCATION_TERMS, FOCUS_CONCERN_KEYWORDS
 from .concerns_memory import get_concerns_memory, DEFAULT_EMERGING_CONCERNS
 
 warnings.filterwarnings("ignore", message="Error in StdOutCallbackHandler")
@@ -692,6 +692,16 @@ class QueryOrchestratorAgent:
             # Loud, not silent — this is a self-learning subsystem, not an error to ignore
             logger.exception("[query_orchestrator] Failed to store synthesized concern clusters: %s", e)
 
+    @staticmethod
+    def _has_baguio_anchor(query_text: str, topic: str) -> bool:
+        """True when the query itself names Baguio City or a Baguio landmark.
+
+        A query with no anchor is answered by LangSearch with national and
+        foreign news, so it is rejected before it reaches retrieval.
+        """
+        haystack = f"{query_text} {topic}".lower()
+        return any(term in haystack for term in BAGUIO_LOCATION_TERMS)
+
     def _parse_synthesis_output(
         self, output: str, focus_values: list[str], time_suffix: str
     ) -> QueryPlan | None:
@@ -715,6 +725,14 @@ class QueryOrchestratorAgent:
                 if not query_text:
                     continue
 
+                topic = q.get("topic", "general")
+                if not self._has_baguio_anchor(query_text, topic):
+                    logger.warning(
+                        "[query_orchestrator] Rejected query with no Baguio anchor: %s",
+                        query_text[:80],
+                    )
+                    continue
+
                 # Ensure time suffix is present
                 if time_suffix and time_suffix.strip() not in query_text:
                     query_text = f"({query_text}){time_suffix}"
@@ -727,7 +745,7 @@ class QueryOrchestratorAgent:
                 queries.append(QueryTask(
                     query=query_text,
                     intent=intent,
-                    topic=q.get("topic", "general"),
+                    topic=topic,
                     priority=len(queries) + 1,
                     focus_area=q.get("focus_area"),
                 ))
@@ -762,7 +780,7 @@ class QueryOrchestratorAgent:
             try:
                 q = json.loads(block)
                 query_text = q.get("query", "")
-                if query_text and "baguio" in query_text.lower():
+                if query_text and self._has_baguio_anchor(query_text, q.get("topic", "")):
                     if time_suffix and time_suffix.strip() not in query_text:
                         query_text = f"({query_text}){time_suffix}"
 
