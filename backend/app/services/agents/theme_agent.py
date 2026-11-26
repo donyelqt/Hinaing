@@ -219,29 +219,34 @@ IMPORTANT:
         
         logger.info(f"[{self.theme_label}] Starting Groq analysis with {len(documents)} documents")
         
-        try:
-            response = await llm.generate(
-                prompt=prompt,
-                system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
-                temperature=0.1,
-                max_tokens=LLM_MAX_OUTPUT_TOKENS,
-            )
-            
-            output = sanitize_text(response)
-            insights = self._parse_response(output, self.theme_label)
-            
-            # If parsing failed or got 0 insights, log the full output for debugging
-            if not insights:
-                logger.error(f"[{self.theme_label}] FULL OUTPUT FOR DEBUGGING:")
-                logger.error(f"{output}")
-                logger.error(f"[{self.theme_label}] END OF OUTPUT")
-            
-            logger.info(f"[{self.theme_label}] Generated {len(insights)} insights")
-            return insights
-            
-        except Exception as e:
-            logger.exception(f"[{self.theme_label}] Error: {e}")
-            return [{"title": f"Error in {self.theme_label}", "detail": "Failed to generate insight.", "evidence": []}]
+        # A model that returns valid JSON with zero insights is usually a one-off
+        # sample. Retry once, so one bad response does not silently drop a theme
+        # from the run.
+        for attempt in (1, 2):
+            try:
+                response = await llm.generate(
+                    prompt=prompt,
+                    system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                    temperature=0.1,
+                    max_tokens=LLM_MAX_OUTPUT_TOKENS,
+                )
+
+                output = sanitize_text(response)
+                insights = self._parse_response(output, self.theme_label)
+
+                if insights:
+                    logger.info(f"[{self.theme_label}] Generated {len(insights)} insights")
+                    return insights
+
+                logger.warning(
+                    f"[{self.theme_label}] attempt {attempt} parsed 0 insights; "
+                    f"output: {output[:300]}"
+                )
+            except Exception as e:
+                logger.exception(f"[{self.theme_label}] attempt {attempt} error: {e}")
+
+        logger.error(f"[{self.theme_label}] no insights after 2 attempts")
+        return [{"title": f"Error in {self.theme_label}", "detail": "Failed to generate insight.", "evidence": []}]
 
 
 # ============================================================================
