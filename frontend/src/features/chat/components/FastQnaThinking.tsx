@@ -4,11 +4,11 @@ import * as React from "react";
 import { cn } from "../../../lib/utils";
 
 /**
- * Thinking indicator, anime cel style.
+ * Fast Q&A thinking indicator.
  *
  * Fast Q&A is one retrieval pass then one generation pass, so this reads as a
- * single living orb rather than a checklist. The orb is the only place the
- * gradient lives, and the label carries the real state.
+ * single living sphere rather than a checklist. The sphere is the only place
+ * the gradient lives, and the label carries the real state.
  *
  * There is no percentage and no bar. The request is a single pass, so a number
  * would be fake progress.
@@ -17,10 +17,10 @@ import { cn } from "../../../lib/utils";
  * every 1.6-2.4s and a Fast Q&A request finishes in about 600ms, so it would
  * never clear its first dwell.
  *
- * Anime cel shading, not a soft 3D sphere. Three hard bands replace the smooth
- * falloff, the rim is a bright keyline instead of a shadow, and the interior
- * field is a sharp-edged crescent that sweeps rather than a blur that drifts.
- * Hard edges are the whole tell: a cel reads as drawn, a blur reads as rendered.
+ * Depth comes from stacked light, not from blur. A specular highlight, a
+ * drifting inner field, a masked rim sheen and a soft bloom read as a lit
+ * sphere. Blur alone reads as a smudge, which is what the first pass looked
+ * like.
  *
  * The row is decorative. The answer that replaces it is the status message a
  * screen reader reads, so nothing here is a live region: a row that mounts and
@@ -47,31 +47,31 @@ const LABELS: Record<FastQnaStage, string> = {
 };
 
 /**
- * Three hard bands. The highlight is a flat white cap, the mid is the brand
- * violet, the shadow is a deep indigo, and each stop is a hard edge rather than
- * a fade. That banding is what makes it read as cel shaded.
+ * Lit sphere. The highlight has to hold for a visible distance, so the white
+ * stop runs to 22% before the terminator. A tight 5% stop renders as a black
+ * disc with a pinprick, which is what the first build measured.
  */
-const CEL =
-  "radial-gradient(circle at 32% 26%, #ffffff 0%, #ffffff 26%, rgb(var(--brand-to-rgb)) 27%, rgb(var(--brand-to-rgb)) 58%, rgb(var(--brand-from-rgb)) 59%, rgb(30 27 75) 100%)";
+const SPHERE =
+  "radial-gradient(circle at 30% 24%, #ffffff 0%, rgba(255,255,255,0.94) 12%, rgb(var(--brand-to-rgb)) 34%, rgb(var(--brand-from-rgb)) 66%, rgb(24 32 92) 100%)";
 
 /**
- * A sharp crescent inside the body. Two hard stops and no fade, so it reads as
- * a drawn shape sliding across the sphere rather than a glow.
+ * A second field inside the body, in the magenta both references carry. It
+ * drifts on its own path so the sphere has an interior that moves, which is
+ * what separates a lit orb from a flat disc.
  */
-const CRESCENT =
-  "radial-gradient(circle at 74% 70%, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 52%, rgba(255,255,255,0.92) 53%, rgba(255,255,255,0.92) 62%, rgba(255,255,255,0) 63%)";
+const CORE =
+  "radial-gradient(circle at 68% 72%, rgba(232,54,223,0.85) 0%, rgba(199,56,181,0.5) 34%, rgba(0,0,0,0) 68%)";
 
-/** The anime keyline: a bright rim, brightest at the top left. */
-const KEYLINE =
-  "conic-gradient(from 210deg, #ffffff 0deg, rgba(255,255,255,0.95) 40deg, rgba(255,255,255,0.25) 120deg, rgba(255,255,255,0.1) 220deg, rgba(255,255,255,0.85) 320deg, #ffffff 360deg)";
+/** A narrow band of light that travels around the rim. */
+const SHEEN =
+  "conic-gradient(from 0deg, rgba(255,255,255,0) 0deg, rgba(255,255,255,0.9) 42deg, rgba(255,255,255,0) 96deg, rgba(255,255,255,0) 200deg, rgba(255,255,255,0.55) 248deg, rgba(255,255,255,0) 304deg)";
 
-/** Keeps the keyline on the rim instead of across the face. */
+/** Keeps the sheen on the rim instead of across the face. */
 const RING =
-  "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px))";
+  "radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.5px))";
 
-/** A tight halo, the anime glow. Small and bright, not a wide bloom. */
-const HALO =
-  "radial-gradient(circle, rgb(var(--brand-to-rgb)/0.55) 0%, rgb(var(--brand-from-rgb)/0.3) 52%, rgba(0,0,0,0) 74%)";
+const BLOOM =
+  "radial-gradient(circle, rgb(var(--brand-to-rgb)/0.5) 0%, rgb(var(--brand-from-rgb)/0.26) 45%, rgba(0,0,0,0) 72%)";
 
 /**
  * Keyframes are inlined because the repo already does this for the welcome
@@ -79,29 +79,31 @@ const HALO =
  * motion kill switch is the same shape as that block's.
  */
 const KEYFRAMES = `
-  /* Hard steps, not a smooth ramp. The crescent jumps between positions the way
-     a cel layer snaps, which is the anime tell. */
-  @keyframes fq-orb-crescent {
+  @keyframes fq-orb-light {
     0%, 100% { background-position: 0% 0%; }
     50%      { background-position: 100% 100%; }
   }
-  @keyframes fq-orb-keyline {
+  @keyframes fq-orb-spin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
-  @keyframes fq-orb-halo {
-    0%, 100% { opacity: 0.4;  transform: scale(0.96); }
-    50%      { opacity: 0.72; transform: scale(1.08); }
+  @keyframes fq-orb-bloom {
+    0%, 100% { opacity: 0.34; transform: scale(0.94); }
+    50%      { opacity: 0.6;  transform: scale(1.06); }
+  }
+  @keyframes fq-orb-core {
+    0%, 100% { background-position: 100% 100%; }
+    50%      { background-position: 0% 0%; }
   }
   @keyframes fq-orb-sweep {
     from { background-position: 130% 0; }
     to   { background-position: -130% 0; }
   }
-  /* The base opacities carry the still frame, so reduced motion keeps a drawn
-     orb instead of an unstyled box. */
-  .fq-orb-halo { opacity: 0.4; }
+  /* The base opacities carry the still frame, so reduced motion keeps a lit
+     sphere instead of an unstyled box. */
+  .fq-orb-bloom { opacity: 0.34; }
   @media (prefers-reduced-motion: reduce) {
-    .fq-orb, .fq-orb-crescent, .fq-orb-keyline, .fq-orb-halo, .fq-orb-label { animation: none !important; }
+    .fq-orb, .fq-orb-core, .fq-orb-sheen, .fq-orb-bloom, .fq-orb-label { animation: none !important; }
   }
 `;
 
@@ -117,24 +119,26 @@ export function FastQnaThinking({ stage = "thinking", className }: FastQnaThinki
 
       <span className="relative grid h-8 w-8 shrink-0 place-items-center">
         <span
-          className="fq-orb-halo absolute -inset-1 rounded-full motion-safe:animate-[fq-orb-halo_2600ms_ease-in-out_infinite]"
-          style={{ backgroundImage: HALO }}
+          className="fq-orb-bloom absolute -inset-1.5 rounded-full motion-safe:animate-[fq-orb-bloom_3400ms_ease-in-out_infinite]"
+          style={{ backgroundImage: BLOOM }}
         />
         <span
-          className="fq-orb relative h-7 w-7 overflow-hidden rounded-full motion-safe:animate-[fq-orb-crescent_1800ms_steps(1,end)_infinite]"
+          className="fq-orb relative h-7 w-7 overflow-hidden rounded-full motion-safe:animate-[fq-orb-light_5200ms_ease-in-out_infinite]"
           style={{
-            backgroundImage: CEL,
-            boxShadow: "0 0 0 1.5px rgb(var(--brand-from-rgb))",
+            backgroundImage: SPHERE,
+            backgroundSize: "180% 180%",
+            boxShadow:
+              "inset -3px -4px 8px rgba(12,18,60,0.5), inset 2px 2px 6px rgba(255,255,255,0.32), 0 0 0 1px rgb(var(--brand-from-rgb)/0.22)",
           }}
         >
           <span
-            className="absolute inset-0"
-            style={{ backgroundImage: CRESCENT, backgroundSize: "200% 200%" }}
+            className="absolute inset-0 motion-safe:animate-[fq-orb-core_3600ms_ease-in-out_infinite]"
+            style={{ backgroundImage: CORE, backgroundSize: "160% 160%" }}
           />
         </span>
         <span
-          className="fq-orb-keyline absolute inset-0 rounded-full motion-safe:animate-[fq-orb-keyline_4200ms_linear_infinite]"
-          style={{ backgroundImage: KEYLINE, maskImage: RING, WebkitMaskImage: RING }}
+          className="fq-orb-sheen absolute inset-0 rounded-full motion-safe:animate-[fq-orb-spin_5200ms_linear_infinite]"
+          style={{ backgroundImage: SHEEN, maskImage: RING, WebkitMaskImage: RING }}
         />
       </span>
 
