@@ -778,6 +778,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         # denominator, so the Review card always reads 100 minus Verified.
         # avg_score is the 5-signal weighted average.
         high_cred = sum(1 for s in sources_data if s.get("tavily_verification_status") in ("verified", "vsee_bypass"))
+        low_cred = len(sources_data) - high_cred
         avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
         
         # NEW: Include faithfulness verification metrics (same as Sentiment Generator)
@@ -827,9 +828,11 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
                 },
                 "insights": insights_data,
                 "sources": sources_data,
-                "credibility": _credibility_breakdown(
-                    high_cred, len(sources_data), avg_cred
-                ),
+                "credibility": {
+                    "avg_score": round(avg_cred * 100),
+                    "high_percent": round(high_cred / max(1, len(sources_data)) * 100),
+                    "low_percent": round(low_cred / max(1, len(sources_data)) * 100),
+                },
                 "verification": verification_data,  # NEW: Faithfulness metrics
                 "document_count": doc_count,
                 "insights_count": len(insights_data),
@@ -918,20 +921,6 @@ async def chat_analyze_sync(request: ChatAnalyzeRequest):
 # =============================================================================
 # BACKGROUND TASK + POLLING ENDPOINTS (Mobile-Resilient)
 # =============================================================================
-def _credibility_breakdown(verified: int, total: int, avg_score: float) -> dict[str, int]:
-    """Build the three credibility card values from one denominator.
-
-    Verified Hinaing counts documents cleared by Tavily or VSEE. Review is the
-    remaining share. Rounding the complement instead of the raw share keeps the
-    pair at 100 for every document count, which the sentiment page already does.
-    avg_score is the 5-signal mean and is independent of both.
-    """
-    high_percent = round(verified / max(1, total) * 100)
-    return {
-        "avg_score": round(avg_score * 100),
-        "high_percent": high_percent,
-        "low_percent": 100 - high_percent,
-    }
 
 def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_areas: list[str]) -> dict:
     """Format SnapshotResponse into JSON-serializable result dict."""
@@ -996,6 +985,7 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
     # low_percent is the complement of high_percent over the same denominator,
     # so the Review card always reads 100 minus Verified Hinaing.
     high_cred = sum(1 for s in sources_data if (s.get("metadata") or {}).get("tavily_verification_status") in ("verified", "vsee_bypass"))
+    low_cred = len(sources_data) - high_cred
     avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
 
     # NEW: Include faithfulness verification metrics (same as Sentiment Generator)
@@ -1047,9 +1037,11 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
             },
             "insights": insights_data,
             "sources": sources_data,
-            "credibility": _credibility_breakdown(
-                high_cred, len(sources_data), avg_cred
-            ),
+            "credibility": {
+                "avg_score": round(avg_cred * 100),
+                "high_percent": round(high_cred / max(1, len(sources_data)) * 100),
+                "low_percent": round(low_cred / max(1, len(sources_data)) * 100),
+            },
             "verification": verification_data,  # NEW: Faithfulness metrics
             "document_count": doc_count,
             "insights_count": len(insights_data),
