@@ -125,7 +125,13 @@ class OpenRouterProvider(BaseLLMProvider):
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            # Nemotron defaults to reasoning.effort "high" on OpenRouter, and
+            # reasoning tokens count against max_tokens. A JSON stage then
+            # spends its budget on reasoning and returns a truncated array.
+            # Callers may override by passing their own reasoning config.
+            "reasoning": {"effort": "none"},
         }
+        payload.update(kwargs)
         if stream:
             payload["stream"] = True
         return payload
