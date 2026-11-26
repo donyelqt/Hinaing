@@ -24,7 +24,7 @@ type NodeDef = {
 
 const NODES: NodeDef[] = [
   { id: "query_orchestrator", index: 1, label: "Query Orchestrator", signature: "ReAct planner — Gemini 2.5 Flash Lite" },
-  { id: "retrieval",          index: 2, label: "Retrieval Agent",     signature: "LangSearch primary · Tavily backfill", workers: [{ name: "langsearch-01", tag: "primary fetch" }, { name: "tavily-01", tag: "backfill + verify" }] },
+  { id: "retrieval",          index: 2, label: "Retrieval Agent",     signature: "Web search · Facebook · Reddit", workers: [{ name: "web-search", tag: "primary fetch" }, { name: "facebook", tag: "public posts" }, { name: "reddit", tag: "community threads" }] },
   { id: "recall",             index: 3, label: "RAG Recall",          signature: "Qdrant internal memory · BGE-large-en-v1.5" },
   { id: "analyze",            index: 4, label: "Analysis Swarm",      signature: "Sentiment ensemble ∥ 5-signal credibility", workers: [{ name: "sentiment-01", tag: "RoBERTa ∥ Groq" }, { name: "cred-01", tag: "Domain · CrossRef · FactChk · LLM · Tavily" }] },
   { id: "memory",             index: 5, label: "Memory Consolidation", signature: "Context Augmentation — Qdrant upsert" },
