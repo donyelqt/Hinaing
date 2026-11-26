@@ -85,8 +85,8 @@ describe('frozen pipeline replay', () => {
     const highShare = result.credibility.high_percent;
     expect(highShare).toBeGreaterThan(90);
     expect(highShare).toBeLessThanOrEqual(100);
-    // The external share is the complement: documents sent to Tavily.
-    expect(result.credibility.low_percent).toBeGreaterThanOrEqual(0);
-    expect(highShare + result.credibility.low_percent).toBe(100);
+    // Review is the complement over the same denominator, so the pair sums to 100.
+    expect(result.credibility.review_percent).toBeGreaterThanOrEqual(0);
+    expect(highShare + result.credibility.review_percent).toBe(100);
   });
 });

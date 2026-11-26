@@ -70,7 +70,7 @@ export type DemoVerification = {
 export type DemoCredibility = {
   avg_score: number;
   high_percent: number;
-  low_percent: number;
+  review_percent: number;
 };
 
 export type DemoResult = {
@@ -303,7 +303,7 @@ export function buildDemoResult(): DemoResult {
     credibility: {
       avg_score: round(scored.avgDomain * 100),
       high_percent: round((scored.vsee / scored.total) * 100),
-      low_percent: round((scored.external / scored.total) * 100),
+      review_percent: 100 - round((scored.vsee / scored.total) * 100),
     },
     verification: {
       faithfulness_score: faithfulness,
