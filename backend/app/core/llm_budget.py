@@ -24,3 +24,9 @@ LLM_MAX_OUTPUT_TOKENS: int = 4000
 # so it may claim more of the window. Six paragraphs with inline citations do
 # not fit in 4000 once reasoning tokens are counted.
 LLM_NARRATIVE_MAX_OUTPUT_TOKENS: int = 6000
+
+# Output tokens for a JSON-only call on a reasoning model. Groq's gpt-oss and
+# OpenRouter's nemotron emit reasoning tokens before the JSON payload, and 4000
+# truncated the claim array mid-string on nemotron. 6000 leaves room for a
+# concurrent theme call inside the 8000-token minute.
+LLM_JSON_MAX_OUTPUT_TOKENS: int = 6000
