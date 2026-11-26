@@ -12,8 +12,8 @@ import React from 'react';
  *   [Src: url | Cred: 0.XX | Sent: X | verified]  (legacy 4-segment)
  *
  * Numbers map to the snapshot's source list by domain. Internal statuses
- * are mapped to user-facing labels (vsee_bypass -> verified,
- * skipped_limit/rate_limited/error -> unverified).
+ * are mapped to user-facing labels (vsee_bypass -> verified, everything
+ * else unverified except contradicted). No parenthetical suffix is added.
  *
  * @param text - The paragraph text potentially containing citations
  * @param sources - Snapshot sources ({ url }) used to number references
@@ -34,18 +34,35 @@ function normalizeHost(value: string): string {
   }
 }
 
+type InternalStatus =
+  | 'verified'
+  | 'unverified'
+  | 'contradicted'
+  | 'partial'
+  | 'vsee_bypass'
+  | 'rate_limited'
+  | 'skipped_limit'
+  | 'no_claims'
+  | 'error'
+  | 'disabled';
+
+/** Exhaustive over InternalStatus: every internal token the backend can emit. */
+const STATUS_MAP: Record<InternalStatus, DisplayStatus> = {
+  verified: 'verified',
+  unverified: 'unverified',
+  contradicted: 'contradicted',
+  partial: 'unverified',
+  vsee_bypass: 'verified',
+  rate_limited: 'unverified',
+  skipped_limit: 'unverified',
+  no_claims: 'unverified',
+  error: 'unverified',
+  disabled: 'unverified',
+};
+
 function mapStatus(raw: string): DisplayStatus {
   const normalized = raw.trim().toLowerCase();
-  if (normalized === 'verified' || normalized === 'vsee_bypass') return 'verified';
-  if (normalized === 'contradicted') return 'contradicted';
-  return 'unverified';
-}
-
-function evidenceKind(raw: string): string {
-  const normalized = raw.trim().toLowerCase();
-  if (normalized === 'vsee_bypass') return 'VSEE internal corroboration';
-  if (normalized === 'verified') return 'external corroboration';
-  return '';
+  return STATUS_MAP[normalized as InternalStatus] ?? 'unverified';
 }
 
 function parseSegments(inner: string): { domain: string; sentiment: string; status: string } | null {
@@ -98,10 +115,8 @@ export function parseCitations(
 
     const { domain, sentiment, status } = parsed;
     const display = mapStatus(status);
-    const kind = evidenceKind(status);
     const refNumber = indexByHost.get(normalizeHost(domain)) ?? null;
-    const kindSuffix = kind ? ` (${kind})` : '';
-    const label = `Source${refNumber ? ` ${refNumber}` : ''}: ${domain} | Sentiment: ${sentiment} | ${display}${kindSuffix}`;
+    const label = `Source${refNumber ? ` ${refNumber}` : ''}: ${domain} | Sentiment: ${sentiment} | ${display}`;
 
     parts.push(
       refNumber !== null ? (
