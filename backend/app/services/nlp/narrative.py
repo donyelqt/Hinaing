@@ -266,6 +266,23 @@ class LLMNarrativeClient:
 
         return corrected
 
+    # Internal verification tokens mapped to user-facing equivalents. Duplicated
+    # from the citation verifier rather than imported, to keep this module
+    # decoupled from the verifier.
+    _STATUS_NORMALIZATION = {
+        'vsee_bypass': 'verified',
+        'rate_limited': 'unverified',
+        'skipped_limit': 'unverified',
+        'disabled': 'unverified',
+        'no_claims': 'unverified',
+        'error': 'unverified',
+    }
+
+    def _normalize_verification_status(self, status: Any) -> str:
+        """Map an internal verification token to its user-facing equivalent."""
+        normalized = str(status or 'unverified').lower().strip()
+        return self._STATUS_NORMALIZATION.get(normalized, normalized)
+
     def _convert_citation_numbers(
         self,
         summary: str,
@@ -291,7 +308,9 @@ class LLMNarrativeClient:
                 if len(url_short) > 60:
                     url_short = url_short[:57] + '...'
                 sentiment = doc.get('sentiment', 'neutral').capitalize()
-                verification_status = doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
+                verification_status = self._normalize_verification_status(
+                    doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
+                )
                 citation_map[idx] = {
                     'url': url_short,
                     'sentiment': sentiment,
