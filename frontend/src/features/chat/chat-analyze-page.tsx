@@ -10,7 +10,7 @@ import { ActivePage } from "../shared/types/navigation";
 import { VerificationBadge } from "../sentiment/components/VerificationBadge";
 import { PipelineTrajectory } from "./components/PipelineTrajectory";
 import { FastQnaThinking } from "./components/FastQnaThinking";
-import { buildDemoSweep, DEMO_PROMPT } from "./demo/corpus";
+import { buildDemoResult, DEMO_NODES, DEMO_NODE_MS, DEMO_PROMPT } from "./demo/pipeline";
 import { useDemoMode } from "./demo/use-demo-mode";
 
 const AGENTIC_MODE_OPTIONS = [
@@ -570,21 +570,19 @@ function WelcomeScreen({ onPromptSelect, demoEnabled }: { onPromptSelect: (promp
         setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
     }, []);
 
-    // Demo mode swaps the two live shortcuts for one six-theme sweep that the
-    // frozen corpus answers offline. Off, the live shortcuts stay.
+    // Demo mode replaces only the first analysis shortcut with the six-theme
+    // sweep. Every other shortcut stays, so the screen keeps its shape.
     const analysisSuggestions = demoEnabled
-        ? [DEMO_PROMPT]
+        ? [DEMO_PROMPT, "What's the current sentiment on infrastructure issues?"]
         : [
             "Analyze public sentiment about safety in Baguio",
             "What's the current sentiment on infrastructure issues?",
-        ];
+          ];
 
-    const simpleSuggestions = demoEnabled
-        ? []
-        : [
-            "What is the Panagbenga Festival?",
-            "How many hospitals are in Baguio City?",
-        ];
+    const simpleSuggestions = [
+        "What is the Panagbenga Festival?",
+        "How many hospitals are in Baguio City?",
+    ];
 
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto px-3 sm:px-4 py-4 animate-in fade-in zoom-in-95 duration-500">
@@ -1002,9 +1000,28 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
         }]);
 
 
-        // Demo mode answers from the frozen corpus and returns before any
-        // fetch, so a demo cannot be rate limited or fail on a dead network.
+        // Demo mode replays the frozen seven-node pipeline. Each node holds
+        // for a beat so the trajectory is readable, then the frozen result
+        // lands. No fetch happens, so a demo cannot be rate limited.
         if (demoMode.enabled) {
+            for (const node of DEMO_NODES) {
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastIdx = updated.length - 1;
+                    if (updated[lastIdx]?.isStreaming) {
+                        updated[lastIdx] = {
+                            ...updated[lastIdx],
+                            content: node.detail,
+                            pipeline: "agentic",
+                            streamProgress: node.progress,
+                            streamStage: node.id,
+                        };
+                    }
+                    return updated;
+                });
+                await new Promise((resolve) => setTimeout(resolve, DEMO_NODE_MS));
+            }
+
             setMessages((prev) => {
                 const updated = [...prev];
                 const lastIdx = updated.length - 1;
@@ -1013,7 +1030,7 @@ export function ChatAnalyzePage({ onNavigate }: ChatAnalyzePageProps) {
                         role: "model",
                         content: "",
                         isStreaming: false,
-                        data: buildDemoSweep(),
+                        data: buildDemoResult(),
                     };
                 }
                 return updated;
