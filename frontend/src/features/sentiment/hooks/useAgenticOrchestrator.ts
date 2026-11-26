@@ -14,15 +14,6 @@ export type GenerationProgress = {
   progress: number; // 0.0 to 1.0
 };
 
-// Backend workflow stages for progress display (aligned with graph.py)
-export const WORKFLOW_STAGES = [
-  { id: 'query_orchestrator', label: 'Query Orchestrator', icon: '📡', description: 'Generating diverse search queries...' },
-  { id: 'retrieval', label: 'Document Retrieval', icon: '🔍', description: 'Searching across platforms...' },
-  { id: 'analyze', label: 'Analysis', icon: '⚡', description: 'Sentiment + Credibility + Themes (parallel)...' },
-  { id: 'context', label: 'Context Augmentation', icon: '🔗', description: 'Augmenting with RAG...' },
-  { id: 'themes', label: 'Theme Insights', icon: '🎯', description: 'Generating insights...' },
-] as const;
-
 export function useAgenticOrchestrator() {
   // State
   const [platforms, setPlatforms] = useState<string[]>([]);
