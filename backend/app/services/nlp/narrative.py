@@ -340,16 +340,14 @@ class LLMNarrativeClient:
             import time
             start = time.perf_counter()
             llm = self._resolve_model(llm_mode)
-            # Nemotron Ultra needs more headroom than Groq's gpt-oss-120b
-            # because it emits reasoning tokens before the JSON payload.
-            # 3500 was truncating responses mid-URL on both providers;
-            # bump only for OpenRouter where the model is more verbose.
-            _max_tok = 8000 if (llm_mode or "") == "openrouter" else 3500
+            # Groq's gpt-oss-120b emits reasoning tokens before the JSON
+            # payload, and 3500 truncated narrative synthesis mid-URL. 8000
+            # gives both providers the same headroom.
             raw_text = await llm.generate(
                 prompt=analysis_prompt,
                 system_prompt="You are a senior analyst for Baguio City command center. Return VALID JSON only (no markdown, no code blocks).",
                 temperature=0.2,
-                max_tokens=_max_tok,
+                max_tokens=8000,
             )
             elapsed = time.perf_counter() - start
             logger.info(f"[LLMNarrativeClient] Narrative generated in {elapsed:.1f}s")
