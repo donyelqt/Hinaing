@@ -134,8 +134,8 @@ type DisplayInsight = {
 type CredibilityBreakdown = {
   /** Share of documents the system cleared without external corroboration (Tavily-verified or VSEE-bypassed). */
   verifiedPercent: number;
-  /** Share of documents scoring below 0.55 on the 5-signal credibility ensemble. */
-  lowCredibilityPercent: number;
+  /** Complement of verifiedPercent over the same denominator, so the pair sums to 100. */
+  reviewPercent: number;
   /** Mean 5-signal credibility score. */
   avgScore: number;
   hasData: boolean;
@@ -186,14 +186,14 @@ const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => 
 
 const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | null): CredibilityBreakdown => {
   if (!sources || sources.length === 0) {
-    return { verifiedPercent: 0, lowCredibilityPercent: 0, avgScore: 0, hasData: false };
+    return { verifiedPercent: 0, reviewPercent: 0, avgScore: 0, hasData: false };
   }
 
-  // Verified means the system cleared the document without external corroboration:
-  // Tavily returned a verdict, or VSEE bypassed the external calls entirely.
-  // This matches the per-document badge and the Agentic Verification Rate.
+  // Verified means the system cleared the document: Tavily returned a verdict,
+  // or VSEE bypassed the external calls entirely. This matches the per-document
+  // badge and the Agentic Verification Rate. Review is its complement over the
+  // same denominator, so the two cards always sum to 100.
   let verifiedCount = 0;
-  let lowCount = 0;
   let totalScore = 0;
   let scoredCount = 0;
 
@@ -211,19 +211,18 @@ const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | nul
     if (score !== null) {
       totalScore += score;
       scoredCount += 1;
-      if (score < 0.55) {
-        lowCount += 1;
-      }
     }
   });
 
   if (scoredCount === 0) {
-    return { verifiedPercent: 0, lowCredibilityPercent: 0, avgScore: 0, hasData: false };
+    return { verifiedPercent: 0, reviewPercent: 0, avgScore: 0, hasData: false };
   }
 
+  const verifiedPercent = Math.round((verifiedCount / sources.length) * 100);
+
   return {
-    verifiedPercent: Math.round((verifiedCount / sources.length) * 100),
-    lowCredibilityPercent: Math.round((lowCount / scoredCount) * 100),
+    verifiedPercent,
+    reviewPercent: 100 - verifiedPercent,
     avgScore: Math.round((totalScore / scoredCount) * 100),
     hasData: true,
   };
@@ -812,7 +811,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <div className={clsx(
                             "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
                           )}>
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(1 - credibilityBreakdown.lowCredibilityPercent / 100))}>{credibilityBreakdown.lowCredibilityPercent}%</strong>
+                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.reviewPercent / 100))}>{credibilityBreakdown.reviewPercent}%</strong>
                             <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Review</span>
           
                           </div>
