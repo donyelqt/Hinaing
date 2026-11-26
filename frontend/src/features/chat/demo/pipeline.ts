@@ -335,13 +335,9 @@ export function buildDemoResult(): DemoResult {
 }
 /**
  * The demo prompt replaces the first analysis shortcut while demo mode is on.
- * It names all six themes and all three platforms in one message, because one
- * pipeline run already returns every theme.
+ * The six themes are listed in the result, so the button does not repeat them.
  */
-export const DEMO_PROMPT =
-  "Analyze public sentiment across all six themes in Baguio City " +
-  `(${Object.values(DEMO_THEME_LABELS).map((label) => label.toLowerCase()).join(", ")}) ` +
-  "using web, Facebook, and Reddit sources from the past 24 hours.";
+export const DEMO_PROMPT = "Analyze all six Baguio themes across web, Facebook, and Reddit";
 
 /** How long each node holds on screen during a demo replay. */
 export const DEMO_NODE_MS = 900;

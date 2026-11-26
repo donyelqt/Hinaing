@@ -24,12 +24,11 @@ describe('frozen pipeline corpus', () => {
     }
   });
 
-  it('names every theme and platform in the demo prompt', () => {
-    for (const label of Object.values(DEMO_THEME_LABELS)) {
-      expect(DEMO_PROMPT.toLowerCase()).toContain(label.toLowerCase());
-    }
+  it('names the platforms and stays short enough for the shortcut button', () => {
     expect(DEMO_PROMPT).toContain('Facebook');
     expect(DEMO_PROMPT).toContain('Reddit');
+    expect(DEMO_PROMPT).toContain('web');
+    expect(DEMO_PROMPT.length).toBeLessThan(80);
   });
 });
 
