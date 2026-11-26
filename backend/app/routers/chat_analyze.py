@@ -774,11 +774,11 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         # high_percent is the AVR figure: documents cleared without external
         # corroboration (Tavily-verified or VSEE-bypassed). It matches the
         # per-document badge and the collector's field contract.
-        # low_percent stays the 5-signal credibility complement: documents
-        # scoring below 0.55, which is what "Review" means on the card.
+        # low_percent is the complement of high_percent over the same
+        # denominator, so the Review card always reads 100 minus Verified.
         # avg_score is the 5-signal weighted average.
         high_cred = sum(1 for s in sources_data if s.get("tavily_verification_status") in ("verified", "vsee_bypass"))
-        low_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) < 0.55)
+        low_cred = len(sources_data) - high_cred
         avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
         
         # NEW: Include faithfulness verification metrics (same as Sentiment Generator)
@@ -982,11 +982,10 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
     # high_percent is the AVR figure: documents cleared without external
     # corroboration (Tavily-verified or VSEE-bypassed). It matches the
     # per-document badge and the collector's field contract.
-    # low_percent stays the 5-signal credibility complement: documents
-    # scoring below 0.55, which is what "Review" means on the card.
-    # avg_score is the 5-signal weighted average.
+    # low_percent is the complement of high_percent over the same denominator,
+    # so the Review card always reads 100 minus Verified Hinaing.
     high_cred = sum(1 for s in sources_data if (s.get("metadata") or {}).get("tavily_verification_status") in ("verified", "vsee_bypass"))
-    low_cred = sum(1 for s in sources_data if (s.get("credibility_score") or 0) < 0.55)
+    low_cred = len(sources_data) - high_cred
     avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
 
     # NEW: Include faithfulness verification metrics (same as Sentiment Generator)
