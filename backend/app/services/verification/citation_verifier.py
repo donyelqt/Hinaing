@@ -5,6 +5,7 @@ their source documents and accurately represent the cited content.
 
 Supports TWO citation formats:
 1. New format (verification status): [Src: example.com | Sent: SENTIMENT | Verified/Unverified/Contradicted]
+   The Cred segment is optional: [Src: example.com | Cred: 0.XX | Sent: SENTIMENT | Verified]
 2. Old format (credibility score): [Src: example.com | Cred: 0.XX | Sent: SENTIMENT]
 """
 from __future__ import annotations
@@ -27,11 +28,12 @@ class CitationVerifier:
     5. Cited document semantically supports the claim
     """
 
-    # NEW citation format: [Src: URL_OR_DOMAIN | Sent: SENTIMENT | verified/unverified/contradicted]
+    # Citation format: [Src: URL_OR_DOMAIN | (Cred: 0.XX) | Sent: SENTIMENT | verified/unverified/contradicted]
     # Supports both full URLs and domain-only citations
+    # The Cred segment is optional, so both the 3-field and 4-field forms match
     # Accepts both lowercase and capitalized status values for robustness
     CITATION_PATTERN = re.compile(
-        r'\[Src:\s*([^\|]+)\s*\|\s*Sent:\s*([^\|]+)\s*\|\s*(verified|unverified|contradicted|Verified|Unverified|Contradicted)\]'
+        r'\[Src:\s*([^\|]+?)\s*(?:\|\s*Cred:\s*[0-9]*\.?[0-9]+\s*)?\|\s*Sent:\s*([^\|]+?)\s*\|\s*(verified|unverified|contradicted|Verified|Unverified|Contradicted)\]'
     )
 
     # Production-grade thresholds (relaxed for LLM generation variance)
