@@ -150,7 +150,8 @@ interface AnalysisData {
     credibility?: {
         avg_score: number;
         high_percent: number;
-        low_percent: number;
+        /** Complement of high_percent, so the pair sums to 100. */
+        review_percent: number;
     };
     verification?: FaithfulnessVerification;
     document_count?: number;
@@ -273,7 +274,7 @@ function AnalysisResultCard({ data }: { data: AnalysisData }) {
                             <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Verified Hinaing</p>
                         </div>
                         <div className="bg-white/70 rounded-lg p-1.5 sm:p-2 shadow-inner">
-                            <p className="text-base sm:text-lg font-bold text-rose-600">{cred.low_percent}%</p>
+                            <p className="text-base sm:text-lg font-bold text-rose-600">{cred.review_percent}%</p>
                             <p className="text-[9px] sm:text-[10px] uppercase text-slate-500">Review</p>
                         </div>
                     </div>
