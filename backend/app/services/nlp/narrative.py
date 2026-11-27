@@ -395,6 +395,13 @@ class LLMNarrativeClient:
             return sanitize_text(raw_text.strip()), []
 
         summary = sanitize_text(parsed.get("summary"))
+        if not summary:
+            # The model answered with JSON that has no usable summary, often
+            # only an insights array. Returning the raw text beats returning
+            # nothing, because the caller treats empty as a failed run.
+            logger.warning("[LLMNarrativeClient] Parsed JSON carried no summary")
+            return sanitize_text(raw_text.strip()), []
+
         insights = self._sanitize_insights(parsed.get("insights") or [])
         return summary, insights
 
