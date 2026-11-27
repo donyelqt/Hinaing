@@ -5,6 +5,7 @@ import asyncio
 import gc
 import json
 import logging
+import threading
 import time
 from collections import Counter
 from typing import Any, TypedDict, cast
@@ -1215,6 +1216,8 @@ def _parse_theme_insights(output: str, theme_label: str) -> list[dict]:
         logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
         return []
 
+_THEME_CALL_GATE = threading.Lock()
+
 def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: Any, llm_mode: str | None = None) -> list[Insight]:
     """Helper for Theme Agent execution - spawns true sub-agents.
     
@@ -1270,12 +1273,13 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
         insights: list[dict] = []
         for attempt in (1, 2):
             try:
-                response = llm.generate_sync(
-                    prompt=prompt,
-                    system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
-                    temperature=0.1,
-                    max_tokens=LLM_MAX_OUTPUT_TOKENS,
-                )
+                with _THEME_CALL_GATE:
+                    response = llm.generate_sync(
+                        prompt=prompt,
+                        system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
+                        temperature=0.1,
+                        max_tokens=LLM_MAX_OUTPUT_TOKENS,
+                    )
 
                 from app.services.agents.theme_agent import sanitize_text
                 output = sanitize_text(response)
