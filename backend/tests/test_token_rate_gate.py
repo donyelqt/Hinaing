@@ -14,7 +14,7 @@ from app.core.token_rate_gate import TokenRateGate
 def test_a_call_that_fits_is_recorded_at_once() -> None:
     gate = TokenRateGate(tpm=8000)
 
-    waited = gate.acquire(4000)
+    waited = gate.acquire(4000, prompt_tokens=0)
 
     assert waited == 0.0
     assert gate.used() == 4000
@@ -22,10 +22,10 @@ def test_a_call_that_fits_is_recorded_at_once() -> None:
 
 def test_a_call_that_would_breach_waits_for_the_window() -> None:
     gate = TokenRateGate(tpm=8000, window=0.3)
-    gate.acquire(5000)
+    gate.acquire(5000, prompt_tokens=0)
 
     start = time.monotonic()
-    gate.acquire(5000)
+    gate.acquire(5000, prompt_tokens=0)
     elapsed = time.monotonic() - start
 
     assert elapsed >= 0.25, elapsed
@@ -33,7 +33,7 @@ def test_a_call_that_would_breach_waits_for_the_window() -> None:
 
 def test_usage_replaces_the_reservation() -> None:
     gate = TokenRateGate(tpm=8000)
-    gate.acquire(4000)
+    gate.acquire(4000, prompt_tokens=0)
 
     gate.record(1200)
 
@@ -42,7 +42,7 @@ def test_usage_replaces_the_reservation() -> None:
 
 def test_a_zero_report_keeps_the_reservation() -> None:
     gate = TokenRateGate(tpm=8000)
-    gate.acquire(4000)
+    gate.acquire(4000, prompt_tokens=0)
 
     gate.record(0)
 

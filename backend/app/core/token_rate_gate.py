@@ -17,6 +17,11 @@ import time
 DEFAULT_TPM = 8000
 WINDOW_SECONDS = 60.0
 
+# The provider counts prompt tokens too, and the gate cannot see them before the
+# call. This is a deliberately generous per-call allowance, so the reservation
+# over-counts rather than under-counts.
+DEFAULT_PROMPT_ALLOWANCE = 1200
+
 
 class TokenRateGate:
     """Reserves output tokens against a rolling per-minute ceiling."""
@@ -36,16 +41,27 @@ class TokenRateGate:
             self._prune(now if now is not None else time.monotonic())
             return sum(n for _, n in self._spent)
 
-    def acquire(self, reserved: int, *, wait_seconds: float = 30.0) -> float:
-        """Block until \`reserved\` fits, then record it. Returns seconds waited."""
+    def acquire(
+        self,
+        reserved: int,
+        *,
+        prompt_tokens: int | None = None,
+        wait_seconds: float = 30.0,
+    ) -> float:
+        """Block until the call fits, then record it. Returns seconds waited.
+
+        \`prompt_tokens\` is what the caller knows about the prompt. When it is
+        not given, the allowance is used, so the reservation errs high.
+        """
+        total = reserved + (DEFAULT_PROMPT_ALLOWANCE if prompt_tokens is None else prompt_tokens)
         deadline = time.monotonic() + wait_seconds
         waited = 0.0
         while True:
             with self._lock:
                 now = time.monotonic()
                 self._prune(now)
-                if sum(n for _, n in self._spent) + reserved <= self._tpm:
-                    self._spent.append((now, reserved))
+                if sum(n for _, n in self._spent) + total <= self._tpm:
+                    self._spent.append((now, total))
                     return waited
             remaining = deadline - time.monotonic()
             if remaining <= 0:
