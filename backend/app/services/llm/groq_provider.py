@@ -11,6 +11,7 @@ from groq.types.chat import ChatCompletion
 
 from ...core.config import get_settings
 from .base import BaseLLMProvider
+from ...core.token_rate_gate import GATE
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +123,13 @@ class GroqProvider(BaseLLMProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         
-        # Acquire semaphore to limit concurrent requests
+        # Reserve against the shared per-minute token allowance before the
+        # call, then record what the provider reports so the next decision is
+        # exact. The semaphore still caps concurrent connections.
         async with _GROQ_CONCURRENCY_LIMIT:
+            waited = await asyncio.to_thread(GATE.acquire, max_tokens)
+            if waited:
+                logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
             try:
                 completion: ChatCompletion = await self._client.chat.completions.create(
                     model=self._model,
@@ -132,6 +138,8 @@ class GroqProvider(BaseLLMProvider):
                     max_tokens=max_tokens,
                     **kwargs
                 )
+                usage = getattr(completion, "usage", None)
+                GATE.record(getattr(usage, "total_tokens", 0) or 0)
                 
                 content = completion.choices[0].message.content
                 
@@ -262,6 +270,9 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         
+        waited = GATE.acquire(max_tokens)
+        if waited:
+            logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
         try:
             completion: ChatCompletion = self._sync_client.chat.completions.create(
                 model=self._model,
@@ -270,6 +281,8 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
                 max_tokens=max_tokens,
                 **kwargs
             )
+            usage = getattr(completion, "usage", None)
+            GATE.record(getattr(usage, "total_tokens", 0) or 0)
             
             content = completion.choices[0].message.content
             logger.debug(f"[Groq] Sync generate completed with {self._model}")
