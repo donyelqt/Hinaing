@@ -257,10 +257,11 @@ def deduplicate_documents(documents: list[WebDocument]) -> list[WebDocument]:
             logger.debug("Filtered duplicate URL: %s", doc.url)
             continue
         
-        # Normalize title for comparison (first 50 chars, lowercase, alphanumeric only)
-        title_key = "".join(c for c in (doc.title or "")[:50].lower() if c.isalnum())
+        # Normalize the whole title, not a 50-char prefix. A truncated key
+        # collapses distinct articles that share an opening.
+        title_key = "".join(c for c in (doc.title or "").lower() if c.isalnum())
         
-        # Skip if very similar title already seen
+        # Skip only an exact title match
         if title_key and title_key in seen_titles:
             logger.debug("Filtered duplicate title: %s", doc.title[:50] if doc.title else "")
             continue
