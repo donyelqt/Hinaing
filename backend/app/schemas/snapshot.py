@@ -109,12 +109,21 @@ class Insight(BaseModel):
         return [_sanitize_text(v) for v in value if v]
 
 
+class CredibilitySummary(BaseModel):
+    """The three credibility card values over one denominator."""
+
+    avg_score: int
+    high_percent: int
+    review_percent: int
+
+
 class SnapshotResponse(BaseModel):
     overall_sentiment: SentimentBreakdown
     actionable_insights: list[Insight]
     alerts: list[str] | None = None
     sources: list[WebDocument] | None = None
     verification: VerificationReport | None = None  # NEW: Faithfulness verification
+    credibility: CredibilitySummary | None = None
 
     @field_validator("alerts", mode="before")
     @classmethod
