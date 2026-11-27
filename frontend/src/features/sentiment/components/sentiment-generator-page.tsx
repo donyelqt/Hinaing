@@ -31,6 +31,7 @@ import { FocusAreaSelector } from "./FocusAreaSelector";
 import { MobileFilters } from "./MobileFilters";
 import { VerificationBadge } from "./VerificationBadge";
 import { isEmptyParagraph, parseCitations } from "../utils/citation-parser";
+import { computeCredibilityBreakdown, sentimentPercents } from "../utils/sentiment-numbers";
 import { PRESET_OPTIONS, GENERATOR_STEPS } from "../constants";
 
 /**
@@ -76,6 +77,11 @@ type SnapshotResponse = {
     sentiment?: string | null;
     metadata?: Record<string, unknown>;
   }[] | null;
+  credibility?: {
+    avg_score: number;
+    high_percent: number;
+    review_percent: number;
+  };
   verification?: {
     total_claims: number;
     verified_claims: number;
@@ -131,16 +137,6 @@ type DisplayInsight = {
   evidence?: string[];
 };
 
-type CredibilityBreakdown = {
-  /** Share of documents the system cleared without external corroboration (Tavily-verified or VSEE-bypassed). */
-  verifiedPercent: number;
-  /** Complement of verifiedPercent over the same denominator, so the pair sums to 100. */
-  reviewPercent: number;
-  /** Mean 5-signal credibility score. */
-  avgScore: number;
-  hasData: boolean;
-};
-
 const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => {
   if (!rawSummary) return null;
   const trimmed = rawSummary.trim();
@@ -182,50 +178,6 @@ const parseNarrativeSummary = (rawSummary?: string): NarrativeSummary | null => 
   } catch {
     return null;
   }
-};
-
-const computeCredibilityBreakdown = (sources?: SnapshotResponse["sources"] | null): CredibilityBreakdown => {
-  if (!sources || sources.length === 0) {
-    return { verifiedPercent: 0, reviewPercent: 0, avgScore: 0, hasData: false };
-  }
-
-  // Verified means the system cleared the document: Tavily returned a verdict,
-  // or VSEE bypassed the external calls entirely. This matches the per-document
-  // badge and the Agentic Verification Rate. Review is its complement over the
-  // same denominator, so the two cards always sum to 100.
-  let verifiedCount = 0;
-  let totalScore = 0;
-  let scoredCount = 0;
-
-  sources.forEach((source) => {
-    const metadata = source.metadata ?? {};
-    const score = typeof metadata.credibility_score === "number" ? metadata.credibility_score : null;
-    const verificationStatus = typeof metadata.tavily_verification_status === "string"
-      ? metadata.tavily_verification_status
-      : null;
-
-    if (verificationStatus === "verified" || verificationStatus === "vsee_bypass") {
-      verifiedCount += 1;
-    }
-
-    if (score !== null) {
-      totalScore += score;
-      scoredCount += 1;
-    }
-  });
-
-  if (scoredCount === 0) {
-    return { verifiedPercent: 0, reviewPercent: 0, avgScore: 0, hasData: false };
-  }
-
-  const verifiedPercent = Math.round((verifiedCount / sources.length) * 100);
-
-  return {
-    verifiedPercent,
-    reviewPercent: 100 - verifiedPercent,
-    avgScore: Math.round((totalScore / scoredCount) * 100),
-    hasData: true,
-  };
 };
 
 function ActionableInsightItem({ insight, index }: { insight: DisplayInsight; index: number }) {
@@ -363,37 +315,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
       });
   }, []);
 
-  // Calculate sentiment percentages with rounding that ensures sum to 100%
-  let negativePercent = 54;
-  let neutralPercent = 31;
-  let positivePercent = 15;
-  
-  if (snapshot?.overall_sentiment?.scores) {
-    const { negative, neutral, positive } = snapshot.overall_sentiment.scores;
-    const neg = Math.round(negative * 100);
-    const neu = Math.round(neutral * 100);
-    const pos = Math.round(positive * 100);
-    const total = neg + neu + pos;
-
-    negativePercent = neg;
-    neutralPercent = neu;
-    positivePercent = pos;
-
-    if (total !== 100) {
-      // Adjust the largest percentage to make sum 100%
-      const diff = 100 - total;
-      const values = [
-        { value: neg, key: 'negative' },
-        { value: neu, key: 'neutral' },
-        { value: pos, key: 'positive' }
-      ];
-      const largest = values.reduce((a, b) => a.value > b.value ? a : b);
-
-      if (largest.key === 'negative') negativePercent = neg + diff;
-      else if (largest.key === 'neutral') neutralPercent = neu + diff;
-      else positivePercent = pos + diff;
-    }
-  }
+  const sentiment = React.useMemo(
+    () => sentimentPercents(snapshot?.overall_sentiment?.scores),
+    [snapshot?.overall_sentiment?.scores],
+  );
 
   const narrativeSummary = React.useMemo(() => parseNarrativeSummary(snapshot?.overall_sentiment?.summary), [snapshot?.overall_sentiment?.summary]);
 
@@ -452,7 +377,10 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
   }, [snapshot?.actionable_insights, narrativeSummary]);
 
   const hasInsights = insightsToDisplay.length > 0;
-  const credibilityBreakdown = React.useMemo(() => computeCredibilityBreakdown(snapshot?.sources), [snapshot?.sources]);
+  const credibilityBreakdown = React.useMemo(
+    () => computeCredibilityBreakdown(snapshot?.credibility, snapshot?.sources),
+    [snapshot?.credibility, snapshot?.sources],
+  );
 
   const handleGenerate = async () => {
     // Check if backend is ready
@@ -773,49 +701,51 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             </button>
                           )}
                         </div>
-                        <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                          <div className={clsx(
-                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                          )}>
-                            <strong className="block text-lg font-semibold text-rose-600">{negativePercent}%</strong>
-                            <span className="text-2xs uppercase tracking-wide text-slate-500">Negative</span>
+                        {sentiment && (
+                          <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                            <div className={clsx(
+                              "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            )}>
+                              <strong className="block text-lg font-semibold text-rose-600">{sentiment.negative}%</strong>
+                              <span className="text-2xs uppercase tracking-wide text-slate-500">Negative</span>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            )}>
+                              <strong className="block text-lg font-semibold text-slate-700">{sentiment.neutral}%</strong>
+                              <span className="text-2xs uppercase tracking-wide text-slate-500">Neutral</span>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
+                            )}>
+                              <strong className="block text-lg font-semibold text-emerald-600">{sentiment.positive}%</strong>
+                              <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
+                            </div>
                           </div>
-                          <div className={clsx(
-                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                          )}>
-                            <strong className="block text-lg font-semibold text-slate-700">{neutralPercent}%</strong>
-                            <span className="text-2xs uppercase tracking-wide text-slate-500">Neutral</span>
+                        )}
+                        {credibilityBreakdown.hasData && (
+                          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            )}
+                            title="5-signal credibility analysis">
+                              <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.avgScore / 100))}>{credibilityBreakdown.avgScore}%</strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            )}>
+                              <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.verifiedPercent / 100))}>{credibilityBreakdown.verifiedPercent}%</strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
+                            </div>
+                            <div className={clsx(
+                              "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
+                            )}>
+                              <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.reviewPercent / 100))}>{credibilityBreakdown.reviewPercent}%</strong>
+                              <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Review</span>
+                            </div>
                           </div>
-                          <div className={clsx(
-                            "rounded-lg bg-white/70 p-3 shadow-inner transition-all duration-300",
-                          )}>
-                            <strong className="block text-lg font-semibold text-emerald-600">{positivePercent}%</strong>
-                            <span className="text-2xs uppercase tracking-wide text-slate-500">Positive</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center text-sm">
-                          <div className={clsx(
-                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                          )}
-                          title="5-signal credibility analysis">
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.avgScore / 100))}>{credibilityBreakdown.avgScore}%</strong>
-                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Credibility</span>
-                          </div>
-                          <div className={clsx(
-                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                          )}>
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.verifiedPercent / 100))}>{credibilityBreakdown.verifiedPercent}%</strong>
-                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Verified</span>
-                
-                          </div>
-                          <div className={clsx(
-                            "rounded-lg bg-white/80 p-2 sm:p-3 shadow-inner transition-all duration-300",
-                          )}>
-                            <strong className={clsx("block text-base sm:text-lg font-semibold", toneForRate(credibilityBreakdown.reviewPercent / 100))}>{credibilityBreakdown.reviewPercent}%</strong>
-                            <span className="text-[9px] sm:text-2xs uppercase tracking-wide text-slate-500 leading-tight block">Review</span>
-          
-                          </div>
-                        </div>
+                        )}
 
 
                         {/* Faithfulness Score - Enhanced with Best Practice Metrics */}
