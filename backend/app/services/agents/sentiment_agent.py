@@ -17,6 +17,8 @@ from typing import Literal
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from ...core.llm_budget import LLM_SENTIMENT_MAX_OUTPUT_TOKENS
+
 # Legacy Gemini imports (kept for reference if switching back to Gemini)
 # import google.generativeai as genai
 # from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -466,7 +468,7 @@ Return JSON array of results:
                     prompt=prompt,
                     system_prompt="You are a sentiment analysis expert. Return accurate, concise JSON.",
                     temperature=0.0,
-                    max_tokens=2000,
+                    max_tokens=LLM_SENTIMENT_MAX_OUTPUT_TOKENS,
                 )
                 
                 return self._parse_llm_probs(response, len(batch))
