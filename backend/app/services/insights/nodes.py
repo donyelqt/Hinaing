@@ -25,6 +25,7 @@ from pydantic import ValidationError  # type: ignore
 
 from app.core.config import get_settings  # type: ignore
 from app.schemas.snapshot import (  # type: ignore
+    CredibilitySummary,
     Insight,
     SentimentBreakdown,
     SnapshotRequest,
@@ -958,6 +959,7 @@ async def build_snapshot(state: SnapshotState) -> SnapshotState:
             alerts=alerts,
             sources=docs,
             verification=verification_report,  # NEW: Include verification report
+            credibility=_snapshot_credibility(docs),
         )
     except Exception as exc:
         logger.exception("[snapshot] Failed to create SnapshotResponse: %s", exc)
@@ -1215,6 +1217,31 @@ def _parse_theme_insights(output: str, theme_label: str) -> list[dict]:
         logger.error(f"[{theme_label}] JSON parse failed: {e}")
         logger.error(f"[{theme_label}] Failed output: {output[:1000]}")
         return []
+
+def _credibility_breakdown(verified: int, total: int, avg_score: float) -> dict[str, int]:
+    """Build the three card values from one denominator.
+
+    Review is the complement of the verified share, so the pair sums to 100 for
+    every document count. The average is the 5-signal mean and is independent.
+    """
+    high_percent = round(verified / max(1, total) * 100)
+    return {
+        "avg_score": round(avg_score * 100),
+        "high_percent": high_percent,
+        "review_percent": 100 - high_percent,
+    }
+
+
+def _snapshot_credibility(docs: list[WebDocument]) -> CredibilitySummary | None:
+    """Read the card values off the enriched documents, or None when empty."""
+    if not docs:
+        return None
+    verified = sum(
+        1 for d in docs
+        if (d.metadata or {}).get("tavily_verification_status") in ("verified", "vsee_bypass")
+    )
+    avg = sum((d.metadata or {}).get("credibility_score") or 0.5 for d in docs) / len(docs)
+    return CredibilitySummary(**_credibility_breakdown(verified, len(docs), avg))
 
 _THEME_CALL_GATE = threading.Lock()
 
