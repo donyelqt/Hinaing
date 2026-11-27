@@ -406,13 +406,27 @@ class LLMNarrativeClient:
         insights_block = ""
         theme_categories = set()
         if theme_insights:
-            insight_lines = []
-            for item in theme_insights[:NARRATIVE_THEME_INSIGHT_LIMIT]:
+            by_category: dict[str, list[dict]] = {}
+            for item in theme_insights:
                 cat = sanitize_text(item.get('category', 'General'))
                 theme_categories.add(cat)
-                title = sanitize_text(item.get('title'))
-                detail = sanitize_text(item.get('detail'))
-                insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
+                by_category.setdefault(cat, []).append(item)
+
+            # One line per theme per pass, so a cap never drops a whole theme.
+            insight_lines: list[str] = []
+            for pass_index in range(max((len(v) for v in by_category.values()), default=0)):
+                for cat, items in by_category.items():
+                    if pass_index >= len(items):
+                        continue
+                    if len(insight_lines) >= NARRATIVE_THEME_INSIGHT_LIMIT:
+                        break
+                    item = items[pass_index]
+                    title = sanitize_text(item.get('title'))
+                    detail = sanitize_text(item.get('detail'))
+                    insight_lines.append(f"THEME [{cat}]: {title}\nDETAILS: {detail}")
+                if len(insight_lines) >= NARRATIVE_THEME_INSIGHT_LIMIT:
+                    break
+
             insights_block = "\n\n=== PRE-ANALYZED THEME INSIGHTS ===\n" + "\n\n".join(insight_lines)
 
         # Build documents section with domain tracking
@@ -420,8 +434,13 @@ class LLMNarrativeClient:
         available_domains = set()
         
         # Cap the documents. Assembling all of them on a large run pushes the
-        # prompt past the provider allowance.
-        for idx, doc in enumerate(documents[:NARRATIVE_DOC_LIMIT], start=1):
+        # prompt past the provider allowance. Verified documents lead, so the
+        # cap never trades a verified source for an unverified one.
+        ranked_docs = sorted(
+            documents,
+            key=lambda d: (d.get('metadata', {}).get('tavily_verification_status') != 'verified'),
+        )
+        for idx, doc in enumerate(ranked_docs[:NARRATIVE_DOC_LIMIT], start=1):
             title = sanitize_text(doc.get('title', ''))
             snippet = sanitize_text(doc.get('snippet', ''))[:200]
             sentiment = doc.get('sentiment', 'neutral')
@@ -491,7 +510,7 @@ class LLMNarrativeClient:
 
         # Build citation menu for LLM to choose from (Constrained Generation)
         citation_menu = []
-        for idx, doc in enumerate(documents[:NARRATIVE_DOC_LIMIT], start=1):
+        for idx, doc in enumerate(ranked_docs[:NARRATIVE_DOC_LIMIT], start=1):
             url = doc.get('url', '')
             if url:
                 # Shorten URL for token efficiency (first 60 chars)
