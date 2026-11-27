@@ -774,7 +774,7 @@ async def stream_analysis(request: ChatAnalyzeRequest) -> AsyncGenerator[str, No
         # high_percent is the AVR figure: documents cleared without external
         # corroboration (Tavily-verified or VSEE-bypassed). It matches the
         # per-document badge and the collector's field contract.
-        # low_percent is the complement of high_percent over the same
+        # review_percent is the complement of high_percent over the same
         # denominator, so the Review card always reads 100 minus Verified.
         # avg_score is the 5-signal weighted average.
         high_cred = sum(1 for s in sources_data if s.get("tavily_verification_status") in ("verified", "vsee_bypass"))
@@ -930,7 +930,7 @@ def _credibility_breakdown(verified: int, total: int, avg_score: float) -> dict[
     return {
         "avg_score": round(avg_score * 100),
         "high_percent": high_percent,
-        "low_percent": 100 - high_percent,
+        "review_percent": 100 - high_percent,
     }
 
 def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_areas: list[str]) -> dict:
@@ -993,7 +993,7 @@ def _format_snapshot_result(response: SnapshotResponse, session_id: str, focus_a
     # high_percent is the AVR figure: documents cleared without external
     # corroboration (Tavily-verified or VSEE-bypassed). It matches the
     # per-document badge and the collector's field contract.
-    # low_percent is the complement of high_percent over the same denominator,
+    # review_percent is the complement of high_percent over the same denominator,
     # so the Review card always reads 100 minus Verified Hinaing.
     high_cred = sum(1 for s in sources_data if (s.get("metadata") or {}).get("tavily_verification_status") in ("verified", "vsee_bypass"))
     avg_cred = sum(s.get("credibility_score") or 0.5 for s in sources_data) / max(1, len(sources_data))
