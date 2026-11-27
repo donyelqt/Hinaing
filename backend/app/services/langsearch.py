@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
 from datetime import datetime
 from typing import Any
@@ -16,18 +17,41 @@ from pydantic import ValidationError
 from ..schemas.snapshot import WebDocument
 
 logger = logging.getLogger(__name__)
-_MAX_RETRIES = 5
-_RETRY_DELAY = 0.5  # More aggressive initial delay; backoff: 0.5s, 1s, 2s, 4s, 8s (total ~15.5s)
+_MAX_RETRIES = 2
+_RETRY_DELAY = 0.5
+_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+_MAX_BACKOFF = 4.0
 
 
 class LangSearchClient:
     """Thin async wrapper around the LangSearch REST API."""
 
-    def __init__(self, *, timeout: float = 15.0) -> None:
+    def __init__(self, *, timeout: float = 8.0) -> None:
         settings = get_settings()
         self._api_key = settings.langsearch_api_key
         self._base_url = settings.langsearch_base_url.rstrip("/")
         self._timeout = timeout
+
+    @staticmethod
+    def _retry_after_seconds(response: Any) -> float | None:
+        """Seconds the server asked us to wait, or None when it did not say.
+
+        A daily token quota error will not clear before the UTC reset, so a
+        large Retry-After means retrying is pointless.
+        """
+        retry_after = response.headers.get("Retry-After") if response.headers else None
+        if not retry_after:
+            return None
+        try:
+            return max(0.0, float(retry_after))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _backoff_seconds(attempt: int) -> float:
+        """Exponential backoff with jitter, capped to the retry budget."""
+        delay = _RETRY_DELAY * (2 ** (attempt - 1))
+        return min(delay + random.uniform(0, _RETRY_DELAY), _MAX_BACKOFF)
 
     async def search(
         self,
@@ -71,30 +95,39 @@ class LangSearchClient:
                 logger.warning("[langsearch] Circuit breaker: skipping search (3+ recent failures)")
                 return []
             
-            # Retry with exponential backoff for rate limits (429)
             data = None
             search_failed = False
             for attempt in range(1, _MAX_RETRIES + 1):
                 response = await client.post(self._base_url, json=payload, headers=headers)
-                
-                if response.status_code == 429:
-                    search_failed = True
-                    if attempt < _MAX_RETRIES:
-                        delay = _RETRY_DELAY * (2 ** (attempt - 1))  # Exponential: 0.5s, 1s, 2s, 4s, 8s
-                        logger.warning(
-                            "LangSearch rate limited (429), retrying in %.1fs (attempt %d/%d)",
-                            delay, attempt, _MAX_RETRIES
-                        )
-                        await asyncio.sleep(delay)
-                        continue
-                    else:
-                        logger.error(f"LangSearch rate limited (429) after {attempt} retries for query: {query[:50]} — daily token allowance may be exhausted (resets 00:00 UTC); check Dashboard")
-                        # Allowance safety net: fall back to no-domain-scoped call once to rule out domain-list exhaustion, then give up
-                        return []
-                
-                response.raise_for_status()
-                data = response.json()
-                break
+
+                if response.status_code not in _RETRY_STATUSES:
+                    response.raise_for_status()
+                    data = response.json()
+                    break
+
+                search_failed = True
+                retry_after = self._retry_after_seconds(response)
+                if retry_after is not None and retry_after > _MAX_BACKOFF:
+                    logger.error(
+                        "LangSearch %d asks for %.0fs; allowance is exhausted for this UTC day, "
+                        "not retrying (resets 00:00 UTC)",
+                        response.status_code, retry_after,
+                    )
+                    return []
+
+                if attempt >= _MAX_RETRIES:
+                    logger.error(
+                        "LangSearch %d after %d attempts for query: %s",
+                        response.status_code, attempt, query[:50],
+                    )
+                    return []
+
+                delay = retry_after if retry_after is not None else self._backoff_seconds(attempt)
+                logger.warning(
+                    "LangSearch %d, retrying in %.1fs (attempt %d/%d)",
+                    response.status_code, delay, attempt, _MAX_RETRIES,
+                )
+                await asyncio.sleep(delay)
             
             # Track failures for circuit breaker
             if search_failed:
