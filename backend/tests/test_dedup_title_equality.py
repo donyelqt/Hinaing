@@ -25,15 +25,15 @@ def test_articles_sharing_a_50_char_prefix_are_both_kept() -> None:
     assert [doc.url for doc in kept] == [doc.url for doc in docs]
 
 
-def test_identical_titles_are_still_collapsed() -> None:
+def test_identical_titles_on_different_urls_are_both_kept() -> None:
     docs = [
         _doc("https://baguioheraldexpressonline.com/a", "Baguio City water shortage deepens"),
-        _doc("https://baguioheraldexpressonline.com/b", "Baguio City water shortage deepens"),
+        _doc("https://baguio.bomboradyo.com/b", "Baguio City water shortage deepens"),
     ]
 
     kept = deduplicate_documents(docs)
 
-    assert len(kept) == 1
+    assert len(kept) == 2
 
 
 def test_a_short_title_is_not_matched_against_a_longer_one() -> None:
