@@ -95,12 +95,13 @@ class LLMNarrativeClient:
                 llm_mode=llm_mode,
             )
             
-            # POST-PROCESSING: Filter invalid citations (safety net for LLM errors)
+            # POST-PROCESSING: expand the bare menu numbers first, because the
+            # filters and the verifier only recognise the full citation form.
             if result[0]:  # If summary exists
-                result = self._filter_invalid_citations(result[0], result[1], documents)
-                # Auto-correct citation status mismatches to match document metadata
-                summary_corrected = self._correct_citation_status(result[0], documents)
-                result = (summary_corrected, result[1])
+                expanded, _ = self._convert_citation_numbers(result[0], result[1], documents)
+                filtered = self._filter_invalid_citations(expanded, result[1], documents)
+                summary_corrected = self._correct_citation_status(filtered[0], documents)
+                result = (summary_corrected, filtered[1])
 
             return result
         
@@ -296,49 +297,54 @@ class LLMNarrativeClient:
         insights: list[dict[str, Any]],
         documents: list[dict[str, Any]],
     ) -> tuple[str, list[dict[str, Any]]]:
-        """Convert [1], [2], [3] citation numbers to full citation format.
-        
+        """Expand the bare menu numbers the model writes into full citations.
+
         Args:
-            summary: Generated summary with [1], [2], [3] citations
+            summary: Generated summary carrying bare menu numbers
             insights: Generated insights
             documents: Retrieved documents (source for citation metadata)
-        
+
         Returns:
             Tuple of (converted_summary, insights)
         """
-        # Build citation menu (same as in prompt)
-        citation_map = {}
-        for idx, doc in enumerate(documents[:30], start=1):
-            url = doc.get('url', '')
-            if url:
-                url_short = str(url).replace('https://', '').replace('http://', '')
-                if len(url_short) > 60:
-                    url_short = url_short[:57] + '...'
-                sentiment = doc.get('sentiment', 'neutral').capitalize()
-                verification_status = self._normalize_verification_status(
-                    doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
-                )
-                citation_map[idx] = {
-                    'url': url_short,
-                    'sentiment': sentiment,
-                    'verification_status': verification_status,
-                }
-        
-        # Convert [1], [2], [3] to the canonical three-field citation. The
-        # verifier pattern and the frontend parser both treat this as canonical.
-        def replace_citation(match):
-            num = int(match.group(1))
-            if num in citation_map:
-                item = citation_map[num]
-                verification = item.get('verification_status', 'unverified').capitalize()
-                return f"[Src: {item['url']} | Sent: {item['sentiment']} | {verification}]"
-            else:
-                logger.warning(f"[LLMNarrativeClient] Citation [{num}] not found in citation map")
-                return match.group(0)  # Keep original if not found
+        ranked_docs = sorted(
+            documents,
+            key=lambda d: (d.get('metadata', {}).get('tavily_verification_status') != 'verified'),
+        )
 
-        converted = re.sub(r'\[(\d+)\]', replace_citation, summary)
-        citation_count = len(re.findall(r'\[\d+\]', summary))
-        logger.info(f"[LLMNarrativeClient] Converted {citation_count} citation numbers to full format with verification status")
+        citation_map: dict[int, dict[str, str]] = {}
+        for idx, doc in enumerate(ranked_docs[:NARRATIVE_DOC_LIMIT], start=1):
+            url = doc.get('url', '')
+            if not url:
+                continue
+            url_short = str(url).replace('https://', '').replace('http://', '')
+            if len(url_short) > 60:
+                url_short = url_short[:57] + '...'
+            citation_map[idx] = {
+                'url': url_short,
+                'sentiment': str(doc.get('sentiment', 'neutral')).capitalize(),
+                'verification_status': self._normalize_verification_status(
+                    doc.get('metadata', {}).get('tavily_verification_status', 'unverified')
+                ),
+            }
+
+        def replace_citation(match: re.Match[str]) -> str:
+            num = int(match.group(1))
+            item = citation_map.get(num)
+            if item is None:
+                logger.warning(f"[LLMNarrativeClient] Citation {num} not in menu of {len(citation_map)}")
+                return match.group(0)
+            status = item['verification_status'].capitalize()
+            return f"[Src: {item['url']} | Sent: {item['sentiment']} | {status}]"
+
+        # A bare number only counts as a citation at a sentence end, so costs
+        # and counts inside prose are left alone.
+        converted, count = re.subn(
+            r'(?<=[a-z0-9\)\]])\s+(\d{1,2})(?=\s*[.,;:!?)]|\s*$)',
+            lambda m: f" {replace_citation(m)}",
+            summary,
+        )
+        logger.info(f"[LLMNarrativeClient] Expanded {count} bare citation numbers to full format")
 
         return converted, insights
 
@@ -531,7 +537,7 @@ class LLMNarrativeClient:
         # Build citation menu block
         citation_menu_block = ""
         if citation_menu:
-            menu_lines = ["=== AVAILABLE CITATIONS (Choose by number [1], [2], [3], etc.) ==="]
+            menu_lines = ["=== AVAILABLE CITATIONS (Cite by number, e.g. 5 or 6) ==="]
             for item in citation_menu:
                 # Extract verification_status from document metadata
                 doc_credibility = item.get('credibility', 0.0)
@@ -660,18 +666,16 @@ RULES:
             "2. Reference the theme insights for structured context.\n"
             "3. Generate a comprehensive, engaging narrative summary with IN-LINE CITATIONS.\n\n"
             "CITATION FORMAT (CRITICAL - MUST FOLLOW EXACTLY):\n"
-            "- Each sentence MUST end with a full citation in this EXACT format:\n"
-            "  [Src: domain.com | Sent: SENTIMENT | verification_status]\n"
-            "- Example: Vendors received P10,000 assistance [Src: pia.gov.ph | Sent: Positive | verified].\n"
-            "- Use the citation menu above to select sources - COPY the domain AND verification status EXACTLY as shown\n"
-            "- CRITICAL: The verification status MUST be copied EXACTLY from the citation menu (verified/unverified/contradicted) - DO NOT translate or modify it\n"
-            "- DO NOT use numbered citations like [1], [2], [3] - use FULL format ONLY\n"
-            "- EVERY sentence MUST have exactly one citation. NO exceptions.\n"
+            "- Cite by the menu number, written as a bare number, never in brackets:\n"
+            "  Vendors received P10,000 assistance 5.\n"
+            "- Example: Vendors received P10,000 assistance 5. SM Prime withdrew its proposal 6.\n"
+            "- Use the citation menu above to select sources by their number\n"
+            "- Write the number with no brackets, no Src, no Sent, no status text\n"
+            "- DO NOT write [1], [2], [3] or [Src: ...] - the backend expands the bare number\n"
+            "- EVERY sentence MUST end with exactly one bare number. NO exceptions.\n"
             "- Each paragraph should have 2-4 citations minimum.\n"
             "- The conclusion paragraph MUST have at least 2 citations.\n"
-            "- Prioritize sources with 'verified' status when multiple sources support a claim\n"
-            "- Use sentiment from document metadata (Negative/Neutral/Positive)\n"
-            "- Include verification status EXACTLY as shown in the menu: verified, unverified, or contradicted\n"
+            "- Prefer sources with 'verified' status when several support a claim\n"
             "- Citations prove your claims are grounded in retrieved documents\n\n"
             "FORMATTING REQUIREMENTS:\n"
             "- Structure the summary into 6 well-developed paragraphs (2-3 sentences each)\n"
@@ -689,14 +693,15 @@ RULES:
             "- The summary field MUST be a single JSON string with \\n\\n for paragraph breaks\n"
             "- DO NOT use template literals or backticks - they are invalid JSON\n\n"
             "Return a JSON object with keys:\n"
-            '- summary: "string narrative with \\n\\n between paragraphs and [Src: ...] citations" (use double quotes!)\n'
+            '- summary: "string narrative with \\n\\n between paragraphs and bare number citations" (use double quotes!)\n'
             "- insights: list of up to 5 items, each {category, title, detail, evidence (array of source URLs)}\n\n"
             "Example CORRECT format:\n"
-            '{"summary": "**Public Safety:** Traffic increased [Src: facebook.com | Sent: Negative | unverified].\\n\\n**Infrastructure:** Water shortage persists [Src: pia.gov.ph | Sent: Neutral | verified].", "insights": []}\n\n'
+            '{"summary": "**Public Safety:** Traffic increased 3.\\n\\n**Infrastructure:** Water shortage persists 7.", "insights": []}\n\n'
             "Example WRONG format (DO NOT USE):\n"
             "{'summary': `text with backticks`, 'insights': []}  <- INVALID!\n"
             '{"summary": "Traffic increased.", "insights": []}  <- MISSING CITATIONS!\n'
-            '{"summary": "Traffic increased [1].", "insights": []}  <- NUMBERED CITATION (use full format)!\n'
+            '{"summary": "Traffic increased [3].", "insights": []}  <- BRACKETS (write 3, not [3])!\n'
+            '{"summary": "Traffic increased [Src: pia.gov.ph | Sent: Neutral | verified].", "insights": []}  <- FULL FORMAT (write the number only)!\n'
         )
 
     def _build_agent_instruction(self, *, window: str, focus_areas: list[str]) -> str:
