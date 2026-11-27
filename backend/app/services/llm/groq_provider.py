@@ -101,6 +101,26 @@ class GroqProvider(BaseLLMProvider):
         """Get current model name."""
         return self._model
     
+    def _build_payload(self, prompt, system_prompt, temperature, max_tokens, stream, **kwargs):
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        payload: dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            # gpt-oss emits reasoning tokens before the JSON and they count
+            # against max_tokens. A 4000 budget was spent on reasoning and the
+            # JSON came back unterminated. Callers may override.
+            "reasoning_effort": "low",
+        }
+        payload.update(kwargs)
+        if stream:
+            payload["stream"] = True
+        return payload
+
     async def generate(
         self,
         prompt: str,
@@ -118,11 +138,6 @@ class GroqProvider(BaseLLMProvider):
         if not self._client:
             raise RuntimeError("[Groq] Client not initialized (missing API key)")
         
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
         # Reserve against the shared per-minute token allowance before the
         # call, then record what the provider reports so the next decision is
         # exact. The prompt estimate matters, because the provider counts
@@ -136,11 +151,14 @@ class GroqProvider(BaseLLMProvider):
                 logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
             try:
                 completion: ChatCompletion = await self._client.chat.completions.create(
-                    model=self._model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
+                    **self._build_payload(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=False,
+                        **kwargs,
+                    )
                 )
                 usage = getattr(completion, "usage", None)
                 GATE.record(getattr(usage, "total_tokens", 0) or 0)
@@ -195,19 +213,16 @@ class GroqProvider(BaseLLMProvider):
         if not self._client:
             raise RuntimeError("[Groq] Client not initialized (missing API key)")
         
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
         try:
             stream = await self._client.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                **kwargs
+                **self._build_payload(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=True,
+                    **kwargs,
+                )
             )
             
             async for chunk in stream:
@@ -269,22 +284,20 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
         if not self._sync_client:
             raise RuntimeError("[Groq] Sync client not initialized (missing API key)")
         
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
         prompt_estimate = len(prompt) // 4 + len(system_prompt or "") // 4
         waited = GATE.acquire(max_tokens, prompt_tokens=prompt_estimate)
         if waited:
             logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
         try:
             completion: ChatCompletion = self._sync_client.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+                **self._build_payload(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    stream=False,
+                    **kwargs,
+                )
             )
             usage = getattr(completion, "usage", None)
             GATE.record(getattr(usage, "total_tokens", 0) or 0)
