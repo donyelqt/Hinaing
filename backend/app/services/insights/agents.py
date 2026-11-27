@@ -214,7 +214,7 @@ class RetrievalAgent:
                             search_web_documents(
                                 request,
                                 custom_query=task.query,
-                                limit=10,
+                                limit=20,
                             ),
                             timeout=25.0
                         )
@@ -237,7 +237,7 @@ class RetrievalAgent:
                                     search_web_documents(
                                         widened,
                                         custom_query=stripped,
-                                        limit=10,
+                                        limit=20,
                                     ),
                                     timeout=25.0
                                 )
