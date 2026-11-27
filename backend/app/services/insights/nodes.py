@@ -43,7 +43,7 @@ from app.services.agents.query_orchestrator import QueryOrchestratorAgent  # typ
 from app.services.agents.context_agent import ContextAugmentationAgent  # type: ignore
 from app.services.agents.coordinator_agent import get_coordinator_agent  # type: ignore
 from app.services.metrics import get_metrics_collector  # type: ignore
-from app.core.llm_budget import LLM_CLAIM_MAX_OUTPUT_TOKENS  # type: ignore
+from app.core.llm_budget import LLM_MAX_OUTPUT_TOKENS  # type: ignore
 
 from app.services.insights.definitions import (  # type: ignore
     SnapshotState,
@@ -1274,7 +1274,7 @@ def _synthesize_single_theme(theme_key: str, docs: list[WebDocument], contexts: 
                     prompt=prompt,
                     system_prompt="You are a civic analyst for Baguio City providing actionable recommendations for government officials. Output ONLY valid JSON, no extra text.",
                     temperature=0.1,
-                    max_tokens=LLM_CLAIM_MAX_OUTPUT_TOKENS,
+                    max_tokens=LLM_MAX_OUTPUT_TOKENS,
                 )
 
                 from app.services.agents.theme_agent import sanitize_text
