@@ -294,14 +294,14 @@ def _domain_from_url(doc: WebDocument) -> str:
     parsed = urlparse(str(doc.url))
     return parsed.netloc or "unknown"
 
-_SPARSE_RESULT_THRESHOLD = 2
+_SPARSE_RESULT_THRESHOLD = 3
 
 
 def _should_backfill(documents: list[WebDocument]) -> bool:
     """True when LangSearch returned too few documents to be useful.
 
-    One document cannot express a disagreement, so it is treated like an empty
-    result. The Tavily backfill is the second path to evidence.
+    Two documents produced an empty insight list from the theme agent, which
+    shipped a placeholder card. Fewer than three reaches the Tavily backfill.
     """
     return len(documents) < _SPARSE_RESULT_THRESHOLD
 
