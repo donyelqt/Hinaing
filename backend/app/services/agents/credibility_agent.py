@@ -31,6 +31,8 @@ from datetime import datetime, timezone
 from typing import Any, cast, Union, Optional
 from urllib.parse import urlparse
 
+from ...core.llm_budget import LLM_CREDIBILITY_MAX_OUTPUT_TOKENS
+
 def _round(val: Any, ndigits: int = 0) -> float:
     """Pure math rounding to satisfy type checkers that reject 2-arg round()."""
     try:
@@ -457,7 +459,7 @@ Score guide:
                 prompt=prompt,
                 system_prompt="You are a credibility analysis expert. Return accurate, concise JSON.",
                 temperature=0.1,
-                max_tokens=4500,
+                max_tokens=LLM_CREDIBILITY_MAX_OUTPUT_TOKENS,
             )
             return self._parse_response(response, len(batch))
         except Exception as e:

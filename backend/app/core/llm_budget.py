@@ -29,3 +29,12 @@ LLM_NARRATIVE_MAX_OUTPUT_TOKENS: int = 6000
 # calls have finished, so it can claim more of the minute. 4000 truncated a
 # reasoning model's JSON array mid-string.
 LLM_CLAIM_MAX_OUTPUT_TOKENS: int = 6000
+
+# Output tokens for sentiment labelling. It runs concurrently with credibility
+# under one asyncio.gather, so the pair must fit the per-minute ceiling with
+# room for both prompts. 2000 plus 4500 reached 8031 and returned 429.
+LLM_SENTIMENT_MAX_OUTPUT_TOKENS: int = 1200
+
+# Output tokens for credibility scoring. Concurrent with sentiment, so it is
+# capped at half the ceiling alongside it.
+LLM_CREDIBILITY_MAX_OUTPUT_TOKENS: int = 2500
