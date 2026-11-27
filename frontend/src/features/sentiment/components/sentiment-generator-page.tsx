@@ -654,11 +654,11 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                           <span className="text-xs font-medium text-hinaing-blue-600">Updated moments ago</span>
                         </div>
                         <div className="space-y-3">
-                          <h3 className="text-xl font-semibold text-hinaing-blue-900" id="sentiment-summary">
+                          <h3 className="text-base sm:text-lg font-semibold text-hinaing-blue-900" id="sentiment-summary">
                             {snapshot.overall_sentiment.label}
                           </h3>
                           {!summaryExpanded && animatedSummary.length === 0 && fullSummaryText.length > 420 && (
-                            <div className="text-sm text-slate-600 leading-relaxed">
+                            <div className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                               <p className="text-pretty">{fullSummaryText.slice(0, 420).replace(/\s+\S*$/, "")}…</p>
                               <button
                                 type="button"
@@ -670,7 +670,7 @@ export function SentimentGeneratorPage({ activePage = 'sentiment', onNavigate }:
                             </div>
                           )}
                           {(summaryExpanded || animatedSummary.length > 0 || fullSummaryText.length <= 420) && (
-                          <div className="text-sm text-slate-600 space-y-4 leading-relaxed">
+                          <div className="text-xs sm:text-sm text-slate-600 space-y-2 sm:space-y-3 leading-relaxed">
                             {(animatedSummary || fullSummaryText).split(/\n\n+/).filter((paragraph) => !isEmptyParagraph(paragraph)).map((paragraph, idx) => {
                               // Handle **Bold:** pattern for topic headers
                               const parts = paragraph.split(/\*\*([^*]+)\*\*/);
