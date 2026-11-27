@@ -294,6 +294,16 @@ def _domain_from_url(doc: WebDocument) -> str:
     parsed = urlparse(str(doc.url))
     return parsed.netloc or "unknown"
 
+_SPARSE_RESULT_THRESHOLD = 2
+
+
+def _should_backfill(documents: list[WebDocument]) -> bool:
+    """True when LangSearch returned too few documents to be useful.
+
+    One document cannot express a disagreement, so it is treated like an empty
+    result. The Tavily backfill is the second path to evidence.
+    """
+    return len(documents) < _SPARSE_RESULT_THRESHOLD
 
 async def search_web_documents(
     request: SnapshotRequest,
@@ -328,17 +338,17 @@ async def search_web_documents(
     web_docs = filter_by_location(web_docs)
     web_docs = filter_by_time_window(web_docs, request.time_window)
     web_docs = deduplicate_documents(web_docs)
-    if not web_docs:
+    if _should_backfill(web_docs):
         web_docs = await _tavily_backfill(request, custom_query, limit=8)
         if web_docs:
-            logger.info(f"[tavily] Backfill supplied {len(web_docs)} docs for empty LangSearch result")
+            logger.info(f"[tavily] Backfill supplied {len(web_docs)} docs for sparse LangSearch result")
     return web_docs
 
 
 async def _tavily_backfill(request: SnapshotRequest, custom_query: str | None, limit: int = 6) -> list[WebDocument]:
-    """Tavily backfill — fires ONLY when LangSearch/policy produced zero docs.
+    """Tavily backfill — fires when LangSearch/policy produced a sparse set.
 
-    Same backfill shape Simple Q&A tolerates; bounded cost (~1 credit per empty topic).
+    Same backfill shape Simple Q&A tolerates; bounded cost (~1 credit per sparse topic).
     """
     try:
         from ..agents.credibility_agent import tavily_search
