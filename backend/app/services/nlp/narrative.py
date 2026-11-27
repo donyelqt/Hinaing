@@ -338,9 +338,10 @@ class LLMNarrativeClient:
             return f"[Src: {item['url']} | Sent: {item['sentiment']} | {status}]"
 
         # A bare number only counts as a citation at a sentence end, so costs
-        # and counts inside prose are left alone.
+        # and counts inside prose are left alone. The separator is horizontal
+        # only, because a paragraph break ends a line and must still convert.
         converted, count = re.subn(
-            r'(?<=[a-z0-9\)\]])\s+(\d{1,2})(?=\s*[.,;:!?)]|\s*$)',
+            r'(?<=[a-z0-9\)\]])\s+(\d{1,2})(?=[.,;:!?)]|\s|$)(?![^\W\d_])',
             lambda m: f" {replace_citation(m)}",
             summary,
         )
