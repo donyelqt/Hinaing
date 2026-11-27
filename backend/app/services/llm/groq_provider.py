@@ -125,9 +125,13 @@ class GroqProvider(BaseLLMProvider):
         
         # Reserve against the shared per-minute token allowance before the
         # call, then record what the provider reports so the next decision is
-        # exact. The semaphore still caps concurrent connections.
+        # exact. The prompt estimate matters, because the provider counts
+        # prompt plus max_tokens and the gate cannot see the prompt otherwise.
+        prompt_estimate = len(prompt) // 4 + len(system_prompt or "") // 4
         async with _GROQ_CONCURRENCY_LIMIT:
-            waited = await asyncio.to_thread(GATE.acquire, max_tokens)
+            waited = await asyncio.to_thread(
+                GATE.acquire, max_tokens, prompt_tokens=prompt_estimate
+            )
             if waited:
                 logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
             try:
@@ -270,7 +274,8 @@ Respond with ONLY valid JSON. No markdown formatting, no explanations."""
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         
-        waited = GATE.acquire(max_tokens)
+        prompt_estimate = len(prompt) // 4 + len(system_prompt or "") // 4
+        waited = GATE.acquire(max_tokens, prompt_tokens=prompt_estimate)
         if waited:
             logger.info(f"[Groq] Waited {waited:.1f}s for the token window")
         try:
