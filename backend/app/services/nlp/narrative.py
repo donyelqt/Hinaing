@@ -20,6 +20,13 @@ from ...core.llm_budget import LLM_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
+# The provider counts prompt plus max_tokens against an 8000 per-minute
+# allowance. 30 documents and 18 theme insights measured 4533 tokens, which
+# with the 4000 output budget is 8533 and returns 413. These caps keep the
+# prompt near 3000 so the narrative still fits.
+NARRATIVE_DOC_LIMIT = 15
+NARRATIVE_THEME_INSIGHT_LIMIT = 9
+
 
 def sanitize_text(text: str | None) -> str:
     """Remove invalid Unicode characters (surrogates) that break Gemini API."""
@@ -400,7 +407,7 @@ class LLMNarrativeClient:
         theme_categories = set()
         if theme_insights:
             insight_lines = []
-            for item in theme_insights:
+            for item in theme_insights[:NARRATIVE_THEME_INSIGHT_LIMIT]:
                 cat = sanitize_text(item.get('category', 'General'))
                 theme_categories.add(cat)
                 title = sanitize_text(item.get('title'))
@@ -412,8 +419,9 @@ class LLMNarrativeClient:
         doc_lines = []
         available_domains = set()
         
-        # Cap to 30 like the citation menu — assembling ALL docs (unbounded on large runs) pushes prompts past Groq's TPM budget.
-        for idx, doc in enumerate(documents[:30], start=1):
+        # Cap the documents. Assembling all of them on a large run pushes the
+        # prompt past the provider allowance.
+        for idx, doc in enumerate(documents[:NARRATIVE_DOC_LIMIT], start=1):
             title = sanitize_text(doc.get('title', ''))
             snippet = sanitize_text(doc.get('snippet', ''))[:200]
             sentiment = doc.get('sentiment', 'neutral')
@@ -483,7 +491,7 @@ class LLMNarrativeClient:
 
         # Build citation menu for LLM to choose from (Constrained Generation)
         citation_menu = []
-        for idx, doc in enumerate(documents[:30], start=1):
+        for idx, doc in enumerate(documents[:NARRATIVE_DOC_LIMIT], start=1):
             url = doc.get('url', '')
             if url:
                 # Shorten URL for token efficiency (first 60 chars)
