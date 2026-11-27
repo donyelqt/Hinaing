@@ -27,15 +27,26 @@ class NumericalVerifier:
         r'\b(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)([KMBkmb]?)\b'
     )
 
-    # Number words to numeric mapping
-    NUMBER_WORDS = {
-        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
-        'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
-        'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
-        'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
-        'eighteen': 18, 'nineteen': 18, 'twenty': 20, 'thirty': 30,
-        'forty': 40, 'fifty': 50, 'hundred': 100, 'thousand': 1000,
+    # Only words that name a magnitude carry a quantity. A spelled count such
+    # as "two" is prose, and flagging it reported ordinary sentences as
+    # fabricated statistics.
+    MAGNITUDE_WORDS = {
+        'hundred': 100, 'thousand': 1000,
         'million': 1_000_000, 'billion': 1_000_000_000,
+    }
+
+    # A run of zeros with no significant digit is what a lost thousands
+    # separator leaves behind, not a claim.
+    ZERO_ARTIFACT_PATTERN = re.compile(r'^0+$')
+
+    # Spelled counts only mean a quantity next to a magnitude word.
+    COUNT_WORDS = {
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14,
+        'fifteen': 15, 'sixteen': 16, 'seventeen': 17, 'eighteen': 18,
+        'nineteen': 19, 'twenty': 20, 'thirty': 30, 'forty': 40,
+        'fifty': 50,
     }
 
     def __init__(self, tolerance: float = 0.10):
@@ -73,6 +84,9 @@ class NumericalVerifier:
             except ValueError:
                 continue
 
+            if self.ZERO_ARTIFACT_PATTERN.match(raw):
+                continue
+
             # Apply suffix multiplier
             multipliers = {'K': 1_000, 'M': 1_000_000, 'B': 1_000_000_000, '': 1}
             value *= multipliers.get(suffix, 1)
@@ -85,17 +99,23 @@ class NumericalVerifier:
                 "type": "numeric",
             })
 
-        # Extract number words (simple implementation)
+        # A spelled count is prose. A spelled count followed by a magnitude
+        # word is a quantity, as in "two thousand pesos".
         words = text.lower().split()
         for i, word in enumerate(words):
-            if word in self.NUMBER_WORDS:
-                numbers.append({
-                    "raw": word,
-                    "value": float(self.NUMBER_WORDS[word]),
-                    "position": text.lower().find(word),
-                    "suffix": "",
-                    "type": "word",
-                })
+            if word not in self.MAGNITUDE_WORDS:
+                continue
+            multiplier = float(self.MAGNITUDE_WORDS[word])
+            value = multiplier
+            if i > 0 and words[i - 1] in self.COUNT_WORDS:
+                value = float(self.COUNT_WORDS[words[i - 1]]) * multiplier
+            numbers.append({
+                "raw": f"{words[i - 1]} {word}" if value != multiplier else word,
+                "value": value,
+                "position": text.lower().find(word),
+                "suffix": "",
+                "type": "word",
+            })
 
         logger.info(f"[NumericalVerifier] Extracted {len(numbers)} numbers from text")
         return numbers
@@ -126,6 +146,19 @@ class NumericalVerifier:
 
         return all_numbers
 
+    def _is_citation_number(self, number: dict[str, Any], claim: str) -> bool:
+        """True when the number is a trailing citation menu reference.
+
+        The narrative writes the menu number after the sentence, so "plants 6"
+        carries the reference 6. A number inside the sentence is a quantity.
+        """
+        if number.get("type") != "numeric" or number["value"] != int(number["value"]):
+            return False
+        if number["value"] > 30:
+            return False
+        tail = claim[number["position"] + len(number["raw"]):].strip()
+        return tail in ("", ".", ",", ";", ":")
+
     def verify_numerical_claim(
         self,
         claim: str,
@@ -144,8 +177,12 @@ class NumericalVerifier:
             - mismatches: List of unsupported numbers
             - hallucination_type: str | None
         """
-        # Extract numbers from claim
-        claim_numbers = self.extract_numbers(claim)
+        # A trailing small integer is the citation menu number the narrative
+        # writes after a sentence. It is a reference, not a quantity.
+        claim_numbers = [
+            n for n in self.extract_numbers(claim)
+            if not self._is_citation_number(n, claim)
+        ]
 
         if not claim_numbers:
             return {
