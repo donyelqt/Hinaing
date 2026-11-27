@@ -806,45 +806,6 @@ class QueryOrchestratorAgent:
             )
 
         return None
-    @staticmethod
-    def _dedupe_by_similarity(
-        queries: list[QueryTask], threshold: float = 0.75
-    ) -> list[QueryTask]:
-        """Drop a query that repeats an earlier one in the same focus area.
-
-        BGE-large scores the deterministic keyword pairs at 0.76 to 0.84
-        because they are all Baguio civic text. LangSearch answers several of
-        them with the same URLs, so dedup collapses the pool afterwards. The
-        AI planner measured 0.56 to 0.66 on the same model, so only the
-        deterministic path is gated.
-        """
-        if len(queries) < 2:
-            return queries
-
-        from ..rag.embeddings import get_embedding_service
-        from .credibility_agent import compute_cosine_similarity
-
-        service = get_embedding_service()
-        kept: list[QueryTask] = []
-        kept_vectors: dict[str, list[list[float]]] = {}
-
-        for task in queries:
-            area = task.focus_area or "general"
-            vector = service.embed_query(task.query)
-            if any(
-                compute_cosine_similarity(vector, prior) >= threshold
-                for prior in kept_vectors.get(area, [])
-            ):
-                logger.info(
-                    "[query_orchestrator] Dropped near-duplicate query for %s: %s",
-                    area, task.query[:70],
-                )
-                continue
-            kept_vectors.setdefault(area, []).append(vector)
-            kept.append(task)
-
-        return kept
-
     def _fallback_plan(
         self, focus_values: list[str], time_window: str | None = None
     ) -> QueryPlan:
@@ -920,8 +881,6 @@ class QueryOrchestratorAgent:
         if not queries:
             query = f"Baguio City {' '.join(focus_values)} problem OR concern{time_suffix}"
             queries = [QueryTask(query=query, intent="broad", topic="general", priority=1)]
-
-        queries = self._dedupe_by_similarity(queries)
 
         logger.info("[query_orchestrator] Fallback: %d balanced queries from domain knowledge", len(queries))
 
