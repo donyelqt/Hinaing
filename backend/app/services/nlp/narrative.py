@@ -791,7 +791,13 @@ RULES:
             logger.info(f"[LLMNarrativeClient] Extracted summary via regex ({len(summary)} chars)")
             return {"summary": summary, "insights": []}
 
-        logger.warning(f"[LLMNarrativeClient] JSON parse failed. Text: {text[:200]}...")
+        logger.warning(f"[LLMNarrativeClient] JSON parse failed. Text: {text[:300]}...")
+        # The model answered in prose. Returning the text beats returning
+        # nothing, because the caller treats an empty summary as a failure and
+        # the run ships no narrative at all.
+        if len(text) >= 40:
+            logger.info("[LLMNarrativeClient] Returning prose as the summary")
+            return {"summary": text, "insights": []}
         return None
     
     @staticmethod
