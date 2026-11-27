@@ -243,33 +243,25 @@ def filter_aggregator_pages(documents: list[WebDocument]) -> list[WebDocument]:
 
 
 def deduplicate_documents(documents: list[WebDocument]) -> list[WebDocument]:
-    """Remove duplicate documents based on URL and similar titles."""
+    """Remove documents whose URL was already seen.
+
+    URL is the only exact identity a document has. Titles are not identity:
+    wire stories and press releases are syndicated verbatim, so two outlets
+    can carry the same headline with different reporting and different URLs.
+    Collapsing those loses a source, and the credibility score counts sources.
+    """
     seen_urls: set[str] = set()
-    seen_titles: set[str] = set()
     unique: list[WebDocument] = []
     
     for doc in documents:
-        # Normalize URL for comparison
         url = str(doc.url).lower().rstrip("/") if doc.url else ""
-        
-        # Skip if URL already seen
+
         if url and url in seen_urls:
             logger.debug("Filtered duplicate URL: %s", doc.url)
             continue
-        
-        # Normalize the whole title, not a 50-char prefix. A truncated key
-        # collapses distinct articles that share an opening.
-        title_key = "".join(c for c in (doc.title or "").lower() if c.isalnum())
-        
-        # Skip only an exact title match
-        if title_key and title_key in seen_titles:
-            logger.debug("Filtered duplicate title: %s", doc.title[:50] if doc.title else "")
-            continue
-        
+
         if url:
             seen_urls.add(url)
-        if title_key:
-            seen_titles.add(title_key)
         unique.append(doc)
     
     if len(documents) != len(unique):
