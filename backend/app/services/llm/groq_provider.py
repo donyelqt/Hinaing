@@ -113,9 +113,14 @@ class GroqProvider(BaseLLMProvider):
             "max_tokens": max_tokens,
             # gpt-oss emits reasoning tokens before the JSON and they count
             # against max_tokens. A 4000 budget was spent on reasoning and the
-            # JSON came back unterminated. Callers may override.
-            "reasoning_effort": "low",
+            # JSON came back unterminated. extra_body reaches the wire even on
+            # SDK builds whose create() has no reasoning_effort parameter.
+            "extra_body": {"reasoning_effort": "low"},
         }
+        extra_body = {"reasoning_effort": "low"} | kwargs.pop("extra_body", {})
+        if "reasoning_effort" in kwargs:
+            extra_body["reasoning_effort"] = kwargs.pop("reasoning_effort")
+        payload["extra_body"] = extra_body
         payload.update(kwargs)
         if stream:
             payload["stream"] = True
